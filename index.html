@@ -54,8 +54,12 @@
     background: var(--deep-green);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    gap: 20px; transition: opacity 0.8s ease;
+    gap: 20px; transition: opacity 0.5s ease;
     overflow: hidden;
+    animation: preloaderHide 0s 1.2s forwards;
+  }
+  @keyframes preloaderHide {
+    to { opacity: 0; visibility: hidden; pointer-events: none; display: none; }
   }
   #preloader::before {
     content: '';
@@ -2525,17 +2529,16 @@
 
 <script>
 // ─── PRELOADER ───
-// Preloader — তিনটি method দিয়ে নিশ্চিত করো
+// Preloader hide — CSS animation + JS backup
 function hidePreloader() {
   const pre = document.getElementById('preloader');
   if (!pre) return;
   pre.style.opacity = '0';
-  pre.style.transition = 'opacity 0.4s ease';
-  setTimeout(() => { pre.style.display = 'none'; }, 450);
+  pre.style.pointerEvents = 'none';
+  pre.style.display = 'none';
 }
-setTimeout(hidePreloader, 800);                              // সবার আগে ৮০০ms
-document.addEventListener('DOMContentLoaded', () => setTimeout(hidePreloader, 800));
-window.addEventListener('load', () => hidePreloader());
+// ৩০০ms পরই JS দিয়ে সরাও
+setTimeout(hidePreloader, 300);
 
 // ─── HERO PARTICLES ───
 (function() {
@@ -2652,7 +2655,7 @@ function showToast(msg, type = 'success') {
 //  Google Apps Script Web App URL
 //  নিচের URL টা আপনার নিজের Script URL দিয়ে replace করুন
 // ═══════════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzINg96rkd6iodNlrvRpN6zOcLZMIE9xTbpbhqPyiWRdw9mhNMKKc2jJ3Wnp0Y8ed0w/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxReIghuXgE4hQoMmB_x1EqUcCoAp3zzSIkAlkdD93O5Eju6YByfWZrKLartQJZkbuV/exec';
 // Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
 
 // ─── UNIQUE ID GENERATOR ───
