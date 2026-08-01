@@ -2384,6 +2384,7 @@
           <button class="vt-btn active" id="btnCard" title="কার্ড ভিউ" onclick="setView('card',this)">⊞</button>
           <button class="vt-btn" id="btnTable" title="টেবিল ভিউ" onclick="setView('table',this)">☰</button>
         </div>
+        <button class="btn-export" onclick="loadFromCloud()" style="margin-right:6px;" title="Sheets থেকে আপডেট করুন">🔄 রিফ্রেশ</button>
         <button class="btn-export" onclick="exportCSV()">⬇ CSV</button>
       </div>
       <!-- Card view -->
@@ -2598,8 +2599,41 @@ updateCountdown();
 setInterval(updateCountdown, 1000);
 
 // ─── DATA STORE ───
+// ── Cloud mode ──
+const USE_CLOUD = GAS_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+let isLoadingCloud = false;
+
+// ── LOCAL + CLOUD data store ──
 let registrations = JSON.parse(localStorage.getItem('muhs_registrations') || '[]');
 let currentFilter = 'all';
+
+// ─── LOAD FROM GOOGLE SHEETS ───
+async function loadFromCloud() {
+  if (!USE_CLOUD || isLoadingCloud) return;
+  isLoadingCloud = true;
+  try {
+    const res  = await fetch(GAS_URL + '?action=getAll', { cache: 'no-store' });
+    const data = await res.json();
+    if (data.success && Array.isArray(data.registrations) && data.registrations.length > 0) {
+      // Merge: cloud is source of truth, keep local photos (base64 not in cloud)
+      const localMap = {};
+      registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
+      registrations = data.registrations.map(r => ({
+        ...r,
+        photo: localMap[r.uniqueId] || ''  // restore local photo cache
+      }));
+      localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+      updateSummary();
+      updateBatchFilter();
+      renderTable();
+      showToast(`☁️ ${data.total}টি নিবন্ধন লোড হয়েছে`);
+    }
+  } catch (err) {
+    console.warn('Cloud load failed, using local data:', err.message);
+  } finally {
+    isLoadingCloud = false;
+  }
+}
 
 // ─── TOAST ───
 function showToast(msg, type = 'success') {
@@ -2678,6 +2712,9 @@ function submitRegistration() {
   registrations.push(reg);
   localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
 
+  // ☁️ Cloud এ save
+  if (USE_CLOUD) saveToCloud(reg);
+
   // Reset
   ['reg-name','reg-phone','reg-email','reg-district','reg-message'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('reg-batch').selectedIndex = 0;
@@ -2692,7 +2729,8 @@ function submitRegistration() {
 
   showToast(`✅ নিবন্ধন সফল! আপনার আইডি: ${uniqueId}`);
   // Show ID in a visible box too
-  showRegSuccessModal(uniqueId, name);
+  window._lastReg = reg;
+  showRegSuccessModal(uniqueId, name, reg);
   updateSummary();
   updateBatchFilter();
   renderTable();
@@ -2736,7 +2774,7 @@ function setView(v, btn) {
 
 
 // ─── REGISTRATION SUCCESS MODAL ───
-function showRegSuccessModal(uid, name) {
+function showRegSuccessModal(uid, name, reg) {
   // Remove existing if any
   const ex = document.getElementById('regSuccessModal');
   if (ex) ex.remove();
@@ -2755,12 +2793,32 @@ function showRegSuccessModal(uid, name) {
         <div style="color:rgba(255,255,255,0.5);font-size:0.72rem;margin-top:6px;">এই আইডিটি সংরক্ষণ করুন</div>
         <div id="driveStatus" style="margin-top:8px;font-size:0.72rem;color:rgba(242,201,76,0.8);display:none;">📸 ছবি Drive-এ আপলোড হচ্ছে...</div>
       </div>
-      <button onclick="document.getElementById('regSuccessModal').remove()" style="width:100%;padding:12px;background:var(--deep-green);color:white;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">ঠিক আছে ✓</button>
+      <div style="display:flex;gap:10px;margin-top:0;">
+        <button onclick="downloadIdCard(window._lastReg)" style="flex:1;padding:12px;background:var(--gold);color:var(--deep-green);border:none;border-radius:10px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">📥 ID Card ডাউনলোড</button>
+        <button onclick="document.getElementById('regSuccessModal').remove()" style="flex:1;padding:12px;background:var(--deep-green);color:white;border:none;border-radius:10px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">ঠিক আছে ✓</button>
+      </div>
     </div>
-  `;
+  \`;
   document.body.appendChild(modal);
+  window._lastReg = null; // will be set by caller
 }
 
+
+// ─── SAVE TO GOOGLE SHEETS ───
+async function saveToCloud(reg) {
+  if (!USE_CLOUD) return;
+  try {
+    const payload = { action: 'register', ...reg };
+    delete payload.photo; // photo Drive-এ আলাদা, Sheets-এ base64 রাখব না
+    await fetch(GAS_URL, {
+      method : 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body   : JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.warn('Cloud save failed (data safe in localStorage):', err.message);
+  }
+}
 
 // ─── GOOGLE DRIVE PHOTO UPLOAD ───
 async function uploadPhotoToDrive(reg) {
@@ -2791,6 +2849,198 @@ async function uploadPhotoToDrive(reg) {
     console.warn('Drive upload skipped:', err.message);
     // Silent fail — নিবন্ধন বাধা পাবে না
   }
+}
+
+
+// ─── DOWNLOAD ID CARD ───
+function downloadIdCard(reg) {
+  if (!reg) return;
+
+  const W = 480, H = 680;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // ── Background ──
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0,   '#0B3D2E');
+  bgGrad.addColorStop(0.45,'#145A3E');
+  bgGrad.addColorStop(1,   '#0B3D2E');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Gold border ──
+  ctx.strokeStyle = '#C8960C';
+  ctx.lineWidth = 4;
+  roundRect(ctx, 10, 10, W-20, H-20, 16);
+  ctx.stroke();
+
+  // ── Inner gold thin line ──
+  ctx.strokeStyle = 'rgba(200,150,12,0.3)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, 18, 18, W-36, H-36, 12);
+  ctx.stroke();
+
+  // ── Header band ──
+  const hGrad = ctx.createLinearGradient(0,0,W,0);
+  hGrad.addColorStop(0, '#C8960C');
+  hGrad.addColorStop(0.5,'#F2C94C');
+  hGrad.addColorStop(1, '#C8960C');
+  ctx.fillStyle = hGrad;
+  ctx.fillRect(10, 10, W-20, 80);
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  roundRect(ctx, 10, 10, W-20, 80, 16, 16, 0, 0);
+  ctx.fill();
+
+  // ── School name in header ──
+  ctx.fillStyle = '#0B3D2E';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 14px "Noto Serif Bengali", serif';
+  ctx.fillText('মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয়', W/2, 45);
+  ctx.font = '11px "Noto Sans Bengali", sans-serif';
+  ctx.fillText('কেল্লাই, মানিকগঞ্জ  |  ৫০ বছর পূর্তি উৎসব ২০২৫', W/2, 68);
+
+  // ── Gold badge ──
+  ctx.fillStyle = '#C8960C';
+  ctx.beginPath(); ctx.arc(W/2, 118, 28, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#0B3D2E';
+  ctx.font = 'bold 20px "Playfair Display", serif';
+  ctx.fillText('৫০', W/2, 126);
+
+  // ── Photo frame ──
+  const PW = 150, PH = 200, PX = (W-PW)/2, PY = 155;
+  // shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 20; ctx.shadowOffsetY = 6;
+  ctx.fillStyle = '#0F4A30';
+  roundRect(ctx, PX-4, PY-4, PW+8, PH+8, 12); ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  // gold frame
+  ctx.strokeStyle = '#C8960C'; ctx.lineWidth = 3;
+  roundRect(ctx, PX-4, PY-4, PW+8, PH+8, 12); ctx.stroke();
+
+  // Draw photo or placeholder
+  const drawRest = () => {
+    // ── Divider line ──
+    ctx.strokeStyle = 'rgba(200,150,12,0.4)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(40, 375); ctx.lineTo(W-40, 375); ctx.stroke();
+
+    // ── Name ──
+    ctx.fillStyle = '#F2C94C';
+    ctx.font = 'bold 22px "Noto Serif Bengali", serif';
+    ctx.textAlign = 'center';
+    wrapText(ctx, reg.name || '', W/2, 408, W-80, 30);
+
+    // ── ID box ──
+    ctx.fillStyle = 'rgba(200,150,12,0.15)';
+    roundRect(ctx, 60, 430, W-120, 50, 8); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,150,12,0.5)'; ctx.lineWidth = 1;
+    roundRect(ctx, 60, 430, W-120, 50, 8); ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '10px "Noto Sans Bengali"';
+    ctx.fillText('REGISTRATION ID', W/2, 448);
+    ctx.fillStyle = '#F2C94C';
+    ctx.font = 'bold 22px "Playfair Display", serif';
+    ctx.letterSpacing = '4px';
+    ctx.fillText(reg.uniqueId || '—', W/2, 470);
+    ctx.letterSpacing = '0px';
+
+    // ── Info rows ──
+    ctx.textAlign = 'left';
+    ctx.font = '13px "Noto Sans Bengali", sans-serif';
+    const typeMapLocal = { alumni:'প্রাক্তন শিক্ষার্থী', student:'বর্তমান শিক্ষার্থী', teacher:'শিক্ষক/কর্মকর্তা', guest:'অতিথি', other:'অন্যান্য' };
+    const genderMapLocal = { male:'পুরুষ', female:'মহিলা', other:'অন্যান্য' };
+    const rows = [
+      ['📱', 'মোবাইল', reg.phone || '—'],
+      ['🎓', 'ব্যাচ', reg.batch || '—'],
+      ['👤', 'পরিচয়', typeMapLocal[reg.type] || reg.type || '—'],
+      ['📍', 'জেলা', reg.district || '—'],
+    ];
+    let ry = 502;
+    rows.forEach(([icon, label, val]) => {
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillText(icon + ' ' + label + ':', 55, ry);
+      ctx.fillStyle = '#E0E0E0';
+      ctx.textAlign = 'right';
+      ctx.fillText(val, W-55, ry);
+      ctx.textAlign = 'left';
+      // thin separator
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(50, ry+8); ctx.lineTo(W-50, ry+8); ctx.stroke();
+      ry += 34;
+    });
+
+    // ── Date ──
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('নিবন্ধনের তারিখ: ' + (reg.date || ''), W/2, 646);
+
+    // ── Footer gold line ──
+    const fGrad = ctx.createLinearGradient(40, 0, W-40, 0);
+    fGrad.addColorStop(0,'transparent'); fGrad.addColorStop(0.5,'#C8960C'); fGrad.addColorStop(1,'transparent');
+    ctx.strokeStyle = fGrad; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(40, 658); ctx.lineTo(W-40, 658); ctx.stroke();
+
+    // ── Download ──
+    const link = document.createElement('a');
+    link.download = (reg.uniqueId || 'id_card') + '_card.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+    showToast('📥 ID Card ডাউনলোড হচ্ছে!');
+  };
+
+  // Draw photo
+  if (reg.photo && reg.photo.startsWith('data:')) {
+    const img = new Image();
+    img.onload = () => {
+      ctx.save();
+      roundRect(ctx, PX, PY, PW, PH, 10); ctx.clip();
+      // Cover fit
+      const ar = img.width/img.height;
+      let sw = PW, sh = PH, sx = 0, sy = 0;
+      if (ar > PW/PH) { sw = PH * ar; sx = (sw-PW)/2; }
+      else             { sh = PW / ar; sy = (sh-PH)/2; }
+      ctx.drawImage(img, -sx, PY - sy, sw, sh);
+      ctx.restore();
+      drawRest();
+    };
+    img.src = reg.photo;
+  } else {
+    // Placeholder silhouette
+    ctx.fillStyle = '#1A5C40';
+    roundRect(ctx, PX, PY, PW, PH, 10); ctx.fill();
+    ctx.fillStyle = 'rgba(200,150,12,0.3)';
+    ctx.font = '80px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(reg.gender === 'female' ? '👩' : '👨', W/2, PY+PH/2+25);
+    drawRest();
+  }
+}
+
+// ── Canvas helper: rounded rect path ──
+function roundRect(ctx, x, y, w, h, r1, r2, r3, r4) {
+  const tl = r1||0, tr = r2!==undefined?r2:tl, br = r3!==undefined?r3:tl, bl = r4!==undefined?r4:tl;
+  ctx.beginPath();
+  ctx.moveTo(x+tl, y);
+  ctx.lineTo(x+w-tr, y); ctx.quadraticCurveTo(x+w, y, x+w, y+tr);
+  ctx.lineTo(x+w, y+h-br); ctx.quadraticCurveTo(x+w, y+h, x+w-br, y+h);
+  ctx.lineTo(x+bl, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-bl);
+  ctx.lineTo(x, y+tl); ctx.quadraticCurveTo(x, y, x+tl, y);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH) {
+  const chars = [...text];
+  let line = '';
+  for (const ch of chars) {
+    const test = line + ch;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, y); y += lineH; line = ch;
+    } else { line = test; }
+  }
+  if (line) ctx.fillText(line, x, y);
 }
 
 function renderTable() {
@@ -3022,9 +3272,6 @@ window.addEventListener('touchend', ()=>{ isDragCrop=false; });
 
 function applyCrop() {
   const canvas = document.getElementById('cropCanvas');
-  // Extract the exact region covered by the rounded-rect frame
-  const srcX = canvas.width/2 - CROP_W/2 + cropX;
-  const srcY = canvas.height/2 - CROP_H/2 + cropY;
   const out = document.createElement('canvas');
   out.width = CROP_W; out.height = CROP_H;
   const ctx = out.getContext('2d');
@@ -3041,13 +3288,32 @@ function applyCrop() {
   ctx.quadraticCurveTo(0, 0, r, 0);
   ctx.closePath(); ctx.clip();
   ctx.drawImage(canvas, canvas.width/2 - CROP_W/2, canvas.height/2 - CROP_H/2, CROP_W, CROP_H, 0, 0, CROP_W, CROP_H);
-  const dataURL = out.toDataURL('image/jpeg', 0.88);
+
+  // ── Smart compress: 2MB এর বেশি হলে কমাও ──
+  const MAX_BYTES = 2 * 1024 * 1024; // 2MB
+  let quality = 0.92;
+  let dataURL = out.toDataURL('image/jpeg', quality);
+
+  // base64 → bytes: length * 3/4
+  const byteSize = () => Math.round((dataURL.length - dataURL.indexOf(',') - 1) * 3 / 4);
+
+  if (byteSize() > MAX_BYTES) {
+    // Progressive compress until under 2MB
+    while (byteSize() > MAX_BYTES && quality > 0.3) {
+      quality -= 0.08;
+      dataURL = out.toDataURL('image/jpeg', quality);
+    }
+    const finalKB = Math.round(byteSize() / 1024);
+    showToast(`🗜️ ছবি compress হয়েছে (${finalKB}KB)`);
+  }
+
   document.getElementById('reg-photo').value = dataURL;
   const img = document.getElementById('photoPreviewImg');
   img.src = dataURL; img.style.display = 'block';
   document.querySelector('#photoRing .ph-icon').style.display = 'none';
   closeCropModal();
-  showToast('✅ ছবি সেট হয়েছে!');
+  const kb = Math.round(byteSize() / 1024);
+  showToast(`✅ ছবি সেট হয়েছে! (${kb}KB)`);
 }
 
 function closeCropModal() {
@@ -3115,10 +3381,11 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 // Init
-// localStorage.removeItem("muhs_registrations"); // uncomment to reset
 updateSummary();
 updateBatchFilter();
 renderTable();
+// ☁️ Cloud থেকে latest data লোড
+loadFromCloud();
 
 </script>
 </body>
