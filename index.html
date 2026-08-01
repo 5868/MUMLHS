@@ -94,7 +94,7 @@
     height: 100%;
     background: linear-gradient(90deg, var(--gold), var(--gold-bright));
     border-radius: 2px;
-    animation: load 2s ease forwards;
+    animation: load 0.7s ease forwards;
   }
   @keyframes load { from { width: 0 } to { width: 100% } }
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.8;transform:scale(0.96)} }
@@ -2525,13 +2525,17 @@
 
 <script>
 // ─── PRELOADER ───
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    const pre = document.getElementById('preloader');
-    pre.style.opacity = '0';
-    setTimeout(() => pre.style.display = 'none', 800);
-  }, 2400);
-});
+// Preloader — তিনটি method দিয়ে নিশ্চিত করো
+function hidePreloader() {
+  const pre = document.getElementById('preloader');
+  if (!pre) return;
+  pre.style.opacity = '0';
+  pre.style.transition = 'opacity 0.4s ease';
+  setTimeout(() => { pre.style.display = 'none'; }, 450);
+}
+setTimeout(hidePreloader, 800);                              // সবার আগে ৮০০ms
+document.addEventListener('DOMContentLoaded', () => setTimeout(hidePreloader, 800));
+window.addEventListener('load', () => hidePreloader());
 
 // ─── HERO PARTICLES ───
 (function() {
