@@ -1144,10 +1144,15 @@
   #cropModal {
     position: fixed; inset: 0; z-index: 9998;
     background: rgba(0,0,0,0.88);
-    display: none; align-items: center; justify-content: center;
+    display: none;
+    align-items: center; justify-content: center;
     padding: 1rem;
   }
-  #cropModal.open { display: flex; }
+  #cropModal.open {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: all !important;
+  }
   .crop-box {
     background: #fff;
     border-radius: 18px;
@@ -1426,18 +1431,22 @@
 
   .slider-track {
     display: flex;
-    gap: 0;
-    padding: 0;
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
     transition: transform 0.6s cubic-bezier(0.25,0.8,0.25,1);
     will-change: transform;
+    width: max-content;
   }
 
   .slide-card {
     flex: 0 0 100vw;
     width: 100vw;
+    max-width: 100vw;
     position: relative;
     overflow: hidden;
     background: var(--deep-green);
+    box-sizing: border-box;
   }
   .slide-img {
     width: 100%;
@@ -2689,13 +2698,20 @@ function submitRegistration() {
   const gender = document.getElementById('reg-gender').value;
 
   if (!name) { showToast('অনুগ্রহ করে নাম লিখুন।', 'error'); return; }
-  if (!phone || !/^01[3-9]\d{8}$/.test(phone)) { showToast('সঠিক মোবাইল নম্বর দিন।', 'error'); return; }
+  // Phone: Bangladesh 01XXXXXXXXX (11 digits)
+  const phoneClean = phone.replace(/[^0-9]/g, '');
+  if (!phoneClean || phoneClean.length !== 11 || !phoneClean.startsWith('01')) {
+    showToast('সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)।', 'error'); return;
+  }
   if (!type) { showToast('পরিচয় নির্বাচন করুন।', 'error'); return; }
   if (!gender) { showToast('লিঙ্গ নির্বাচন করুন।', 'error'); return; }
   const batch = document.getElementById('reg-batch').value;
-  if (!batch) { showToast('ব্যাচ/পাসের সাল নির্বাচন করুন।', 'error'); return; }
+  // batch শুধু alumni/student এর জন্য required
+  if (!batch && (type === 'alumni' || type === 'student')) {
+    showToast('ব্যাচ/পাসের সাল নির্বাচন করুন।', 'error'); return;
+  }
 
-  const duplicate = registrations.find(r => r.phone === phone);
+  const duplicate = registrations.find(r => r.phone === phoneClean);
   if (duplicate) { showToast('এই মোবাইল নম্বরে ইতিমধ্যে নিবন্ধন হয়েছে!', 'error'); return; }
 
   const batchForId = document.getElementById('reg-batch').value;
@@ -2704,7 +2720,7 @@ function submitRegistration() {
     id: Date.now(),
     uniqueId,
     name,
-    phone,
+    phone: phoneClean,
     email: document.getElementById('reg-email').value.trim(),
     type,
     gender,
@@ -3351,11 +3367,20 @@ document.addEventListener('DOMContentLoaded', () => {
     dotsWrap.appendChild(d);
   }
 
-  function slideW() { return vp.offsetWidth || window.innerWidth; }
+  function slideW() {
+    // viewport এর actual width ব্যবহার করো
+    return document.documentElement.clientWidth || window.innerWidth;
+  }
 
   function goTo(idx) {
     current = ((idx % TOTAL) + TOTAL) % TOTAL;
-    track.style.transform = `translateX(-${current * slideW()}px)`;
+    const w = slideW();
+    // প্রতিটা slide-card এর width সেট করো
+    document.querySelectorAll('.slide-card').forEach(c => {
+      c.style.width = w + 'px';
+      c.style.minWidth = w + 'px';
+    });
+    track.style.transform = `translateX(-${current * w}px)`;
     dotsWrap.querySelectorAll('span').forEach((d, i) =>
       d.classList.toggle('active', i === current));
   }
