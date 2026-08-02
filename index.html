@@ -2370,61 +2370,75 @@
       <div class="summary-card"><div class="summary-icon">🌍</div><div><div class="summary-num" id="guest-count">0</div><div class="summary-lbl">অতিথি/অন্যান্য</div></div></div>
     </div>
 
-    <!-- Tabs -->
-    <div class="mgmt-tabs">
-      <button class="mgmt-tab active" onclick="switchTab('all', this)">সকল নিবন্ধন</button>
-      <button class="mgmt-tab" onclick="switchTab('alumni', this)">প্রাক্তন শিক্ষার্থী</button>
-      <button class="mgmt-tab" onclick="switchTab('student', this)">বর্তমান শিক্ষার্থী</button>
-      <button class="mgmt-tab" onclick="switchTab('teacher', this)">শিক্ষক</button>
-      <button class="mgmt-tab" onclick="switchTab('guest', this)">অতিথি</button>
+    <!-- 🔒 LOCKED (default, public visitors see this) -->
+    <div id="adminLockedView" style="display:flex; flex-direction:column; align-items:center; gap:14px; padding:3rem 1rem; text-align:center;">
+      <div style="font-size:2.5rem;">🔒</div>
+      <p style="color:var(--text-light); max-width:420px;">নিবন্ধনকারীদের বিস্তারিত তালিকা (নাম, মোবাইল, ইমেইল) শুধুমাত্র অনুমোদিত প্রশাসকদের জন্য সংরক্ষিত। উপরের সংখ্যাগুলো সবার জন্য দৃশ্যমান।</p>
+      <button class="btn-export" onclick="adminUnlock()" style="padding:10px 24px;">🔓 এডমিন লগইন</button>
     </div>
 
-    <!-- Panel -->
-    <div class="mgmt-panel active" id="panel-content">
-      <div class="filter-bar">
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="search-input" placeholder="নাম বা মোবাইল দিয়ে খুঁজুন..." oninput="filterTable()">
-        </div>
-        <select class="filter-select" id="batch-filter" onchange="filterTable()">
-          <option value="">সকল ব্যাচ</option>
-        </select>
-        <div class="view-toggle">
-          <button class="vt-btn active" id="btnCard" title="কার্ড ভিউ" onclick="setView('card',this)">⊞</button>
-          <button class="vt-btn" id="btnTable" title="টেবিল ভিউ" onclick="setView('table',this)">☰</button>
-        </div>
-        <button class="btn-export" onclick="loadFromCloud()" style="margin-right:6px;" title="Sheets থেকে আপডেট করুন">🔄 রিফ্রেশ</button>
-        <button class="btn-export" onclick="exportCSV()">⬇ CSV</button>
+    <!-- 🔓 UNLOCKED (only after correct admin password) -->
+    <div id="adminUnlockedView" style="display:none;">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:0.5rem;">
+        <button class="btn-export" onclick="adminLock()" title="লগআউট">🔒 লক করুন</button>
       </div>
-      <!-- Card view -->
-      <div id="card-view" class="card-grid"></div>
-      <!-- Table view -->
-      <div id="table-view" style="display:none">
-      <div class="data-table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>আইডি</th>
-              <th>নাম</th>
-              <th>মোবাইল</th>
-              <th>পরিচয়</th>
-              <th>লিঙ্গ</th>
-              <th>ব্যাচ</th>
-              <th>জেলা</th>
-              <th>সাথে</th>
-              <th>তারিখ</th>
-            </tr>
-          </thead>
-          <tbody id="table-body"></tbody>
-        </table>
-        <div id="empty-state" class="empty-state" style="display:none">
-          <div class="empty-icon">📋</div>
-          <p>এখনো কোনো নিবন্ধন হয়নি। প্রথম নিবন্ধনের অপেক্ষায়!</p>
-        </div>
+
+      <!-- Tabs -->
+      <div class="mgmt-tabs">
+        <button class="mgmt-tab active" onclick="switchTab('all', this)">সকল নিবন্ধন</button>
+        <button class="mgmt-tab" onclick="switchTab('alumni', this)">প্রাক্তন শিক্ষার্থী</button>
+        <button class="mgmt-tab" onclick="switchTab('student', this)">বর্তমান শিক্ষার্থী</button>
+        <button class="mgmt-tab" onclick="switchTab('teacher', this)">শিক্ষক</button>
+        <button class="mgmt-tab" onclick="switchTab('guest', this)">অতিথি</button>
       </div>
-      </div><!-- /table-view -->
-    </div>
+
+      <!-- Panel -->
+      <div class="mgmt-panel active" id="panel-content">
+        <div class="filter-bar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" placeholder="নাম বা মোবাইল দিয়ে খুঁজুন..." oninput="filterTable()">
+          </div>
+          <select class="filter-select" id="batch-filter" onchange="filterTable()">
+            <option value="">সকল ব্যাচ</option>
+          </select>
+          <div class="view-toggle">
+            <button class="vt-btn active" id="btnCard" title="কার্ড ভিউ" onclick="setView('card',this)">⊞</button>
+            <button class="vt-btn" id="btnTable" title="টেবিল ভিউ" onclick="setView('table',this)">☰</button>
+          </div>
+          <button class="btn-export" onclick="loadFromCloud(true)" style="margin-right:6px;" title="Sheets থেকে আপডেট করুন">🔄 রিফ্রেশ</button>
+          <button class="btn-export" onclick="exportCSV()">⬇ CSV</button>
+        </div>
+        <!-- Card view -->
+        <div id="card-view" class="card-grid"></div>
+        <!-- Table view -->
+        <div id="table-view" style="display:none">
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>আইডি</th>
+                <th>নাম</th>
+                <th>মোবাইল</th>
+                <th>পরিচয়</th>
+                <th>লিঙ্গ</th>
+                <th>ব্যাচ</th>
+                <th>জেলা</th>
+                <th>সাথে</th>
+                <th>তারিখ</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+          <div id="empty-state" class="empty-state" style="display:none">
+            <div class="empty-icon">📋</div>
+            <p>এখনো কোনো নিবন্ধন হয়নি। প্রথম নিবন্ধনের অপেক্ষায়!</p>
+          </div>
+        </div>
+        </div><!-- /table-view -->
+      </div>
+    </div><!-- /adminUnlockedView -->
   </div>
 </section>
 
@@ -2625,33 +2639,90 @@ let isLoadingCloud = false;
 // ── LOCAL + CLOUD data store ──
 let registrations = JSON.parse(localStorage.getItem('muhs_registrations') || '[]');
 let currentFilter = 'all';
+let cloudSummary = null; // { total, alumni, student, teacher, guest, other } — public-safe counts
+let isAdminUnlocked = sessionStorage.getItem('muhs_admin_key') ? true : false;
 
 // ─── LOAD FROM GOOGLE SHEETS ───
-async function loadFromCloud() {
+// admin=false → শুধু গণনা (নাম/ফোন/ইমেইল আসে না, সবার জন্য নিরাপদ)
+// admin=true  → সম্পূর্ণ তালিকা (সঠিক adminKey দরকার)
+async function loadFromCloud(admin = false) {
   if (!USE_CLOUD || isLoadingCloud) return;
   isLoadingCloud = true;
   try {
-    const res  = await fetch(GAS_URL + '?action=getAll', { cache: 'no-store' });
+    let url = GAS_URL + '?action=getAll';
+    if (admin) {
+      const key = sessionStorage.getItem('muhs_admin_key') || '';
+      url += '&key=' + encodeURIComponent(key);
+    }
+    const res  = await fetch(url, { cache: 'no-store' });
     const data = await res.json();
-    if (data.success && Array.isArray(data.registrations) && data.registrations.length > 0) {
-      // Merge: cloud is source of truth, keep local photos (base64 not in cloud)
+
+    if (!data.success) {
+      if (admin) showToast('❌ ভুল পাসওয়ার্ড অথবা সার্ভার এরর', 'error');
+      return;
+    }
+
+    if (data.summary) cloudSummary = data.summary;
+
+    if (admin && Array.isArray(data.registrations)) {
+      // Merge: cloud is source of truth, but keep freshest local photo if newer than cloud's
       const localMap = {};
       registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
       registrations = data.registrations.map(r => ({
         ...r,
-        photo: localMap[r.uniqueId] || ''  // restore local photo cache
+        photo: localMap[r.uniqueId] || r.photo || '' // prefer local cache, else Drive URL from cloud
       }));
       localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
-      updateSummary();
       updateBatchFilter();
       renderTable();
       showToast(`☁️ ${data.total}টি নিবন্ধন লোড হয়েছে`);
     }
+
+    updateSummary();
   } catch (err) {
     console.warn('Cloud load failed, using local data:', err.message);
   } finally {
     isLoadingCloud = false;
   }
+}
+
+// ─── ADMIN LOGIN (গেট) ───
+async function adminUnlock() {
+  const pass = prompt('🔒 এডমিন পাসওয়ার্ড দিন:');
+  if (pass === null) return; // cancel
+  if (!pass.trim()) { showToast('পাসওয়ার্ড দিন।', 'error'); return; }
+  sessionStorage.setItem('muhs_admin_key', pass.trim());
+
+  const url = GAS_URL + '?action=getAll&key=' + encodeURIComponent(pass.trim());
+  try {
+    const res  = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    if (data.success && Array.isArray(data.registrations)) {
+      isAdminUnlocked = true;
+      cloudSummary = data.summary || cloudSummary;
+      const localMap = {};
+      registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
+      registrations = data.registrations.map(r => ({ ...r, photo: localMap[r.uniqueId] || r.photo || '' }));
+      localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+      updateSummary(); updateBatchFilter(); renderTable();
+      document.getElementById('adminLockedView').style.display = 'none';
+      document.getElementById('adminUnlockedView').style.display = 'block';
+      showToast('✅ এডমিন মোড চালু হয়েছে');
+    } else {
+      sessionStorage.removeItem('muhs_admin_key');
+      showToast('❌ ভুল পাসওয়ার্ড!', 'error');
+    }
+  } catch (err) {
+    sessionStorage.removeItem('muhs_admin_key');
+    showToast('❌ সার্ভারে সমস্যা হয়েছে', 'error');
+  }
+}
+
+function adminLock() {
+  sessionStorage.removeItem('muhs_admin_key');
+  isAdminUnlocked = false;
+  document.getElementById('adminLockedView').style.display = 'flex';
+  document.getElementById('adminUnlockedView').style.display = 'none';
 }
 
 // ─── TOAST ───
@@ -2758,6 +2829,13 @@ function submitRegistration() {
 
 // ─── SUMMARY ───
 function updateSummary() {
+  if (cloudSummary) {
+    document.getElementById('total-count').textContent = cloudSummary.total;
+    document.getElementById('alumni-count').textContent = cloudSummary.alumni || 0;
+    document.getElementById('teacher-count').textContent = cloudSummary.teacher || 0;
+    document.getElementById('guest-count').textContent = (cloudSummary.guest || 0) + (cloudSummary.other || 0) + (cloudSummary.student || 0);
+    return;
+  }
   document.getElementById('total-count').textContent = registrations.length;
   document.getElementById('alumni-count').textContent = registrations.filter(r => r.type === 'alumni').length;
   document.getElementById('teacher-count').textContent = registrations.filter(r => r.type === 'teacher').length;
@@ -3434,8 +3512,15 @@ setTimeout(function() { (function () {
 updateSummary();
 updateBatchFilter();
 renderTable();
-// ☁️ Cloud থেকে latest data লোড
-loadFromCloud();
+// ☁️ Cloud থেকে latest count লোড (সবার জন্য, PII ছাড়া)
+loadFromCloud(false);
+// 🔓 আগে থেকে admin login করা থাকলে (এই ব্রাউজার সেশনে) পুনরায় unlock করো
+if (isAdminUnlocked) {
+  loadFromCloud(true).then(() => {
+    document.getElementById('adminLockedView') && (document.getElementById('adminLockedView').style.display = 'none');
+    document.getElementById('adminUnlockedView') && (document.getElementById('adminUnlockedView').style.display = 'block');
+  });
+}
 
 </script>
 </body>
