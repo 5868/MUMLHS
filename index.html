@@ -2611,6 +2611,13 @@ updateCountdown();
 setInterval(updateCountdown, 1000);
 
 // ─── DATA STORE ───
+// ═══════════════════════════════════════════════════
+//  Google Apps Script Web App URL
+//  নিচের URL টা আপনার নিজের Script URL দিয়ে replace করুন
+// ═══════════════════════════════════════════════════
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxReIghuXgE4hQoMmB_x1EqUcCoAp3zzSIkAlkdD93O5Eju6YByfWZrKLartQJZkbuV/exec';
+// Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
+
 // ── Cloud mode ──
 const USE_CLOUD = GAS_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
 let isLoadingCloud = false;
@@ -2656,12 +2663,6 @@ function showToast(msg, type = 'success') {
 }
 
 // ─── REGISTRATION ───
-// ═══════════════════════════════════════════════════
-//  Google Apps Script Web App URL
-//  নিচের URL টা আপনার নিজের Script URL দিয়ে replace করুন
-// ═══════════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxReIghuXgE4hQoMmB_x1EqUcCoAp3zzSIkAlkdD93O5Eju6YByfWZrKLartQJZkbuV/exec';
-// Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
 
 // ─── UNIQUE ID GENERATOR ───
 function generateUniqueId(batchVal, type) {
@@ -2817,7 +2818,7 @@ function showRegSuccessModal(uid, name, reg) {
         <button onclick="document.getElementById('regSuccessModal').remove()" style="flex:1;padding:12px;background:var(--deep-green);color:white;border:none;border-radius:10px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">ঠিক আছে ✓</button>
       </div>
     </div>
-  \`;
+  `;
   document.body.appendChild(modal);
   window._lastReg = null; // will be set by caller
 }
@@ -3427,7 +3428,7 @@ setTimeout(function() { (function () {
   vp.addEventListener('mouseleave', startAuto);
 
   goTo(0); startAuto();
-  })()); }, 50);
+  })(); }, 50);
 
 // Init
 updateSummary();
