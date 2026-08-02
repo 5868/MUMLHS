@@ -56,10 +56,6 @@
     align-items: center; justify-content: center;
     gap: 20px; transition: opacity 0.5s ease;
     overflow: hidden;
-    animation: preloaderHide 0s 1.2s forwards;
-  }
-  @keyframes preloaderHide {
-    to { opacity: 0; visibility: hidden; pointer-events: none; display: none; }
   }
   #preloader::before {
     content: '';
@@ -2876,194 +2872,215 @@ async function uploadPhotoToDrive(reg) {
 
 
 // ─── DOWNLOAD ID CARD ───
-function downloadIdCard(reg) {
-  if (!reg) return;
-
-  const W = 480, H = 680;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-
-  // ── Background ──
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-  bgGrad.addColorStop(0,   '#0B3D2E');
-  bgGrad.addColorStop(0.45,'#145A3E');
-  bgGrad.addColorStop(1,   '#0B3D2E');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
-
-  // ── Gold border ──
-  ctx.strokeStyle = '#C8960C';
-  ctx.lineWidth = 4;
-  roundRect(ctx, 10, 10, W-20, H-20, 16);
-  ctx.stroke();
-
-  // ── Inner gold thin line ──
-  ctx.strokeStyle = 'rgba(200,150,12,0.3)';
-  ctx.lineWidth = 1;
-  roundRect(ctx, 18, 18, W-36, H-36, 12);
-  ctx.stroke();
-
-  // ── Header band ──
-  const hGrad = ctx.createLinearGradient(0,0,W,0);
-  hGrad.addColorStop(0, '#C8960C');
-  hGrad.addColorStop(0.5,'#F2C94C');
-  hGrad.addColorStop(1, '#C8960C');
-  ctx.fillStyle = hGrad;
-  ctx.fillRect(10, 10, W-20, 80);
-  ctx.fillStyle = 'rgba(0,0,0,0.08)';
-  roundRect(ctx, 10, 10, W-20, 80, 16, 16, 0, 0);
-  ctx.fill();
-
-  // ── School name in header ──
-  ctx.fillStyle = '#0B3D2E';
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 14px "Noto Serif Bengali", serif';
-  ctx.fillText('মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয়', W/2, 45);
-  ctx.font = '11px "Noto Sans Bengali", sans-serif';
-  ctx.fillText('কেল্লাই, মানিকগঞ্জ  |  ৫০ বছর পূর্তি উৎসব ২০২৫', W/2, 68);
-
-  // ── Gold badge ──
-  ctx.fillStyle = '#C8960C';
-  ctx.beginPath(); ctx.arc(W/2, 118, 28, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#0B3D2E';
-  ctx.font = 'bold 20px "Playfair Display", serif';
-  ctx.fillText('৫০', W/2, 126);
-
-  // ── Photo frame ──
-  const PW = 150, PH = 200, PX = (W-PW)/2, PY = 155;
-  // shadow
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 20; ctx.shadowOffsetY = 6;
-  ctx.fillStyle = '#0F4A30';
-  roundRect(ctx, PX-4, PY-4, PW+8, PH+8, 12); ctx.fill();
-  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-
-  // gold frame
-  ctx.strokeStyle = '#C8960C'; ctx.lineWidth = 3;
-  roundRect(ctx, PX-4, PY-4, PW+8, PH+8, 12); ctx.stroke();
-
-  // Draw photo or placeholder
-  const drawRest = () => {
-    // ── Divider line ──
-    ctx.strokeStyle = 'rgba(200,150,12,0.4)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(40, 375); ctx.lineTo(W-40, 375); ctx.stroke();
-
-    // ── Name ──
-    ctx.fillStyle = '#F2C94C';
-    ctx.font = 'bold 22px "Noto Serif Bengali", serif';
-    ctx.textAlign = 'center';
-    wrapText(ctx, reg.name || '', W/2, 408, W-80, 30);
-
-    // ── ID box ──
-    ctx.fillStyle = 'rgba(200,150,12,0.15)';
-    roundRect(ctx, 60, 430, W-120, 50, 8); ctx.fill();
-    ctx.strokeStyle = 'rgba(200,150,12,0.5)'; ctx.lineWidth = 1;
-    roundRect(ctx, 60, 430, W-120, 50, 8); ctx.stroke();
-
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '10px "Noto Sans Bengali"';
-    ctx.fillText('REGISTRATION ID', W/2, 448);
-    ctx.fillStyle = '#F2C94C';
-    ctx.font = 'bold 22px "Playfair Display", serif';
-    ctx.letterSpacing = '4px';
-    ctx.fillText(reg.uniqueId || '—', W/2, 470);
-    ctx.letterSpacing = '0px';
-
-    // ── Info rows ──
-    ctx.textAlign = 'left';
-    ctx.font = '13px "Noto Sans Bengali", sans-serif';
-    const typeMapLocal = { alumni:'প্রাক্তন শিক্ষার্থী', student:'বর্তমান শিক্ষার্থী', teacher:'শিক্ষক/কর্মকর্তা', guest:'অতিথি', other:'অন্যান্য' };
-    const genderMapLocal = { male:'পুরুষ', female:'মহিলা', other:'অন্যান্য' };
-    const rows = [
-      ['📱', 'মোবাইল', reg.phone || '—'],
-      ['🎓', 'ব্যাচ', reg.batch || '—'],
-      ['👤', 'পরিচয়', typeMapLocal[reg.type] || reg.type || '—'],
-      ['📍', 'জেলা', reg.district || '—'],
-    ];
-    let ry = 502;
-    rows.forEach(([icon, label, val]) => {
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillText(icon + ' ' + label + ':', 55, ry);
-      ctx.fillStyle = '#E0E0E0';
-      ctx.textAlign = 'right';
-      ctx.fillText(val, W-55, ry);
-      ctx.textAlign = 'left';
-      // thin separator
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 0.5;
-      ctx.beginPath(); ctx.moveTo(50, ry+8); ctx.lineTo(W-50, ry+8); ctx.stroke();
-      ry += 34;
-    });
-
-    // ── Date ──
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('নিবন্ধনের তারিখ: ' + (reg.date || ''), W/2, 646);
-
-    // ── Footer gold line ──
-    const fGrad = ctx.createLinearGradient(40, 0, W-40, 0);
-    fGrad.addColorStop(0,'transparent'); fGrad.addColorStop(0.5,'#C8960C'); fGrad.addColorStop(1,'transparent');
-    ctx.strokeStyle = fGrad; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(40, 658); ctx.lineTo(W-40, 658); ctx.stroke();
-
-    // ── Download ──
-    const link = document.createElement('a');
-    link.download = (reg.uniqueId || 'id_card') + '_card.jpg';
-    link.href = canvas.toDataURL('image/jpeg', 0.95);
-    link.click();
-    showToast('📥 ID Card ডাউনলোড হচ্ছে!');
-  };
-
-  // Draw photo
-  if (reg.photo && reg.photo.startsWith('data:')) {
-    const img = new Image();
-    img.onload = () => {
-      ctx.save();
-      roundRect(ctx, PX, PY, PW, PH, 10); ctx.clip();
-      // Cover fit
-      const ar = img.width/img.height;
-      let sw = PW, sh = PH, sx = 0, sy = 0;
-      if (ar > PW/PH) { sw = PH * ar; sx = (sw-PW)/2; }
-      else             { sh = PW / ar; sy = (sh-PH)/2; }
-      ctx.drawImage(img, -sx, PY - sy, sw, sh);
-      ctx.restore();
-      drawRest();
-    };
-    img.src = reg.photo;
-  } else {
-    // Placeholder silhouette
-    ctx.fillStyle = '#1A5C40';
-    roundRect(ctx, PX, PY, PW, PH, 10); ctx.fill();
-    ctx.fillStyle = 'rgba(200,150,12,0.3)';
-    ctx.font = '80px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(reg.gender === 'female' ? '👩' : '👨', W/2, PY+PH/2+25);
-    drawRest();
-  }
-}
-
-// ── Canvas helper: rounded rect path ──
-function roundRect(ctx, x, y, w, h, r1, r2, r3, r4) {
-  const tl = r1||0, tr = r2!==undefined?r2:tl, br = r3!==undefined?r3:tl, bl = r4!==undefined?r4:tl;
+function roundRect(ctx, x, y, w, h, r) {
+  r = r || 0;
   ctx.beginPath();
-  ctx.moveTo(x+tl, y);
-  ctx.lineTo(x+w-tr, y); ctx.quadraticCurveTo(x+w, y, x+w, y+tr);
-  ctx.lineTo(x+w, y+h-br); ctx.quadraticCurveTo(x+w, y+h, x+w-br, y+h);
-  ctx.lineTo(x+bl, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-bl);
-  ctx.lineTo(x, y+tl); ctx.quadraticCurveTo(x, y, x+tl, y);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
 }
 
 function wrapText(ctx, text, x, y, maxW, lineH) {
-  const chars = [...text];
-  let line = '';
-  for (const ch of chars) {
-    const test = line + ch;
+  var chars = Array.from(text);
+  var line = '';
+  for (var i = 0; i < chars.length; i++) {
+    var test = line + chars[i];
     if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line, x, y); y += lineH; line = ch;
-    } else { line = test; }
+      ctx.fillText(line, x, y);
+      y += lineH;
+      line = chars[i];
+    } else {
+      line = test;
+    }
   }
   if (line) ctx.fillText(line, x, y);
+}
+
+function downloadIdCard(reg) {
+  if (!reg) return;
+  var W = 480, H = 680;
+  var canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  var ctx = canvas.getContext('2d');
+
+  // Background
+  var bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0B3D2E');
+  bg.addColorStop(0.5, '#145A3E');
+  bg.addColorStop(1, '#0B3D2E');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Outer gold border
+  ctx.strokeStyle = '#C8960C';
+  ctx.lineWidth = 4;
+  roundRect(ctx, 10, 10, W - 20, H - 20, 14);
+  ctx.stroke();
+
+  // Inner thin border
+  ctx.strokeStyle = 'rgba(200,150,12,0.25)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, 18, 18, W - 36, H - 36, 10);
+  ctx.stroke();
+
+  // Header band
+  var hg = ctx.createLinearGradient(0, 0, W, 0);
+  hg.addColorStop(0, '#C8960C');
+  hg.addColorStop(0.5, '#F2C94C');
+  hg.addColorStop(1, '#C8960C');
+  ctx.fillStyle = hg;
+  roundRect(ctx, 10, 10, W - 20, 75, 14, 14, 0, 0);
+  ctx.fill();
+
+  // School name
+  ctx.fillStyle = '#0B3D2E';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText('\u09AE\u09A8\u09B8\u09C2\u09B0 \u0989\u09A6\u09CD\u09A6\u09BF\u09A8 \u09AC\u09B9\u09C1\u09AE\u09C1\u0996\u09C0 \u0989\u099A\u09CD\u099A \u09AC\u09BF\u09A6\u09CD\u09AF\u09BE\u09B2\u09AF\u09BC', W / 2, 40);
+  ctx.font = '11px sans-serif';
+  ctx.fillText('\u0995\u09C7\u09B2\u09CD\u09B2\u09BE\u0987, \u09AE\u09BE\u09A8\u09BF\u0995\u0997\u09E6\u09E6\u099C | \u09EB\u09E6 \u09AC\u099B\u09B0 \u09AA\u09C2\u09B0\u09CD\u09A4\u09BF \u0989\u09CE\u09B8\u09AC \u09E8\u09E6\u09E8\u09EC', W / 2, 62);
+
+  // Gold circle badge
+  ctx.fillStyle = '#C8960C';
+  ctx.beginPath();
+  ctx.arc(W / 2, 110, 26, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#0B3D2E';
+  ctx.font = 'bold 18px serif';
+  ctx.fillText('50', W / 2, 118);
+
+  var doFinish = function() {
+    // Divider
+    ctx.strokeStyle = 'rgba(200,150,12,0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(40, 370);
+    ctx.lineTo(W - 40, 370);
+    ctx.stroke();
+
+    // Name
+    ctx.fillStyle = '#F2C94C';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    wrapText(ctx, reg.name || '', W / 2, 405, W - 80, 28);
+
+    // ID box
+    ctx.fillStyle = 'rgba(200,150,12,0.12)';
+    roundRect(ctx, 60, 428, W - 120, 48, 8);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(200,150,12,0.45)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, 60, 428, W - 120, 48, 8);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('REGISTRATION ID', W / 2, 446);
+    ctx.fillStyle = '#F2C94C';
+    ctx.font = 'bold 21px monospace';
+    ctx.fillText(reg.uniqueId || '—', W / 2, 467);
+
+    // Info rows
+    var typeLabels = { alumni: '\u09AA\u09CD\u09B0\u09BE\u0995\u09CD\u09A4\u09A8', student: '\u09AC\u09B0\u09CD\u09A4\u09AE\u09BE\u09A8', teacher: '\u09B6\u09BF\u0995\u09CD\u09B7\u0995', guest: '\u0985\u09A4\u09BF\u09A5\u09BF', other: '\u0985\u09A8\u09CD\u09AF\u09BE\u09A8\u09CD\u09AF' };
+    var rows = [
+      ['\u{1F4F1}', reg.phone || '\u2014'],
+      ['\u{1F393}', reg.batch || '\u2014'],
+      ['\u{1F464}', typeLabels[reg.type] || reg.type || '\u2014'],
+      ['\u{1F4CD}', reg.district || '\u2014']
+    ];
+    var ry = 500;
+    rows.forEach(function(row) {
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(row[0] + '  ' + row[1], 60, ry);
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(55, ry + 10);
+      ctx.lineTo(W - 55, ry + 10);
+      ctx.stroke();
+      ry += 36;
+    });
+
+    // Date
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('\u09A8\u09BF\u09AC\u09A8\u09CD\u09A7\u09A8\u09C7\u09B0 \u09A4\u09BE\u09B0\u09BF\u0996: ' + (reg.date || ''), W / 2, 650);
+
+    // Bottom gold line
+    var fg = ctx.createLinearGradient(40, 0, W - 40, 0);
+    fg.addColorStop(0, 'transparent');
+    fg.addColorStop(0.5, '#C8960C');
+    fg.addColorStop(1, 'transparent');
+    ctx.strokeStyle = fg;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(40, 662);
+    ctx.lineTo(W - 40, 662);
+    ctx.stroke();
+
+    // Download
+    var link = document.createElement('a');
+    link.download = (reg.uniqueId || 'id_card') + '_card.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.93);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('\u{1F4E5} ID Card \u09A1\u09BE\u0989\u09A8\u09B2\u09CB\u09A1 \u09B9\u099A\u09CD\u099B\u09C7!');
+  };
+
+  // Photo frame
+  var PX = (W - 140) / 2, PY = 150, PW = 140, PH = 185;
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 5;
+  ctx.fillStyle = '#0F4A30';
+  roundRect(ctx, PX - 4, PY - 4, PW + 8, PH + 8, 10);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = '#C8960C';
+  ctx.lineWidth = 2.5;
+  roundRect(ctx, PX - 4, PY - 4, PW + 8, PH + 8, 10);
+  ctx.stroke();
+
+  if (reg.photo && reg.photo.indexOf('data:') === 0) {
+    var img = new Image();
+    img.onload = function() {
+      ctx.save();
+      roundRect(ctx, PX, PY, PW, PH, 8);
+      ctx.clip();
+      var ar = img.width / img.height;
+      var dw = PW, dh = PH, dx = PX, dy = PY;
+      if (ar > PW / PH) { dw = PH * ar; dx = PX - (dw - PW) / 2; }
+      else { dh = PW / ar; dy = PY - (dh - PH) / 2; }
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.restore();
+      doFinish();
+    };
+    img.onerror = doFinish;
+    img.src = reg.photo;
+  } else {
+    ctx.fillStyle = '#1A5C40';
+    roundRect(ctx, PX, PY, PW, PH, 8);
+    ctx.fill();
+    ctx.font = '64px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(200,150,12,0.3)';
+    ctx.fillText(reg.gender === 'female' ? '\u{1F469}' : '\u{1F468}', W / 2, PY + PH / 2 + 20);
+    doFinish();
+  }
 }
 
 function renderTable() {
@@ -3253,7 +3270,7 @@ function openCropModal(e) {
       document.getElementById('zoomSlider').value = 100;
       document.getElementById('zoomVal').textContent = '১০০%';
       document.getElementById('cropModal').classList.add('open');
-      requestAnimationFrame(() => { positionMask(); drawCrop(); });
+      setTimeout(() => { positionMask(); drawCrop(); }, 80);
     };
     cropImg.src = ev.target.result;
   };
@@ -3351,7 +3368,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── PHOTO SLIDER ───
-(function () {
+setTimeout(function() { (function () {
   const TOTAL = 9;
   let current = 0, autoTimer = null;
   let isDragging = false, dragStartX = 0, dragDelta = 0;
@@ -3410,7 +3427,7 @@ document.addEventListener('DOMContentLoaded', () => {
   vp.addEventListener('mouseleave', startAuto);
 
   goTo(0); startAuto();
-})();
+  })()); }, 50);
 
 // Init
 updateSummary();
