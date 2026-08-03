@@ -202,14 +202,12 @@
     to   { transform: scale(1.14) translate(-1.2%, -1.2%); }
   }
 
-  /* Glass blur layer over the photos — text/cards sit on top of this */
+  /* Transparent black shade over the photos — keeps the background clearly visible */
   .hero-wash {
     position: absolute; inset: 0; z-index: 1;
-    backdrop-filter: blur(9px) saturate(125%);
-    -webkit-backdrop-filter: blur(9px) saturate(125%);
     background:
-      linear-gradient(180deg, rgba(6,26,19,0.72) 0%, rgba(11,61,46,0.55) 42%, rgba(6,26,19,0.80) 100%),
-      radial-gradient(ellipse 70% 50% at 12% 10%, rgba(200,150,12,0.14) 0%, transparent 55%);
+      linear-gradient(180deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.28) 48%, rgba(0,0,0,0.46) 100%);
+    pointer-events: none;
   }
 
   /* Subtle grain so the flat wash doesn't look too digital */
@@ -1547,7 +1545,7 @@
       <div class="section-tag">আমাদের সম্পর্কে</div>
       <h2 class="section-title">পাঁচ দশকের জ্ঞানের আলো</h2>
       <div class="divider"></div>
-      <p class="section-sub">১৯৭৫ সাল থেকে মানিকগঞ্জ সদর উপজেলার কেল্লাই গ্রামে আলোর মশাল জ্বালিয়ে আসছে মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয় (EIIN: ১১০৯১৯)। সরকার স্বীকৃত এই এমপিওভুক্ত বিদ্যাপীঠ হাজারো শিক্ষার্থীর স্বপ্ন ও ভবিষ্যৎ গড়ে তুলেছে পাঁচটি দশক ধরে।</p>
+      <p class="section-sub">১৯৭৫ সাল থেকে ঘিওর উপজেলার কেল্লাই গ্রামে আলোর মশাল জ্বালিয়ে আসছে মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয় (EIIN: ১১০৯১৯)। সরকার স্বীকৃত এই এমপিওভুক্ত বিদ্যাপীঠ হাজারো শিক্ষার্থীর স্বপ্ন ও ভবিষ্যৎ গড়ে তুলেছে পাঁচটি দশক ধরে।</p>
     </div>
     <div class="about-grid">
       <div class="about-card">
@@ -1618,7 +1616,7 @@
         <div class="tl-year">১৯৭৫</div>
         <div class="tl-content">
           <h4>বিদ্যালয় প্রতিষ্ঠা</h4>
-          <p>মানিকগঞ্জ সদর উপজেলার কেল্লাইয়ে স্থানীয় গণ্যমান্য ব্যক্তিবর্গের উদ্যোগে মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয় প্রতিষ্ঠা লাভ করে। সরকারি স্বীকৃতি প্রাপ্ত এই এমপিওভুক্ত বিদ্যালয়টি প্রথম ব্যাচে মাত্র ৫০ জন শিক্ষার্থী নিয়ে যাত্রা শুরু করে।</p>
+          <p>ঘিওর উপজেলার কেল্লাইয়ে স্থানীয় গণ্যমান্য ব্যক্তিবর্গের উদ্যোগে মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয় প্রতিষ্ঠা লাভ করে। সরকারি স্বীকৃতি প্রাপ্ত এই এমপিওভুক্ত বিদ্যালয়টি প্রথম ব্যাচে মাত্র ৫০ জন শিক্ষার্থী নিয়ে যাত্রা শুরু করে।</p>
         </div>
       </div>
       <div class="tl-item">
@@ -1938,22 +1936,22 @@
         <div class="form-group">
           <label>পেমেন্ট মাধ্যম <span>*</span></label>
           <div class="payment-options">
-            <input type="radio" name="payment-method" id="pay-bkash" value="bkash" class="pay-radio">
+            <input type="radio" name="payment-method" id="pay-bkash" value="bkash" class="pay-radio" onchange="updatePaymentProofRequirement()">
             <label for="pay-bkash" class="pay-pill">📱 বিকাশ</label>
 
-            <input type="radio" name="payment-method" id="pay-nagad" value="nagad" class="pay-radio">
+            <input type="radio" name="payment-method" id="pay-nagad" value="nagad" class="pay-radio" onchange="updatePaymentProofRequirement()">
             <label for="pay-nagad" class="pay-pill">📲 নগদ</label>
 
-            <input type="radio" name="payment-method" id="pay-bank" value="bank" class="pay-radio">
+            <input type="radio" name="payment-method" id="pay-bank" value="bank" class="pay-radio" onchange="updatePaymentProofRequirement()">
             <label for="pay-bank" class="pay-pill">🏦 ব্যাংক ট্রান্সফার</label>
 
-            <input type="radio" name="payment-method" id="pay-office" value="office" class="pay-radio">
+            <input type="radio" name="payment-method" id="pay-office" value="office" class="pay-radio" onchange="updatePaymentProofRequirement()">
             <label for="pay-office" class="pay-pill">🏢 অফিসে পেমেন্ট/অন্যান্য</label>
           </div>
         </div>
 
-        <div class="form-group">
-          <label>পেমেন্টের প্রমাণ (TxnID অথবা স্ক্রিনশট)</label>
+        <div class="form-group" id="payment-proof-group">
+          <label id="payment-proof-label">পেমেন্টের প্রমাণ (TxnID অথবা স্ক্রিনশট)</label>
           <div class="txn-or-row">
             <input type="text" class="form-control" id="reg-txnid" placeholder="Transaction ID (যেমনঃ 8N7A2X9K1P)" oninput="onTxnIdInput()">
             <div class="or-divider"><span>OR</span></div>
@@ -1965,6 +1963,9 @@
                 <button type="button" onclick="clearTxnScreenshot()">✕</button>
               </div>
             </div>
+          </div>
+          <div id="payment-proof-note" style="margin-top:8px;color:var(--text-light);font-size:0.78rem;">
+            বিকাশ, নগদ বা ব্যাংক ট্রান্সফারের ক্ষেত্রে TxnID অথবা পেমেন্টের স্ক্রিনশট — যেকোনো একটি বাধ্যতামূলক।
           </div>
         </div>
 
@@ -2089,7 +2090,7 @@
       <div class="contact-card">
         <div class="c-icon">📍</div>
         <h4>ঠিকানা</h4>
-        <p>মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয়<br>কেল্লাই, মানিকগঞ্জ সদর<br>মানিকগঞ্জ - ১৮০০<br><small style="opacity:0.7">EIIN: ১১০৯১৯</small></p>
+        <p>মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয়<br>কেল্লাই, ঘিওর<br>মানিকগঞ্জ - ১৮০০<br><small style="opacity:0.7">EIIN: ১১০৯১৯</small></p>
       </div>
       <div class="contact-card">
         <div class="c-icon">📞</div>
@@ -2168,7 +2169,7 @@
   <div class="footer-divider"></div>
   <p>
     <span>মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয়</span><br>
-    কেল্লাই, মানিকগঞ্জ সদর, মানিকগঞ্জ - ১৮০০<br>
+    কেল্লাই, ঘিওর, মানিকগঞ্জ - ১৮০০<br>
     প্রতিষ্ঠাকাল: ১৯৭৫ &nbsp;❖&nbsp; সুবর্ণ জয়ন্তী উৎসব ২০২৬<br>
     <span style="font-size:0.72rem; opacity:0.5;">© ২০২৬ সর্বস্বত্ব সংরক্ষিত</span>
   </p>
@@ -2450,6 +2451,25 @@ function syncPermanentAddress() {
   }
 }
 
+// ─── Payment proof requirement ───
+function updatePaymentProofRequirement() {
+  const selected = document.querySelector('input[name="payment-method"]:checked');
+  const isOffice = selected && selected.value === 'office';
+  const label = document.getElementById('payment-proof-label');
+  const note = document.getElementById('payment-proof-note');
+  if (!label || !note) return;
+
+  if (isOffice) {
+    label.innerHTML = 'পেমেন্টের প্রমাণ (ঐচ্ছিক)';
+    note.textContent = 'অফিসে পেমেন্ট/অন্যান্য নির্বাচন করলে TxnID বা স্ক্রিনশট দেওয়া বাধ্যতামূলক নয়।';
+    note.style.color = 'var(--text-light)';
+  } else {
+    label.innerHTML = 'পেমেন্টের প্রমাণ (TxnID অথবা স্ক্রিনশট) <span style="color:var(--red)">*</span>';
+    note.textContent = 'বিকাশ, নগদ বা ব্যাংক ট্রান্সফারের ক্ষেত্রে TxnID অথবা পেমেন্টের স্ক্রিনশট — যেকোনো একটি বাধ্যতামূলক।';
+    note.style.color = 'var(--red)';
+  }
+}
+
 // ─── TxnID ⇄ Screenshot (একটা দিলে আরেকটা বন্ধ হয়ে যাবে) ───
 function onTxnIdInput() {
   const val = document.getElementById('reg-txnid').value.trim();
@@ -2500,6 +2520,7 @@ function resetPaymentFields() {
   document.getElementById('reg-permanent-address').disabled = false;
   document.getElementById('reg-same-address').checked = false;
   clearTxnScreenshot();
+  updatePaymentProofRequirement();
 }
 
 function submitRegistration() {
@@ -2524,6 +2545,15 @@ function submitRegistration() {
   const paymentMethodEl = document.querySelector('input[name="payment-method"]:checked');
   if (!paymentMethodEl) { showToast('পেমেন্ট মাধ্যম নির্বাচন করুন।', 'error'); return; }
 
+  // অফিসে পেমেন্ট ছাড়া অন্য সব পেমেন্টে TxnID অথবা Screenshot বাধ্যতামূলক
+  const txnIdValue = document.getElementById('reg-txnid').value.trim();
+  const hasPaymentScreenshot = !!txnScreenshotData;
+  if (paymentMethodEl.value !== 'office' && !txnIdValue && !hasPaymentScreenshot) {
+    showToast('TxnID অথবা পেমেন্টের স্ক্রিনশট দিন।', 'error');
+    document.getElementById('payment-proof-group').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
   const duplicate = registrations.find(r => r.phone === phoneClean);
   if (duplicate) { showToast('এই মোবাইল নম্বরে ইতিমধ্যে নিবন্ধন হয়েছে!', 'error'); return; }
 
@@ -2544,7 +2574,8 @@ function submitRegistration() {
     currentAddress: document.getElementById('reg-current-address').value.trim(),
     permanentAddress: document.getElementById('reg-permanent-address').value.trim(),
     paymentMethod: paymentMethodMap[paymentMethodEl.value] || paymentMethodEl.value,
-    txnId: document.getElementById('reg-txnid').value.trim(),
+    txnId: txnIdValue,
+    paymentProofType: txnIdValue ? 'TxnID' : (hasPaymentScreenshot ? 'Screenshot' : ''),
     paymentComment: document.getElementById('reg-payment-comment').value.trim(),
     paymentScreenshot: txnScreenshotData || '',
     message: document.getElementById('reg-message').value.trim(),
@@ -2766,181 +2797,210 @@ function wrapText(ctx, text, x, y, maxW, lineH) {
 
 function downloadIdCard(reg) {
   if (!reg) return;
-  var W = 480, H = 680;
+
+  // Portrait Golden Jubilee ID card inspired by the approved reference design.
+  // Independent from the website UI colour palette.
+  var W = 824, H = 1220;
   var canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   var ctx = canvas.getContext('2d');
 
-  // Background
-  var bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#0B3D2E');
-  bg.addColorStop(0.5, '#145A3E');
-  bg.addColorStop(1, '#0B3D2E');
-  ctx.fillStyle = bg;
+  var red = '#E51C23';
+  var redDark = '#B9151C';
+  var redMid = '#C91820';
+  var black = '#080808';
+  var gold = '#B9A46A';
+  var ink = '#080808';
+  var white = '#FFFFFF';
+
+  // White card with rounded corners.
+  ctx.save();
+  roundRect(ctx, 0, 0, W, H, 30);
+  ctx.clip();
+  ctx.fillStyle = white;
   ctx.fillRect(0, 0, W, H);
 
-  // Outer gold border
-  ctx.strokeStyle = '#C8960C';
-  ctx.lineWidth = 4;
-  roundRect(ctx, 10, 10, W - 20, H - 20, 14);
-  ctx.stroke();
-
-  // Inner thin border
-  ctx.strokeStyle = 'rgba(200,150,12,0.25)';
-  ctx.lineWidth = 1;
-  roundRect(ctx, 18, 18, W - 36, H - 36, 10);
-  ctx.stroke();
-
-  // Header band
-  var hg = ctx.createLinearGradient(0, 0, W, 0);
-  hg.addColorStop(0, '#C8960C');
-  hg.addColorStop(0.5, '#F2C94C');
-  hg.addColorStop(1, '#C8960C');
-  ctx.fillStyle = hg;
-  roundRect(ctx, 10, 10, W - 20, 75, 14, 14, 0, 0);
-  ctx.fill();
-
-  // School name
-  ctx.fillStyle = '#0B3D2E';
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 13px sans-serif';
-  ctx.fillText('\u09AE\u09A8\u09B8\u09C2\u09B0 \u0989\u09A6\u09CD\u09A6\u09BF\u09A8 \u09AC\u09B9\u09C1\u09AE\u09C1\u0996\u09C0 \u0989\u099A\u09CD\u099A \u09AC\u09BF\u09A6\u09CD\u09AF\u09BE\u09B2\u09AF\u09BC', W / 2, 40);
-  ctx.font = '11px sans-serif';
-  ctx.fillText('\u0995\u09C7\u09B2\u09CD\u09B2\u09BE\u0987, \u09AE\u09BE\u09A8\u09BF\u0995\u0997\u09E6\u09E6\u099C | \u09EB\u09E6 \u09AC\u099B\u09B0 \u09AA\u09C2\u09B0\u09CD\u09A4\u09BF \u0989\u09CE\u09B8\u09AC \u09E8\u09E6\u09E8\u09EC', W / 2, 62);
-
-  // Gold circle badge
-  ctx.fillStyle = '#C8960C';
+  // Red flowing top ribbon.
+  ctx.fillStyle = red;
   ctx.beginPath();
-  ctx.arc(W / 2, 110, 26, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#0B3D2E';
-  ctx.font = 'bold 18px serif';
-  ctx.fillText('50', W / 2, 118);
+  ctx.moveTo(0, 0); ctx.lineTo(W, 0); ctx.lineTo(W, 68);
+  ctx.bezierCurveTo(690, 120, 590, 100, 505, 42);
+  ctx.bezierCurveTo(390, -32, 275, 16, 190, 78);
+  ctx.bezierCurveTo(115, 132, 55, 170, 0, 220);
+  ctx.closePath(); ctx.fill();
 
-  var doFinish = function() {
-    // Divider
-    ctx.strokeStyle = 'rgba(200,150,12,0.4)';
-    ctx.lineWidth = 1;
+  // Dark-red inner ribbon.
+  ctx.fillStyle = redDark;
+  ctx.beginPath();
+  ctx.moveTo(0, 115);
+  ctx.bezierCurveTo(115, 35, 185, 0, 310, 0);
+  ctx.bezierCurveTo(235, 35, 130, 78, 0, 190);
+  ctx.closePath(); ctx.fill();
+
+  // Top red highlight ribbon.
+  ctx.fillStyle = redMid;
+  ctx.beginPath();
+  ctx.moveTo(205, 0); ctx.bezierCurveTo(330, 0, 420, 0, 505, 42);
+  ctx.bezierCurveTo(420, 55, 315, 88, 210, 126);
+  ctx.bezierCurveTo(270, 74, 290, 36, 205, 0); ctx.closePath(); ctx.fill();
+
+  // Bottom flowing red ribbon.
+  ctx.fillStyle = red;
+  ctx.beginPath();
+  ctx.moveTo(0, 1040);
+  ctx.bezierCurveTo(150, 940, 255, 1000, 370, 1070);
+  ctx.bezierCurveTo(500, 1150, 640, 1160, W, 1010);
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = redDark;
+  ctx.beginPath();
+  ctx.moveTo(0, 1110);
+  ctx.bezierCurveTo(170, 990, 260, 1055, 380, 1120);
+  ctx.bezierCurveTo(520, 1195, 660, 1190, W, 1080);
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+
+  // Gold contour lines.
+  ctx.strokeStyle = 'rgba(185,164,106,0.42)';
+  ctx.lineWidth = 1.5;
+  for (var g = 0; g < 9; g++) {
     ctx.beginPath();
-    ctx.moveTo(40, 370);
-    ctx.lineTo(W - 40, 370);
+    ctx.moveTo(105 + g * 9, 58 + g * 7);
+    ctx.bezierCurveTo(215, 22 + g * 7, 260, 80 + g * 8, 335, 62 + g * 8);
+    ctx.bezierCurveTo(390, 48 + g * 8, 420, 12 + g * 8, 470, 18 + g * 8);
     ctx.stroke();
-
-    // Name
-    ctx.fillStyle = '#F2C94C';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center';
-    wrapText(ctx, reg.name || '', W / 2, 405, W - 80, 28);
-
-    // ID box
-    ctx.fillStyle = 'rgba(200,150,12,0.12)';
-    roundRect(ctx, 60, 428, W - 120, 48, 8);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(200,150,12,0.45)';
-    ctx.lineWidth = 1;
-    roundRect(ctx, 60, 428, W - 120, 48, 8);
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('REGISTRATION ID', W / 2, 446);
-    ctx.fillStyle = '#F2C94C';
-    ctx.font = 'bold 21px monospace';
-    ctx.fillText(reg.uniqueId || '—', W / 2, 467);
-
-    // Info rows
-    var typeLabels = { alumni: '\u09AA\u09CD\u09B0\u09BE\u0995\u09CD\u09A4\u09A8', student: '\u09AC\u09B0\u09CD\u09A4\u09AE\u09BE\u09A8', teacher: '\u09B6\u09BF\u0995\u09CD\u09B7\u0995', guest: '\u0985\u09A4\u09BF\u09A5\u09BF', other: '\u0985\u09A8\u09CD\u09AF\u09BE\u09A8\u09CD\u09AF' };
-    var rows = [
-      ['\u{1F4F1}', reg.phone || '\u2014'],
-      ['\u{1F393}', reg.batch || '\u2014'],
-      ['\u{1F464}', typeLabels[reg.type] || reg.type || '\u2014'],
-      ['\u{1F4CD}', reg.district || '\u2014']
-    ];
-    var ry = 500;
-    rows.forEach(function(row) {
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.font = '12px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(row[0] + '  ' + row[1], 60, ry);
-      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(55, ry + 10);
-      ctx.lineTo(W - 55, ry + 10);
-      ctx.stroke();
-      ry += 36;
-    });
-
-    // Date
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('\u09A8\u09BF\u09AC\u09A8\u09CD\u09A7\u09A8\u09C7\u09B0 \u09A4\u09BE\u09B0\u09BF\u0996: ' + (reg.date || ''), W / 2, 650);
-
-    // Bottom gold line
-    var fg = ctx.createLinearGradient(40, 0, W - 40, 0);
-    fg.addColorStop(0, 'transparent');
-    fg.addColorStop(0.5, '#C8960C');
-    fg.addColorStop(1, 'transparent');
-    ctx.strokeStyle = fg;
-    ctx.lineWidth = 1;
+  }
+  for (var b = 0; b < 10; b++) {
     ctx.beginPath();
-    ctx.moveTo(40, 662);
-    ctx.lineTo(W - 40, 662);
+    ctx.moveTo(0, 940 + b * 10);
+    ctx.bezierCurveTo(110, 900 + b * 8, 165, 1000 + b * 8, 275, 1015 + b * 8);
+    ctx.bezierCurveTo(355, 1025 + b * 8, 390, 975 + b * 8, 465, 970 + b * 8);
     ctx.stroke();
+  }
 
-    // Download
-    var link = document.createElement('a');
-    link.download = (reg.uniqueId || 'id_card') + '_card.jpg';
-    link.href = canvas.toDataURL('image/jpeg', 0.93);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('\u{1F4E5} ID Card \u09A1\u09BE\u0989\u09A8\u09B2\u09CB\u09A1 \u09B9\u099A\u09CD\u099B\u09C7!');
+  // Black diagonal corner ribbons.
+  ctx.fillStyle = black;
+  ctx.beginPath(); ctx.moveTo(48, 158); ctx.lineTo(205, 0); ctx.lineTo(236, 0); ctx.lineTo(48, 191); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(W, 525); ctx.lineTo(W, 610); ctx.lineTo(735, 690); ctx.lineTo(735, 615); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0, 1085); ctx.lineTo(0, 1155); ctx.lineTo(118, 1035); ctx.lineTo(118, 980); ctx.closePath(); ctx.fill();
+
+  // Logo.
+  var logo = new Image();
+  logo.onload = function() {
+    drawCardContent();
   };
+  logo.onerror = function() {
+    drawCardContent();
+  };
+  logo.src = 'images/School/logo50.jpg';
 
-  // Photo frame
-  var PX = (W - 140) / 2, PY = 150, PW = 140, PH = 185;
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 16;
-  ctx.shadowOffsetY = 5;
-  ctx.fillStyle = '#0F4A30';
-  roundRect(ctx, PX - 4, PY - 4, PW + 8, PH + 8, 10);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
-  ctx.strokeStyle = '#C8960C';
-  ctx.lineWidth = 2.5;
-  roundRect(ctx, PX - 4, PY - 4, PW + 8, PH + 8, 10);
-  ctx.stroke();
-
-  if (reg.photo && reg.photo.indexOf('data:') === 0) {
-    var img = new Image();
-    img.onload = function() {
+  function drawCardContent() {
+    // Logo at top centre.
+    if (logo.complete && logo.naturalWidth) {
       ctx.save();
-      roundRect(ctx, PX, PY, PW, PH, 8);
-      ctx.clip();
-      var ar = img.width / img.height;
-      var dw = PW, dh = PH, dx = PX, dy = PY;
-      if (ar > PW / PH) { dw = PH * ar; dx = PX - (dw - PW) / 2; }
-      else { dh = PW / ar; dy = PY - (dh - PH) / 2; }
-      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.beginPath(); ctx.arc(W/2, 138, 62, 0, Math.PI*2); ctx.clip();
+      ctx.drawImage(logo, W/2-62, 76, 124, 124);
       ctx.restore();
-      doFinish();
-    };
-    img.onerror = doFinish;
-    img.src = reg.photo;
-  } else {
-    ctx.fillStyle = '#1A5C40';
-    roundRect(ctx, PX, PY, PW, PH, 8);
-    ctx.fill();
-    ctx.font = '64px sans-serif';
+    }
+
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(200,150,12,0.3)';
-    ctx.fillText(reg.gender === 'female' ? '\u{1F469}' : '\u{1F468}', W / 2, PY + PH / 2 + 20);
-    doFinish();
+    ctx.fillStyle = ink;
+    ctx.font = '800 34px Arial, sans-serif';
+    ctx.fillText('MANSUR UDDIN M.L HIGH SCHOOL', W/2, 260);
+    ctx.font = '400 28px Arial, sans-serif';
+    ctx.fillText('KILLAI', W/2, 300);
+    ctx.font = '500 25px Arial, sans-serif';
+    ctx.fillText('50 YEARS GOLDEN JUBILEE REUNION', W/2, 342);
+    ctx.font = '400 22px Arial, sans-serif';
+    ctx.fillText('ESTD. 1976 | GOLDEN JUBILEE 2026', W/2, 378);
+
+    // Photo frame.
+    var photoX = 267, photoY = 410, photoW = 290, photoH = 360;
+    ctx.fillStyle = '#F5F5F5';
+    ctx.shadowColor = 'rgba(0,0,0,0.22)';
+    ctx.shadowBlur = 24;
+    ctx.shadowOffsetY = 10;
+    roundRect(ctx, photoX, photoY, photoW, photoH, 36); ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 12;
+    roundRect(ctx, photoX, photoY, photoW, photoH, 36); ctx.stroke();
+
+    if (reg.photo && reg.photo.indexOf('data:') === 0) {
+      var img = new Image();
+      img.onload = function() {
+        ctx.save();
+        roundRect(ctx, photoX+6, photoY+6, photoW-12, photoH-12, 28); ctx.clip();
+        var ar = img.width / img.height;
+        var iw = photoW-12, ih = photoH-12, ix = photoX+6, iy = photoY+6;
+        if (ar > iw/ih) { iw = ih*ar; ix -= (iw-(photoW-12))/2; }
+        else { ih = iw/ar; iy -= (ih-(photoH-12))/2; }
+        ctx.drawImage(img, ix, iy, iw, ih);
+        ctx.restore();
+        drawDetailsAndDownload();
+      };
+      img.onerror = function(){ drawFallbackPhoto(); drawDetailsAndDownload(); };
+      img.src = reg.photo;
+    } else {
+      drawFallbackPhoto(); drawDetailsAndDownload();
+    }
+
+    function drawFallbackPhoto() {
+      ctx.fillStyle = '#D9D9D9';
+      roundRect(ctx, photoX+6, photoY+6, photoW-12, photoH-12, 28); ctx.fill();
+      ctx.fillStyle = '#A0A0A0';
+      ctx.beginPath(); ctx.arc(W/2, photoY+142, 63, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(W/2, photoY+280, 120, 80, 0, 0, Math.PI*2); ctx.fill();
+    }
+
+    function drawDetailsAndDownload() {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = ink;
+      ctx.font = '800 52px Arial, sans-serif';
+      var nm = reg.name || 'Full Name';
+      if (nm.length > 24) ctx.font = '800 42px Arial, sans-serif';
+      ctx.fillText(nm, W/2, 850);
+
+      ctx.font = '400 31px Arial, sans-serif';
+      ctx.fillText('BATCH: ' + (reg.batch || 'XXXX'), W/2, 895);
+      ctx.fillText('ID NO: ' + (reg.uniqueId || 'MUHS-2026-0001'), W/2, 938);
+      ctx.fillText('PHONE: ' + (reg.phone || '+8801XXXXXXXXX'), W/2, 981);
+
+      // Participant type badge.
+      var typeLabels = {
+        alumni: 'Alumni', student: 'Student', teacher: 'Teacher / Staff',
+        guest: 'Guest', other: 'Other'
+      };
+      var typeLabel = typeLabels[reg.type] || reg.type || 'Participant';
+      ctx.font = '700 24px Arial, sans-serif';
+      var badgeW = Math.max(220, ctx.measureText(typeLabel).width + 60);
+      var bx = (W-badgeW)/2, by = 1015;
+      ctx.fillStyle = black;
+      roundRect(ctx, bx, by, badgeW, 52, 26); ctx.fill();
+      ctx.fillStyle = white;
+      ctx.fillText(typeLabel, W/2, by+35);
+
+      ctx.strokeStyle = black; ctx.lineWidth = 3;
+      roundRect(ctx, 92, 1058, W-184, 62, 14); ctx.stroke();
+      ctx.fillStyle = black;
+      ctx.font = '600 22px Arial, sans-serif';
+      ctx.fillText('Alumni / Teacher / Guest / Organizer / Volunteer', W/2, 1098);
+
+      // Footer strip.
+      ctx.fillStyle = black;
+      ctx.fillRect(0, 1150, W, 70);
+      ctx.fillStyle = white;
+      ctx.font = '500 24px Arial, sans-serif';
+      ctx.fillText('Together Again • Celebrating 50 Years', W/2, 1194);
+
+      var link = document.createElement('a');
+      link.download = (reg.uniqueId || 'id_card') + '_card.jpg';
+      link.href = canvas.toDataURL('image/jpeg', 0.96);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('📥 ID Card ডাউনলোড হচ্ছে!');
+    }
   }
 }
 
@@ -3064,11 +3124,12 @@ function deleteReg(id) {
 // ─── EXPORT CSV ───
 function exportCSV() {
   if (registrations.length === 0) { showToast('কোনো ডেটা নেই।', 'error'); return; }
-  const headers = ['ক্রম','ইউনিক আইডি','নাম','মোবাইল','ইমেইল','পরিচয়','লিঙ্গ','ব্যাচ','জেলা','সাথে','বর্তমান ঠিকানা','স্থায়ী ঠিকানা','পেমেন্ট মাধ্যম','TxnID','পেমেন্ট মন্তব্য','তারিখ'];
+  const headers = ['ক্রম','ইউনিক আইডি','নাম','মোবাইল','ইমেইল','পরিচয়','লিঙ্গ','ব্যাচ','জেলা','সাথে','বর্তমান ঠিকানা','স্থায়ী ঠিকানা','পেমেন্ট মাধ্যম','TxnID','পেমেন্ট প্রমাণের ধরন','পেমেন্ট মন্তব্য','বার্তা','তারিখ','প্রোফাইল ছবি','পেমেন্ট প্রমাণ'];
   const rows = registrations.map((r, i) => [
     i+1, r.uniqueId||'', r.name, r.phone, r.email, typeMap[r.type]||r.type, genderMap[r.gender]||r.gender,
     r.batch, r.district, guestMap[r.guests], r.currentAddress||'', r.permanentAddress||'',
-    r.paymentMethod||'', r.txnId||'', r.paymentComment||'', r.date
+    r.paymentMethod||'', r.txnId||'', r.paymentProofType||'', r.paymentComment||'', r.message||'', r.date||'',
+    r.photoUrl||'', r.paymentProofUrl||''
   ]);
   const csv = [headers, ...rows]
     .map(row => row.map(cell => `"${String(cell||'').replace(/"/g,'""')}"`).join(','))
