@@ -1851,10 +1851,7 @@
               <option value="">নির্বাচন করুন</option>
               <option value="alumni">প্রাক্তন শিক্ষার্থী (Ex-Student)</option>
               <option value="student">বর্তমান শিক্ষার্থী</option>
-              <option value="family">ফ্যামিলি মেম্বার</option>
-              <option value="child">৫ বছরের নিচে শিশু</option>
               <option value="teacher">শিক্ষক/কর্মকর্তা</option>
-              <option value="guest">অতিথি</option>
               <option value="other">অন্যান্য</option>
             </select>
           </div>
@@ -1868,6 +1865,17 @@
             </select>
           </div>
         </div>
+        <div class="form-row" id="companion-group" style="display:none">
+          <div class="form-group">
+            <label>অতিথি সংখ্যা <small>(প্রতি জন ৫০০ টাকা)</small></label>
+            <input type="number" min="0" max="20" step="1" class="form-control" id="reg-guest-count" value="0" placeholder="অতিথি সংখ্যা">
+          </div>
+          <div class="form-group">
+            <label>৫ বছরের নিচে শিশু <small>(ফ্রি)</small></label>
+            <input type="number" min="0" max="20" step="1" class="form-control" id="reg-child-count" value="0" placeholder="শিশুর সংখ্যা">
+          </div>
+        </div>
+
         <div class="form-group" id="batch-group">
           <label>ব্যাচ/পাসের সাল <span style="color:var(--red)">*</span></label>
           <select class="form-control" id="reg-batch"><option value="">নির্বাচন করুন</option>
@@ -2520,9 +2528,15 @@ function syncPermanentAddress() {
     document.getElementById(`reg-permanent-${k}`).value = document.getElementById(`reg-current-${k}`).value;
   });
 }
-const registrationFees = { alumni:700, student:300, family:500, child:0, teacher:700, guest:500, other:700 };
-const feeLabels = { alumni:'প্রাক্তন শিক্ষার্থী (Ex-Student)', student:'বর্তমান শিক্ষার্থী', family:'ফ্যামিলি মেম্বার', child:'৫ বছরের নিচে শিশু', teacher:'শিক্ষক/কর্মকর্তা', guest:'অতিথি', other:'অন্যান্য' };
-function formatBDT(n) { return `${n.toLocaleString('en-US')} টাকা`; }
+const registrationFees = { alumni:700, student:300, teacher:700, other:700 };
+const guestFee = 500;
+const feeLabels = { alumni:'প্রাক্তন শিক্ষার্থী (Ex-Student)', student:'বর্তমান শিক্ষার্থী', teacher:'শিক্ষক/কর্মকর্তা', other:'অন্যান্য' };
+function formatBDT(n) { return `${Number(n).toLocaleString('en-US')} টাকা`; }
+function getCompanionCounts() {
+  const guests = Math.max(0, parseInt(document.getElementById('reg-guest-count')?.value || '0', 10) || 0);
+  const children = Math.max(0, parseInt(document.getElementById('reg-child-count')?.value || '0', 10) || 0);
+  return { guests, children };
+}
 function updateRegistrationFee() {
   const type = document.getElementById('reg-type').value;
   const batchGroup = document.getElementById('batch-group');
@@ -2530,26 +2544,34 @@ function updateRegistrationFee() {
   const academic = document.getElementById('student-academic-group');
   const cls = document.getElementById('reg-class');
   const branch = document.getElementById('reg-branch');
+  const companionGroup = document.getElementById('companion-group');
   const total = document.getElementById('payment-total');
   const note = document.getElementById('payment-summary-note');
   const isAlumni = type === 'alumni';
   const isStudent = type === 'student';
   batchGroup.style.display = isAlumni ? '' : 'none';
-  batch.disabled = !isAlumni;
-  batch.required = isAlumni;
+  batch.disabled = !isAlumni; batch.required = isAlumni;
   if (!isAlumni) batch.value = '';
   academic.style.display = isStudent ? '' : 'none';
   cls.disabled = !isStudent; cls.required = isStudent;
   branch.disabled = !isStudent; branch.required = false;
   if (!isStudent) { cls.value=''; branch.value=''; }
+  companionGroup.style.display = type ? '' : 'none';
   if (!type) { total.textContent='পরিচয় নির্বাচন করলে মোট ফি দেখাবে'; note.textContent='নিচের পরিচয় অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।'; return; }
-  const fee = registrationFees[type];
-  total.textContent = fee === 0 ? 'ফ্রি (০ টাকা)' : formatBDT(fee);
-  note.textContent = `${feeLabels[type]} — রেজিস্ট্রেশন ফি: ${fee === 0 ? 'ফ্রি' : formatBDT(fee)}`;
+  const baseFee = registrationFees[type] || 0;
+  const { guests, children } = getCompanionCounts();
+  const guestTotal = guests * guestFee;
+  const grandTotal = baseFee + guestTotal;
+  total.textContent = grandTotal === 0 ? 'ফ্রি (০ টাকা)' : formatBDT(grandTotal);
+  let parts = [`${feeLabels[type]}: ${formatBDT(baseFee)}`];
+  if (guests) parts.push(`অতিথি ${guests} জন × ${formatBDT(guestFee)} = ${formatBDT(guestTotal)}`);
+  if (children) parts.push(`৫ বছরের নিচে শিশু ${children} জন — ফ্রি`);
+  note.textContent = parts.join(' + ') + ` — সর্বমোট: ${formatBDT(grandTotal)}`;
 }
 document.addEventListener('DOMContentLoaded', () => {
   const typeEl = document.getElementById('reg-type');
   if (typeEl) { typeEl.addEventListener('change', updateRegistrationFee); updateRegistrationFee(); }
+  ['reg-guest-count','reg-child-count'].forEach(id => { const el=document.getElementById(id); if(el) el.addEventListener('input', updateRegistrationFee); });
   ['reg-current-village','reg-current-post','reg-current-upazila','reg-current-district'].forEach(id => {
     const el=document.getElementById(id); if(el) el.addEventListener('input', syncPermanentAddress);
   });
@@ -2676,6 +2698,8 @@ function submitRegistration() {
   if (type === 'alumni' && !batch) { showToast('প্রাক্তন শিক্ষার্থীদের ব্যাচ/পাসের সাল নির্বাচন করুন।', 'error'); return; }
   if (type !== 'alumni' && batch) { showToast('ব্যাচ শুধু প্রাক্তন শিক্ষার্থীদের জন্য প্রযোজ্য।', 'error'); return; }
   if (type === 'student' && !cls) { showToast('বর্তমান শিক্ষার্থীর ক্লাস নির্বাচন করুন।', 'error'); return; }
+  const { guests, children } = getCompanionCounts();
+  if (!Number.isInteger(guests) || guests < 0 || !Number.isInteger(children) || children < 0) { showToast('অতিথি ও শিশুর সংখ্যা সঠিকভাবে দিন।', 'error'); return; }
   const paymentMethodEl = document.querySelector('input[name="payment-method"]:checked');
   if (!paymentMethodEl) { showToast('পেমেন্ট মাধ্যম নির্বাচন করুন।', 'error'); return; }
 
@@ -2717,7 +2741,9 @@ function submitRegistration() {
     permanentDistrict: document.getElementById('reg-permanent-district').value.trim(),
     currentAddress: getAddress('current'),
     permanentAddress: getAddress('permanent'),
-    totalFee: registrationFees[type] || 0,
+    guestCount: guests,
+    childCount: children,
+    totalFee: (registrationFees[type] || 0) + (guests * guestFee),
     paymentMethod: paymentMethodMap[paymentMethodEl.value] || paymentMethodEl.value,
     txnId: txnIdValue,
     paymentProofType: txnIdValue ? 'TxnID' : (hasPaymentScreenshot ? 'Screenshot' : ''),
