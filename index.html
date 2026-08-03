@@ -2470,32 +2470,95 @@ async function loadFromCloud(admin = false) {
 // ─── ADMIN LOGIN (গেট) ───
 async function adminUnlock() {
   const pass = prompt('🔒 এডমিন পাসওয়ার্ড দিন:');
-  if (pass === null) return; // cancel
-  if (!pass.trim()) { showToast('পাসওয়ার্ড দিন।', 'error'); return; }
-  sessionStorage.setItem('muhs_admin_key', pass.trim());
+  if (pass === null) return;
 
-  const url = GAS_URL + '?action=getAll&key=' + encodeURIComponent(pass.trim());
+  const cleanPass = pass.trim();
+  if (!cleanPass) {
+    showToast('পাসওয়ার্ড দিন।', 'error');
+    return;
+  }
+
+  const btn = document.querySelector('[onclick*="adminUnlock"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.dataset.oldText = btn.textContent;
+    btn.textContent = 'যাচাই হচ্ছে...';
+  }
+
+  const url = GAS_URL + '?action=getAll&key=' + encodeURIComponent(cleanPass) + '&_=' + Date.now();
+
   try {
-    const res  = await fetch(url, { cache: 'no-store' });
-    const data = await res.json();
+    const res = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      redirect: 'follow',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const raw = await res.text();
+
+    // Google Apps Script should return JSON. If it returns an HTML/login/error page,
+    // show a useful diagnostic instead of the generic "server problem" message.
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (parseErr) {
+      console.error('Admin response was not JSON:', raw.slice(0, 1000));
+      sessionStorage.removeItem('muhs_admin_key');
+      showToast(
+        '❌ Google Apps Script থেকে JSON response পাওয়া যায়নি। Web App deployment ও GAS_URL check করুন।',
+        'error'
+      );
+      return;
+    }
+
+    if (!res.ok) {
+      sessionStorage.removeItem('muhs_admin_key');
+      showToast('❌ Server error (HTTP ' + res.status + ').', 'error');
+      return;
+    }
+
     if (data.success && Array.isArray(data.registrations)) {
+      sessionStorage.setItem('muhs_admin_key', cleanPass);
       isAdminUnlocked = true;
       cloudSummary = data.summary || cloudSummary;
+
       const localMap = {};
-      registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
-      registrations = data.registrations.map(r => ({ ...r, photo: localMap[r.uniqueId] || r.photo || '' }));
+      registrations.forEach(r => {
+        localMap[r.uniqueId] = r.photo || '';
+      });
+
+      registrations = data.registrations.map(r => ({
+        ...r,
+        photo: localMap[r.uniqueId] || r.photo || ''
+      }));
+
       localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
-      updateSummary(); updateBatchFilter(); renderTable();
+      updateSummary();
+      updateBatchFilter();
+      renderTable();
+
       document.getElementById('adminLockedView').style.display = 'none';
       document.getElementById('adminUnlockedView').style.display = 'block';
       showToast('✅ এডমিন মোড চালু হয়েছে');
+    } else if (data.error === 'invalid_admin_key' || data.error === 'unauthorized') {
+      sessionStorage.removeItem('muhs_admin_key');
+      showToast('❌ ভুল এডমিন পাসওয়ার্ড!', 'error');
     } else {
       sessionStorage.removeItem('muhs_admin_key');
-      showToast('❌ ভুল পাসওয়ার্ড!', 'error');
+      const detail = data.detail ? ' — ' + data.detail : '';
+      showToast('❌ Server error: ' + (data.error || 'unknown_error') + detail, 'error');
+      console.error('Admin API error:', data);
     }
   } catch (err) {
+    console.error('Admin request failed:', err);
     sessionStorage.removeItem('muhs_admin_key');
-    showToast('❌ সার্ভারে সমস্যা হয়েছে', 'error');
+    showToast('❌ Google Apps Script server-এ সংযোগ করা যাচ্ছে না। GAS_URL/deployment check করুন।', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = btn.dataset.oldText || 'Admin';
+    }
   }
 }
 
