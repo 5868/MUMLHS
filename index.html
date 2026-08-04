@@ -3201,12 +3201,26 @@ function downloadIdCard(reg, shouldDownload) {
     ctx.font='400 22px Arial,sans-serif';ctx.fillText('ESTD. 1975 | GOLDEN JUBILEE 2026',W/2,378);
 
     var photoX=267,photoY=410,photoW=290,photoH=360;
+
+    // Large centered watermark: its CENTER is exactly aligned with the photo center.
+    // Keep a small border around the ID card while allowing the watermark to span
+    // almost the full card width. Draw it BEFORE the photo so the portrait stays
+    // clean and the watermark remains visible around it.
+    if(logo.complete&&logo.naturalWidth){
+      ctx.save();
+      ctx.globalAlpha=0.09;
+      var wmSize=Math.min(W-70, H-70);
+      var wmX=(W-wmSize)/2;
+      var wmY=(photoY + photoH/2) - wmSize/2;
+      ctx.drawImage(logo,wmX,wmY,wmSize,wmSize);
+      ctx.restore();
+    }
+
     ctx.fillStyle='#F5F5F5';ctx.shadowColor='rgba(0,0,0,0.22)';ctx.shadowBlur=24;ctx.shadowOffsetY=10;roundRect(ctx,photoX,photoY,photoW,photoH,36);ctx.fill();ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
     ctx.strokeStyle=white;ctx.lineWidth=12;roundRect(ctx,photoX,photoY,photoW,photoH,36);ctx.stroke();
 
     function afterPhoto(){
-      // Large watermark logo immediately below the photo.
-      if(logo.complete&&logo.naturalWidth){ctx.save();ctx.globalAlpha=0.09;ctx.drawImage(logo,W/2-105,790,210,210);ctx.restore();}
+      // Watermark is already positioned and centered behind the photo.
       drawDetailsAndDownload();
     }
     if(reg.photo&&reg.photo.indexOf('data:')===0){
