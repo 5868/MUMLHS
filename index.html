@@ -2518,7 +2518,27 @@ async function adminUnlock() {
     const localMap = {};
     registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
     registrations = Array.isArray(data.registrations)
-      ? data.registrations.map(r => ({ ...r, photo: localMap[r.uniqueId] || r.photo || '' }))
+      ? data.registrations.map(r => ({
+          ...r,
+          // Sheet থেকে number আসতে পারে — সব text field String করো
+          uniqueId: String(r.uniqueId || ''),
+          name: String(r.name || ''),
+          phone: String(r.phone || ''),
+          email: String(r.email || ''),
+          type: String(r.type || ''),
+          gender: String(r.gender || ''),
+          batch: String(r.batch || ''),
+          studentClass: String(r.studentClass || ''),
+          branch: String(r.branch || ''),
+          district: String(r.currentDistrict || r.district || ''),
+          currentAddress: String(r.currentAddress || ''),
+          permanentAddress: String(r.permanentAddress || ''),
+          paymentMethod: String(r.paymentMethod || ''),
+          txnId: String(r.txnId || ''),
+          bloodGroup: String(r.bloodGroup || ''),
+          tshirtSize: String(r.tshirtSize || ''),
+          photo: localMap[r.uniqueId] || r.photo || ''
+        }))
       : [];
     localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
     updateSummary(); updateBatchFilter(); renderTable();
@@ -2527,7 +2547,13 @@ async function adminUnlock() {
     showToast('✅ এডমিন মোড চালু — ' + (data.total || registrations.length) + 'টি নিবন্ধন');
 
   } catch (err) {
-    showToast('❌ Connection error: ' + err.message, 'error');
+    const msg = err && err.message ? err.message : String(err);
+    // network error vs code error আলাদাভাবে দেখাও
+    if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed')) {
+      showToast('❌ Server connection error। Internet ও GAS URL check করুন।', 'error');
+    } else {
+      showToast('❌ Error: ' + msg, 'error');
+    }
     console.error('adminUnlock error:', err);
   } finally {
     resetBtn();
@@ -3383,8 +3409,9 @@ function updateBatchFilter() {
   const allBatches = [...new Set(registrations.map(r => r.batch).filter(Boolean))];
   // Sort: numeric years desc, then 'অন্যান্য' last
   allBatches.sort((a, b) => {
-    const na = parseInt(a.replace(/[০১২৩৪৫৬৭৮৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)));
-    const nb = parseInt(b.replace(/[০১২৩৪৫৬৭৮৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)));
+    // Sheet থেকে number হিসেবে আসতে পারে — String() দিয়ে নিরাপদ করো
+    const na = parseInt(String(a).replace(/[০১২৩৪৫৬৭৮৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)));
+    const nb = parseInt(String(b).replace(/[০১২৩৪৫৬৭৮৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)));
     if (!isNaN(na) && !isNaN(nb)) return nb - na;
     if (!isNaN(na)) return -1;
     if (!isNaN(nb)) return 1;
