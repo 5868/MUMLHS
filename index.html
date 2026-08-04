@@ -372,6 +372,13 @@
   }
   .deadline-banner strong { color: #FFD7D2; }
   .deadline-banner svg { width: 15px; height: 15px; flex-shrink: 0; }
+  /* Hero date/deadline emphasis */
+  .date-pill { font-size: 16.8px; font-weight: 800; }
+  .date-pill svg { width: 20px; height: 20px; color: #ff3b30; }
+  .event-date-highlight { font-size: 16.8px; font-weight: 800 !important; }
+  .deadline-banner { font-size: 16px; font-weight: 800; }
+  .deadline-banner strong { font-size: 16px; font-weight: 800; }
+  .deadline-banner svg { width: 19px; height: 19px; }
 
   .hero-ctas {
     display: flex; gap: 14px;
@@ -1568,7 +1575,7 @@
       </div>
     </div>
     <div class="glass-card total-reg-card reveal-r" style="--d:.42s">
-      <div class="total-reg-number" id="hero-total-count">০</div>
+      <div class="total-reg-number" id="hero-total-count">০ জন</div>
       <div class="total-reg-label">মোট রেজিস্ট্রেশন সংখ্যা</div>
     </div>
   </aside>
@@ -2901,14 +2908,14 @@ function submitRegistration() {
 function updateSummary() {
   if (cloudSummary) {
     document.getElementById('total-count').textContent = cloudSummary.total;
-    const heroTotal = document.getElementById('hero-total-count'); if (heroTotal) heroTotal.textContent = toEnglishDigits(cloudSummary.total);
+    const heroTotal = document.getElementById('hero-total-count'); if (heroTotal) heroTotal.textContent = toBanglaDigits(cloudSummary.total) + ' জন';
     document.getElementById('alumni-count').textContent = cloudSummary.alumni || 0;
     document.getElementById('teacher-count').textContent = cloudSummary.teacher || 0;
     document.getElementById('guest-count').textContent = (cloudSummary.guest || 0) + (cloudSummary.other || 0) + (cloudSummary.student || 0);
     return;
   }
   document.getElementById('total-count').textContent = registrations.length;
-  const heroTotal = document.getElementById('hero-total-count'); if (heroTotal) heroTotal.textContent = toEnglishDigits(registrations.length);
+  const heroTotal = document.getElementById('hero-total-count'); if (heroTotal) heroTotal.textContent = toBanglaDigits(registrations.length) + ' জন';
   document.getElementById('alumni-count').textContent = registrations.filter(r => r.type === 'alumni').length;
   document.getElementById('teacher-count').textContent = registrations.filter(r => r.type === 'teacher').length;
   document.getElementById('guest-count').textContent = registrations.filter(r => r.type === 'guest' || r.type === 'other' || r.type === 'student').length;
@@ -3116,6 +3123,12 @@ function wrapText(ctx, text, x, y, maxW, lineH) {
 function toEnglishDigits(value) {
   return String(value == null ? '' : value).replace(/[০-৯]/g, function(d) {
     return '০১২৩৪৫৬৭৮৯'.indexOf(d);
+  });
+}
+
+function toBanglaDigits(value) {
+  return String(value == null ? '' : value).replace(/[0-9]/g, function(d) {
+    return '০১২৩৪৫৬৭৮৯'[Number(d)];
   });
 }
 
