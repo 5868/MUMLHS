@@ -3235,79 +3235,176 @@ function buildPhotoCardCanvas(reg, done) {
   const W=600,H=800;
   const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
   const ctx=canvas.getContext('2d');
-  const typeColorsPhoto={alumni:['#B9151C','#E51C23'],student:['#355783','#6385B8'],teacher:['#152943','#294C78'],other:['#416F96','#709FC3']};
+  const typeColorsPhoto={
+    alumni:['#B9151C','#E51C23'],
+    student:['#355783','#6385B8'],
+    teacher:['#152943','#294C78'],
+    other:['#416F96','#709FC3']
+  };
   const tc=typeColorsPhoto[reg.type]||typeColorsPhoto.other;
-  const img=new Image(), seal=new Image();
-  let photoDone=false, sealDone=false;
-  img.onload=()=>{photoDone=true;draw();}; img.onerror=()=>{photoDone=true;draw();};
-  seal.onload=()=>{sealDone=true;draw();}; seal.onerror=()=>{sealDone=true;draw();};
+  const img=new Image();
+  const seal=new Image();
+  img.onload=()=>draw(); img.onerror=()=>draw();
+  seal.onload=()=>draw(); seal.onerror=()=>draw();
 
+  function roundRectFill(x,y,w,h,r,fill){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+    ctx.fillStyle=fill;
+    ctx.fill();
+  }
+  function drawPhoneIcon(x,y){
+    ctx.save();
+    ctx.fillStyle='#18C7E8';
+    ctx.font='20px Arial,sans-serif';
+    ctx.textAlign='left';
+    ctx.fillText('▣',x,y);
+    ctx.restore();
+  }
+  function drawDropIcon(x,y){
+    ctx.save();
+    ctx.fillStyle='#E51C23';
+    ctx.beginPath();
+    ctx.moveTo(x+9,y-18);
+    ctx.bezierCurveTo(x+3,y-9,x,y-4,x,y+1);
+    ctx.arc(x+9,y+1,9,Math.PI,0);
+    ctx.bezierCurveTo(x+18,y-4,x+15,y-9,x+9,y-18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  function drawDotIcon(x,y,fill){
+    ctx.save();
+    ctx.fillStyle=fill;
+    ctx.beginPath(); ctx.arc(x+8,y-7,6,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  function fitName(text,maxWidth){
+    let size=34;
+    while(size>24){
+      ctx.font='800 '+size+'px Georgia, "Times New Roman", serif';
+      if(ctx.measureText(text).width<=maxWidth) return size;
+      size--;
+    }
+    return size;
+  }
+
+  let drawn=false;
   function draw(){
-    if(!photoDone || !sealDone) return;
+    if(drawn) return;
+    if(!img.complete || !seal.complete) return;
+    drawn=true;
     ctx.clearRect(0,0,W,H);
 
-    // Photo background — same renderer is used both on-screen and for download.
+    // Full-bleed photo, matching the on-screen card.
     if(img.naturalWidth){
-      const ar=img.naturalWidth/img.naturalHeight; let iw=W,ih=H,ix=0,iy=0;
-      if(ar>W/H){ iw=H*ar; ix=-(iw-W)/2; } else { ih=W/ar; iy=-(ih-H)/2; }
+      const ar=img.naturalWidth/img.naturalHeight;
+      let iw=W,ih=H,ix=0,iy=0;
+      if(ar>W/H){ iw=H*ar; ix=-(iw-W)/2; }
+      else { ih=W/ar; iy=-(ih-H)/2; }
       ctx.drawImage(img,ix,iy,iw,ih);
     } else {
-      ctx.fillStyle='#24322F';ctx.fillRect(0,0,W,H);
-      ctx.fillStyle='#A5A5A5';ctx.font='80px Arial';ctx.textAlign='center';ctx.fillText('🧑',W/2,H/2);
+      ctx.fillStyle='#25352f'; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#aaa'; ctx.font='80px Arial'; ctx.textAlign='center';
+      ctx.fillText('🧑',W/2,H/2);
     }
 
-    // Keep the earlier card's dark lower treatment so the information remains readable.
-    const grad=ctx.createLinearGradient(0,H*.26,0,H);
+    // Dark lower overlay for the information block.
+    const grad=ctx.createLinearGradient(0,H*.22,0,H);
     grad.addColorStop(0,'rgba(0,0,0,0)');
-    grad.addColorStop(.40,'rgba(0,0,0,.10)');
-    grad.addColorStop(.63,'rgba(0,0,0,.58)');
+    grad.addColorStop(.42,'rgba(0,0,0,.12)');
+    grad.addColorStop(.64,'rgba(0,0,0,.58)');
     grad.addColorStop(1,'rgba(0,0,0,.92)');
-    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
 
-    // Category badge — retain previous sizing/colour treatment.
-    ctx.fillStyle=tc[1];roundRect(ctx,20,20,145,38,19);ctx.fillStyle='#fff';ctx.font='700 19px Arial,sans-serif';ctx.textAlign='center';
-    ctx.fillText(reg.type==='alumni'?'প্রাক্তন':reg.type==='student'?'বর্তমান':reg.type==='teacher'?'শিক্ষক':'অন্যান্য',92.5,46);
+    // Large transparent registered seal on the right.
+    if(seal.naturalWidth){
+      const sw=300, sh=303;
+      ctx.globalAlpha=.92;
+      ctx.drawImage(seal,W-sw-16,H*.27,sw,sh);
+      ctx.globalAlpha=1;
+    }
 
-    // LEFT INFORMATION PANEL: preserve the earlier card's compact left-aligned hierarchy.
-    // The panel is deliberately translucent so the photograph remains visible underneath.
-    const panelX=18,panelY=468,panelW=338,panelH=292;
-    ctx.fillStyle='rgba(8,12,15,.72)';roundRect(ctx,panelX,panelY,panelW,panelH,16);ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=1;roundRect(ctx,panelX,panelY,panelW,panelH,16);ctx.stroke();
+    // LEFT information block — intentionally kept in the previous compact style.
+    // Name
+    ctx.save();
+    ctx.textAlign='left';
+    ctx.shadowColor='rgba(0,0,0,.72)';
+    ctx.shadowBlur=5;
+    const name=String(reg.name||'Full Name');
+    const nameSize=fitName(name,350);
+    ctx.font='800 '+nameSize+'px Georgia, "Times New Roman", serif';
+    ctx.fillStyle='#fff';
+    ctx.fillText(name,24,570);
 
-    ctx.save();ctx.shadowColor='rgba(0,0,0,.55)';ctx.shadowBlur=5;
-    ctx.textAlign='left';ctx.fillStyle='#fff';
-    let nameFont=reg.name&&String(reg.name).length>24?'700 25px Arial,sans-serif':'800 29px Arial,sans-serif';
-    ctx.font=nameFont;ctx.fillText(reg.name||'Full Name',34,507);
-    ctx.font='700 16px Arial,sans-serif';ctx.fillStyle='#FFD84D';ctx.fillText('ID: '+(reg.uniqueId||'—'),34,532);
-    ctx.font='500 17px Arial,sans-serif';ctx.fillStyle='#fff';
-    ctx.fillText('PHONE: '+normalizeBDPhone(reg.phone||'—'),34,560);
-    ctx.fillText('Blood Group: '+(reg.bloodGroup||'—'),34,586);
+    // ID pill
+    const idText='ID: '+toEnglishDigits(reg.uniqueId||'—');
+    ctx.shadowBlur=0;
+    ctx.font='700 17px "Courier New",monospace';
+    const idW=Math.min(205,Math.max(150,ctx.measureText(idText).width+34));
+    roundRectFill(24,585,idW,34,9,'rgba(20,52,38,.82)');
+    ctx.strokeStyle='rgba(190,155,35,.55)';
+    ctx.lineWidth=1;
+    ctx.stroke();
+    ctx.fillStyle='#D9B44A';
+    ctx.textAlign='center';
+    ctx.fillText(idText,24+idW/2,608);
 
+    // Phone
+    ctx.textAlign='left';
+    drawPhoneIcon(27,650);
+    ctx.fillStyle='#fff';
+    ctx.font='500 18px Arial,sans-serif';
+    ctx.fillText(normalizeBDPhone(reg.phone||'—'),50,650);
+
+    // Blood group
+    drawDropIcon(27,681);
+    ctx.fillStyle='#fff';
+    ctx.font='500 18px Arial,sans-serif';
+    ctx.fillText(reg.bloodGroup||'—',50,682);
+
+    // Academic information: Ex-Student = Batch; Current Student = Class + Branch.
     const academic=participantAcademicLabel(reg);
-    let yy=612;
-    if(academic){ ctx.fillText(academic,34,yy); yy+=28; }
-    ctx.font='500 16px Arial,sans-serif';
-    if(reg.email){ ctx.fillText('Email: '+String(reg.email).slice(0,34),34,yy); yy+=26; }
-    if(reg.district){ ctx.fillText('District: '+String(reg.district).slice(0,30),34,yy); }
+    if(academic){
+      drawDotIcon(27,714, '#F06A2D');
+      ctx.fillStyle='#fff';
+      ctx.font='500 18px Arial,sans-serif';
+      ctx.fillText(academic,50,715);
+    }
+
+    // Gender is shown as the final line, as in the previous card.
+    const genderLabel = (typeof genderMap !== 'undefined' && genderMap[reg.gender])
+      ? genderMap[reg.gender] : String(reg.gender||'');
+    if(genderLabel){
+      ctx.fillStyle='#fff';
+      ctx.font='500 18px Arial,sans-serif';
+      ctx.fillText(genderLabel,24,748);
+    }
     ctx.restore();
 
-    // LARGE transparent registered seal on the right-middle — about 50% of card width.
-    if(seal.naturalWidth){
-      const sw=300,sh=303;
-      ctx.save();ctx.globalAlpha=.88;ctx.drawImage(seal,W-sw-10,242,sw,sh);ctx.restore();
-    }
-
     // Bottom-right branding.
-    ctx.textAlign='right';ctx.fillStyle='#FFD84D';ctx.font='900 24px Arial,sans-serif';ctx.fillText('GOLDEN JUBILEE',W-20,H-52);
-    ctx.fillStyle='#fff';ctx.font='800 19px Arial,sans-serif';ctx.fillText('Mansur Uddin ML High School',W-20,H-23);
+    ctx.save();
+    ctx.textAlign='right';
+    ctx.fillStyle='#FFD84D';
+    ctx.font='900 24px Arial,sans-serif';
+    ctx.fillText('GOLDEN JUBILEE',W-20,H-52);
+    ctx.fillStyle='#fff';
+    ctx.font='800 17px Arial,sans-serif';
+    ctx.fillText('Mansur Uddin ML High School',W-20,H-25);
+    ctx.restore();
 
     done(canvas);
   }
 
-  img.src=reg.photo&&String(reg.photo).indexOf('data:')===0?reg.photo:'';
-  seal.src='images/School/registered-seal-transparent.png';
-  if(!img.src){photoDone=true;}
-  if(!seal.src){sealDone=true;}
+  img.src=reg.photo&&String(reg.photo).indexOf('data:')===0 ? reg.photo : '';
+  seal.src='images/School/registered-seal.png';
+  if(!img.src){ img.complete=true; }
+  if(seal.complete) draw();
 }
 
 function downloadPhotoCard(reg, shouldDownload) {
