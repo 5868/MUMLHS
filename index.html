@@ -3237,51 +3237,77 @@ function buildPhotoCardCanvas(reg, done) {
   const ctx=canvas.getContext('2d');
   const typeColorsPhoto={alumni:['#B9151C','#E51C23'],student:['#355783','#6385B8'],teacher:['#152943','#294C78'],other:['#416F96','#709FC3']};
   const tc=typeColorsPhoto[reg.type]||typeColorsPhoto.other;
-  const img=new Image();
-  const seal=new Image();
-  img.onload=()=>draw(); img.onerror=()=>draw();
-  seal.onload=()=>draw(); seal.onerror=()=>draw();
-  let photoReady=false, sealReady=false;
+  const img=new Image(), seal=new Image();
+  let photoDone=false, sealDone=false;
+  img.onload=()=>{photoDone=true;draw();}; img.onerror=()=>{photoDone=true;draw();};
+  seal.onload=()=>{sealDone=true;draw();}; seal.onerror=()=>{sealDone=true;draw();};
+
   function draw(){
-    if(arguments.callee._drawing) return;
-    if(!photoReady && img.complete) photoReady=true;
-    if(!sealReady && seal.complete) sealReady=true;
-    if(!img.complete || !seal.complete) return;
-    arguments.callee._drawing=true;
+    if(!photoDone || !sealDone) return;
     ctx.clearRect(0,0,W,H);
-    // Full-bleed photo exactly matching the visible card.
+
+    // Photo background — same renderer is used both on-screen and for download.
     if(img.naturalWidth){
       const ar=img.naturalWidth/img.naturalHeight; let iw=W,ih=H,ix=0,iy=0;
       if(ar>W/H){ iw=H*ar; ix=-(iw-W)/2; } else { ih=W/ar; iy=-(ih-H)/2; }
       ctx.drawImage(img,ix,iy,iw,ih);
-    } else { ctx.fillStyle='#25352f';ctx.fillRect(0,0,W,H);ctx.fillStyle='#aaa';ctx.font='80px Arial';ctx.textAlign='center';ctx.fillText('🧑',W/2,H/2); }
-    // Bottom gradient.
-    const grad=ctx.createLinearGradient(0,H*.28,0,H);grad.addColorStop(0,'rgba(0,0,0,0)');grad.addColorStop(.48,'rgba(0,0,0,.30)');grad.addColorStop(.72,'rgba(0,0,0,.76)');grad.addColorStop(1,'rgba(0,0,0,.94)');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
-    // Category badge.
-    ctx.fillStyle=tc[1];roundRect(ctx,20,20,145,38,19);ctx.fillStyle='#fff';ctx.font='700 19px Arial,sans-serif';ctx.textAlign='center';ctx.fillText(reg.type==='alumni'?'প্রাক্তন':reg.type==='student'?'বর্তমান':reg.type==='teacher'?'শিক্ষক':'অন্যান্য',92.5,46);
-    // Large transparent registered seal: approximately 50% of card width.
-    if(seal.naturalWidth){
-      const sw=300, sh=303; ctx.globalAlpha=.92; ctx.drawImage(seal,W-sw-18,H*.28,sw,sh); ctx.globalAlpha=1;
+    } else {
+      ctx.fillStyle='#24322F';ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#A5A5A5';ctx.font='80px Arial';ctx.textAlign='center';ctx.fillText('🧑',W/2,H/2);
     }
-    // Text block: same order as on-screen card.
-    ctx.textAlign='left'; ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=4;
-    ctx.font='800 31px Arial,sans-serif'; ctx.fillText(reg.name||'Full Name',24,H-170);
-    ctx.font='700 18px Arial,sans-serif'; ctx.fillText('ID: '+(reg.uniqueId||'—'),24,H-138);
-    ctx.font='500 18px Arial,sans-serif'; ctx.fillText('PHONE: '+normalizeBDPhone(reg.phone||'—'),24,H-108);
-    ctx.fillText('Blood Group: '+(reg.bloodGroup||'—'),24,H-82);
-    const academic=participantAcademicLabel(reg); if(academic) ctx.fillText(academic,24,H-56);
-    // Bottom-right branding requested by user.
-    ctx.textAlign='right'; ctx.fillStyle='#FFD84D'; ctx.font='900 24px Arial,sans-serif'; ctx.fillText('GOLDEN JUBILEE',W-20,H-52);
-    ctx.fillStyle='#fff'; ctx.font='800 17px Arial,sans-serif'; ctx.fillText('Mansur Uddin ML High School',W-20,H-25);
-    ctx.shadowBlur=0;
+
+    // Keep the earlier card's dark lower treatment so the information remains readable.
+    const grad=ctx.createLinearGradient(0,H*.26,0,H);
+    grad.addColorStop(0,'rgba(0,0,0,0)');
+    grad.addColorStop(.40,'rgba(0,0,0,.10)');
+    grad.addColorStop(.63,'rgba(0,0,0,.58)');
+    grad.addColorStop(1,'rgba(0,0,0,.92)');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+
+    // Category badge — retain previous sizing/colour treatment.
+    ctx.fillStyle=tc[1];roundRect(ctx,20,20,145,38,19);ctx.fillStyle='#fff';ctx.font='700 19px Arial,sans-serif';ctx.textAlign='center';
+    ctx.fillText(reg.type==='alumni'?'প্রাক্তন':reg.type==='student'?'বর্তমান':reg.type==='teacher'?'শিক্ষক':'অন্যান্য',92.5,46);
+
+    // LEFT INFORMATION PANEL: preserve the earlier card's compact left-aligned hierarchy.
+    // The panel is deliberately translucent so the photograph remains visible underneath.
+    const panelX=18,panelY=468,panelW=338,panelH=292;
+    ctx.fillStyle='rgba(8,12,15,.72)';roundRect(ctx,panelX,panelY,panelW,panelH,16);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=1;roundRect(ctx,panelX,panelY,panelW,panelH,16);ctx.stroke();
+
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.55)';ctx.shadowBlur=5;
+    ctx.textAlign='left';ctx.fillStyle='#fff';
+    let nameFont=reg.name&&String(reg.name).length>24?'700 25px Arial,sans-serif':'800 29px Arial,sans-serif';
+    ctx.font=nameFont;ctx.fillText(reg.name||'Full Name',34,507);
+    ctx.font='700 16px Arial,sans-serif';ctx.fillStyle='#FFD84D';ctx.fillText('ID: '+(reg.uniqueId||'—'),34,532);
+    ctx.font='500 17px Arial,sans-serif';ctx.fillStyle='#fff';
+    ctx.fillText('PHONE: '+normalizeBDPhone(reg.phone||'—'),34,560);
+    ctx.fillText('Blood Group: '+(reg.bloodGroup||'—'),34,586);
+
+    const academic=participantAcademicLabel(reg);
+    let yy=612;
+    if(academic){ ctx.fillText(academic,34,yy); yy+=28; }
+    ctx.font='500 16px Arial,sans-serif';
+    if(reg.email){ ctx.fillText('Email: '+String(reg.email).slice(0,34),34,yy); yy+=26; }
+    if(reg.district){ ctx.fillText('District: '+String(reg.district).slice(0,30),34,yy); }
+    ctx.restore();
+
+    // LARGE transparent registered seal on the right-middle — about 50% of card width.
+    if(seal.naturalWidth){
+      const sw=300,sh=303;
+      ctx.save();ctx.globalAlpha=.88;ctx.drawImage(seal,W-sw-10,242,sw,sh);ctx.restore();
+    }
+
+    // Bottom-right branding.
+    ctx.textAlign='right';ctx.fillStyle='#FFD84D';ctx.font='900 24px Arial,sans-serif';ctx.fillText('GOLDEN JUBILEE',W-20,H-52);
+    ctx.fillStyle='#fff';ctx.font='800 19px Arial,sans-serif';ctx.fillText('Mansur Uddin ML High School',W-20,H-23);
+
     done(canvas);
   }
-  // Ensure both images have explicit src before checking complete.
+
   img.src=reg.photo&&String(reg.photo).indexOf('data:')===0?reg.photo:'';
-  seal.src='images/School/registered-seal.png';
-  // If photo is empty, onload may not fire; force draw once seal loads.
-  if(!img.src) { photoReady=true; img.complete=true; }
-  if(seal.complete) draw();
+  seal.src='images/School/registered-seal-transparent.png';
+  if(!img.src){photoDone=true;}
+  if(!seal.src){sealDone=true;}
 }
 
 function downloadPhotoCard(reg, shouldDownload) {
