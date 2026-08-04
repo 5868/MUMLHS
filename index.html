@@ -3359,7 +3359,7 @@ function buildPhotoCardCanvas(reg, done) {
     if(seal.naturalWidth){
       const sw=300, sh=303;
       const sx=W-sw-16;
-      const sy=H-52-sh-12; // bottom sits just above Golden Jubilee
+      const sy=H-52-sh-72; // lift seal about two text lines above GOLDEN JUBILEE
       ctx.globalAlpha=.92;
       ctx.drawImage(seal,sx,sy,sw,sh);
       ctx.globalAlpha=1;
@@ -3386,15 +3386,15 @@ function buildPhotoCardCanvas(reg, done) {
     const idY=nameY+(nameLines.length*nameLineHeight)+5;
     const idText='ID: '+toEnglishDigits(reg.uniqueId||'—');
     ctx.shadowBlur=0;
-    ctx.font='700 19px "Courier New",monospace';
-    const idW=Math.min(235,Math.max(165,ctx.measureText(idText).width+34));
-    roundRectFill(24,idY-27,idW,36,9,'rgba(20,52,38,.84)');
+    ctx.font='800 22px "Courier New",monospace';
+    const idW=Math.min(260,Math.max(185,ctx.measureText(idText).width+38));
+    roundRectFill(24,idY-30,idW,42,10,'rgba(0,0,0,.48)');
     ctx.strokeStyle='rgba(190,155,35,.60)';
     ctx.lineWidth=1;
     ctx.stroke();
     ctx.fillStyle='#D9B44A';
     ctx.textAlign='center';
-    ctx.fillText(idText,24+idW/2,idY-2);
+    ctx.fillText(idText,24+idW/2,idY-1);
 
     const phoneY=idY+43;
     ctx.textAlign='left';
