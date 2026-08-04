@@ -1365,14 +1365,12 @@
     overflow: hidden;
   }
   .person-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
-  /* Dark gradient overlay at bottom */
+  /* No extra dark overlay on Photo Card grid.
+     The card itself already contains the final rendered design, so adding a CSS
+     gradient here makes the web preview darker than the downloaded card. */
   .person-card::after {
-    content: '';
-    position: absolute; bottom: 0; left: 0; right: 0;
-    height: 65%;
-    background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 50%, transparent 100%);
-    pointer-events: none;
-    border-radius: 0 0 16px 16px;
+    display: none !important;
+    content: none;
   }
   .person-type-badge {
     position: absolute; top: 12px; left: 12px;
