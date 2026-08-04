@@ -3329,7 +3329,7 @@ function renderTable() {
   const bFilter = document.getElementById('batch-filter').value;
   let data = registrations.filter(r => {
     const matchType = currentFilter === 'all' || r.type === currentFilter;
-    const matchSearch = !search || r.name.toLowerCase().includes(search) || r.phone.includes(search);
+    const matchSearch = !search || String(r.name||'').toLowerCase().includes(search) || String(r.phone||'').includes(search);
     const matchBatch = !bFilter || r.batch === bFilter;
     return matchType && matchSearch && matchBatch;
   });
