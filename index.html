@@ -2477,81 +2477,61 @@ async function adminUnlock() {
   const btn = document.querySelector('[onclick*="adminUnlock"]');
   if (btn) { btn.disabled = true; btn.dataset.oldText = btn.textContent; btn.textContent = 'যাচাই হচ্ছে...'; }
 
-  // Use a hidden cross-origin POST iframe. This avoids CORS/JSONP/redirect issues
-  // that can occur with Google Apps Script Web Apps.
-  const frameName = '__MUHS_ADMIN_FRAME_' + Date.now();
-  const iframe = document.createElement('iframe');
-  iframe.name = frameName;
-  iframe.style.cssText = 'position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;border:0;opacity:0;';
-  document.body.appendChild(iframe);
-
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = GAS_URL;
-  form.target = frameName;
-  form.style.display = 'none';
-  const add = (name, value) => {
-    const input = document.createElement('input');
-    input.type = 'hidden'; input.name = name; input.value = value;
-    form.appendChild(input);
-  };
-  add('action', 'adminLogin');
-  add('key', cleanPass);
-  add('responseMode', 'postMessage');
-  add('responseOrigin', window.location.origin);
-  document.body.appendChild(form);
-
-  const cleanup = () => {
-    clearTimeout(timer);
-    window.removeEventListener('message', onMessage);
-    form.remove(); iframe.remove();
-    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.oldText || 'Admin'; }
+  const resetBtn = () => {
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.oldText || 'এডমিন লগইন'; }
   };
 
-  let finished = false;
-  const finish = data => {
-    if (finished) return;
-    finished = true;
-    cleanup();
+  try {
+    // GAS doGet handles ?action=adminLogin&key=... directly
+    // GET is simpler and avoids the GAS POST redirect problem
+    const url = GAS_URL + '?action=adminLogin&key=' + encodeURIComponent(cleanPass) + '&t=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store' });
+
+    if (!res.ok) {
+      showToast('❌ Server error: ' + res.status + ' — Deployment check করুন।', 'error');
+      resetBtn(); return;
+    }
+
+    let data;
+    try { data = await res.json(); }
+    catch (e) {
+      showToast('❌ Server থেকে ভুল response এল। Re-deploy করুন।', 'error');
+      resetBtn(); return;
+    }
+
     if (!data || data.success !== true) {
       sessionStorage.removeItem('muhs_admin_key');
       isAdminUnlocked = false;
-      if (data && data.error === 'invalid_admin_key') showToast('❌ ভুল এডমিন পাসওয়ার্ড!', 'error');
-      else showToast('❌ Google Apps Script server থেকে সঠিক response পাওয়া যায়নি।', 'error');
-      console.error('Admin response:', data);
-      return;
+      if (data && data.error === 'invalid_admin_key') {
+        showToast('❌ ভুল এডমিন পাসওয়ার্ড!', 'error');
+      } else {
+        showToast('❌ Login ব্যর্থ: ' + (data && data.error ? data.error : 'unknown'), 'error');
+        console.error('Admin login response:', data);
+      }
+      resetBtn(); return;
     }
+
+    // ✅ Success
     sessionStorage.setItem('muhs_admin_key', cleanPass);
     isAdminUnlocked = true;
     cloudSummary = data.summary || cloudSummary;
     const localMap = {};
     registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
-    registrations = Array.isArray(data.registrations) ? data.registrations.map(r => ({
-      ...r, photo: localMap[r.uniqueId] || r.photo || ''
-    })) : [];
+    registrations = Array.isArray(data.registrations)
+      ? data.registrations.map(r => ({ ...r, photo: localMap[r.uniqueId] || r.photo || '' }))
+      : [];
     localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
     updateSummary(); updateBatchFilter(); renderTable();
     document.getElementById('adminLockedView').style.display = 'none';
     document.getElementById('adminUnlockedView').style.display = 'block';
-    showToast(`✅ এডমিন মোড চালু হয়েছে — ${data.total || registrations.length}টি নিবন্ধন`);
-  };
-  const onMessage = event => {
-    // GAS HtmlService may report the googleusercontent origin rather than GAS_URL.
-    // The payload contains a nonce-free action marker; accept only our expected shape.
-    const data = event && event.data;
-    if (!data || data.__muhsAdminResponse !== true) return;
-    finish(data.payload);
-  };
-  window.addEventListener('message', onMessage);
-  const timer = setTimeout(() => {
-    if (!finished) {
-      finished = true; cleanup();
-      sessionStorage.removeItem('muhs_admin_key'); isAdminUnlocked = false;
-      showToast('❌ Google Apps Script server-এ response আসেনি। Web App deployment check করুন।', 'error');
-    }
-  }, 30000);
+    showToast('✅ এডমিন মোড চালু — ' + (data.total || registrations.length) + 'টি নিবন্ধন');
 
-  form.submit();
+  } catch (err) {
+    showToast('❌ Connection error: ' + err.message, 'error');
+    console.error('adminUnlock error:', err);
+  } finally {
+    resetBtn();
+  }
 }
 
 function adminLock() {
