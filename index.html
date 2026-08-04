@@ -1522,7 +1522,7 @@
     <li><a href="#history">ইতিহাস</a></li>
     <li><a href="#events">অনুষ্ঠানসূচি</a></li>
     <li><a href="#registration">নিবন্ধন</a></li>
-    <li><a href="#management">নিবন্ধন তালিকা</a></li>
+    <li><a href="#management">তথ্য ব্যবস্থাপনা</a></li>
     <li><a href="#contact">যোগাযোগ</a></li>
     <li><a href="#registration" class="nav-btn">এখনই নিবন্ধন করুন</a></li>
   </ul>
@@ -2096,8 +2096,8 @@
 <section id="management">
   <div class="section-container">
     <div class="section-header">
-      <div class="section-tag">নিবন্ধন তথ্য</div>
-      <h2 class="section-title">নিবন্ধন তালিকা</h2>
+      <div class="section-tag">প্রশাসনিক প্যানেল</div>
+      <h2 class="section-title">তথ্য ব্যবস্থাপনা</h2>
       <div class="divider"></div>
       <p class="section-sub">নিবন্ধিত অংশগ্রহণকারীদের তালিকা পরিচালনা করুন</p>
     </div>
@@ -2110,8 +2110,20 @@
       <div class="summary-card"><div class="summary-icon">🌍</div><div><div class="summary-num" id="guest-count">0</div><div class="summary-lbl">অতিথি/অন্যান্য</div></div></div>
     </div>
 
-    <!-- PUBLIC MANAGEMENT VIEW -->
-    <div id="adminUnlockedView">
+    <!-- 🔒 LOCKED (default, public visitors see this) -->
+    <div id="adminLockedView" style="display:flex; flex-direction:column; align-items:center; gap:14px; padding:3rem 1rem; text-align:center;">
+      <div style="font-size:2.5rem;">🔒</div>
+      <p style="color:var(--text-light); max-width:420px;">নিবন্ধনকারীদের বিস্তারিত তালিকা (নাম, মোবাইল, ইমেইল) শুধুমাত্র অনুমোদিত প্রশাসকদের জন্য সংরক্ষিত। উপরের সংখ্যাগুলো সবার জন্য দৃশ্যমান।</p>
+      <button class="btn-export" onclick="adminUnlock()" style="padding:10px 24px;">🔓 এডমিন লগইন</button>
+    </div>
+
+    <!-- 🔓 UNLOCKED (only after correct admin password) -->
+    <div id="adminUnlockedView" style="display:none;">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:0.5rem;">
+        <button class="btn-export" onclick="adminLock()" title="লগআউট">🔒 লক করুন</button>
+      </div>
+
+      <!-- Tabs -->
       <div class="mgmt-tabs">
         <button class="mgmt-tab active" onclick="switchTab('all', this)">সকল নিবন্ধন</button>
         <button class="mgmt-tab" onclick="switchTab('alumni', this)">প্রাক্তন শিক্ষার্থী</button>
@@ -2120,6 +2132,7 @@
         <button class="mgmt-tab" onclick="switchTab('guest', this)">অতিথি</button>
       </div>
 
+      <!-- Panel -->
       <div class="mgmt-panel active" id="panel-content">
         <div class="filter-bar">
           <div class="search-box">
@@ -2133,25 +2146,40 @@
             <button class="vt-btn active" id="btnCard" title="কার্ড ভিউ" onclick="setView('card',this)">⊞</button>
             <button class="vt-btn" id="btnTable" title="টেবিল ভিউ" onclick="setView('table',this)">☰</button>
           </div>
-          <button class="btn-export" onclick="loadFromCloud()" style="margin-right:6px;" title="Sheets থেকে আপডেট করুন">🔄 রিফ্রেশ</button>
+          <button class="btn-export" onclick="loadFromCloud(true)" style="margin-right:6px;" title="Sheets থেকে আপডেট করুন">🔄 রিফ্রেশ</button>
           <button class="btn-export" onclick="exportCSV()">⬇ CSV</button>
         </div>
+        <!-- Card view -->
         <div id="card-view" class="card-grid"></div>
+        <!-- Table view -->
         <div id="table-view" style="display:none">
-          <div class="data-table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr><th>#</th><th>আইডি</th><th>নাম</th><th>মোবাইল</th><th>পরিচয়</th><th>লিঙ্গ</th><th>ব্যাচ</th><th>জেলা</th><th>সাথে</th><th>পেমেন্ট</th><th>তারিখ</th></tr>
-              </thead>
-              <tbody id="table-body"></tbody>
-            </table>
-            <div id="empty-state" class="empty-state" style="display:none">
-              <div class="empty-icon">📋</div><p>এখনো কোনো নিবন্ধন হয়নি। প্রথম নিবন্ধনের অপেক্ষায়!</p>
-            </div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>আইডি</th>
+                <th>নাম</th>
+                <th>মোবাইল</th>
+                <th>পরিচয়</th>
+                <th>লিঙ্গ</th>
+                <th>ব্যাচ</th>
+                <th>জেলা</th>
+                <th>সাথে</th>
+                <th>পেমেন্ট</th>
+                <th>তারিখ</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+          <div id="empty-state" class="empty-state" style="display:none">
+            <div class="empty-icon">📋</div>
+            <p>এখনো কোনো নিবন্ধন হয়নি। প্রথম নিবন্ধনের অপেক্ষায়!</p>
           </div>
         </div>
+        </div><!-- /table-view -->
       </div>
-    </div>
+    </div><!-- /adminUnlockedView -->
   </div>
 </section>
 
@@ -2392,37 +2420,145 @@ let isLoadingCloud = false;
 let registrations = JSON.parse(localStorage.getItem('muhs_registrations') || '[]');
 let currentFilter = 'all';
 let txnScreenshotData = ''; // পেমেন্ট স্ক্রিনশট base64
-let cloudSummary = null;
+let cloudSummary = null; // { total, alumni, student, teacher, guest, other } — public-safe counts
+let isAdminUnlocked = sessionStorage.getItem('muhs_admin_key') ? true : false;
 
-// ─── PUBLIC GOOGLE SHEETS DATA ───
-// Login/password is intentionally disabled. The management list is public.
-async function loadFromCloud() {
+// ─── LOAD FROM GOOGLE SHEETS ───
+// admin=false → শুধু গণনা (নাম/ফোন/ইমেইল আসে না, সবার জন্য নিরাপদ)
+// admin=true  → সম্পূর্ণ তালিকা (সঠিক adminKey দরকার)
+async function loadFromCloud(admin = false) {
   if (!USE_CLOUD || isLoadingCloud) return;
   isLoadingCloud = true;
   try {
-    const url = GAS_URL + '?action=getAll';
-    const res = await fetch(url, { cache: 'no-store' });
+    let url = GAS_URL + '?action=getAll';
+    if (admin) {
+      const key = sessionStorage.getItem('muhs_admin_key') || '';
+      url += '&key=' + encodeURIComponent(key);
+    }
+    const res  = await fetch(url, { cache: 'no-store' });
     const data = await res.json();
-    if (!data || data.success !== true) throw new Error(data && data.error ? data.error : 'Invalid server response');
 
-    cloudSummary = data.summary || cloudSummary;
-    if (Array.isArray(data.registrations)) {
+    if (!data.success) {
+      if (admin) showToast('❌ ভুল পাসওয়ার্ড অথবা সার্ভার এরর', 'error');
+      return;
+    }
+
+    if (data.summary) cloudSummary = data.summary;
+
+    if (admin && Array.isArray(data.registrations)) {
+      // Merge: cloud is source of truth, but keep freshest local photo if newer than cloud's
       const localMap = {};
       registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
       registrations = data.registrations.map(r => ({
-        ...r, photo: localMap[r.uniqueId] || r.photo || ''
+        ...r,
+        photo: localMap[r.uniqueId] || r.photo || '' // prefer local cache, else Drive URL from cloud
       }));
       localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
       updateBatchFilter();
       renderTable();
+      showToast(`☁️ ${data.total}টি নিবন্ধন লোড হয়েছে`);
     }
+
     updateSummary();
   } catch (err) {
-    console.warn('Public cloud data load failed:', err.message);
-    showToast('⚠️ অনলাইন তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।', 'error');
+    console.warn('Cloud load failed, using local data:', err.message);
   } finally {
     isLoadingCloud = false;
   }
+}
+
+// ─── ADMIN LOGIN (গেট) ───
+async function adminUnlock() {
+  const pass = prompt('🔒 এডমিন পাসওয়ার্ড দিন:');
+  if (pass === null) return;
+  const cleanPass = pass.trim();
+  if (!cleanPass) { showToast('পাসওয়ার্ড দিন।', 'error'); return; }
+
+  const btn = document.querySelector('[onclick*="adminUnlock"]');
+  if (btn) { btn.disabled = true; btn.dataset.oldText = btn.textContent; btn.textContent = 'যাচাই হচ্ছে...'; }
+
+  // Use a hidden cross-origin POST iframe. This avoids CORS/JSONP/redirect issues
+  // that can occur with Google Apps Script Web Apps.
+  const frameName = '__MUHS_ADMIN_FRAME_' + Date.now();
+  const iframe = document.createElement('iframe');
+  iframe.name = frameName;
+  iframe.style.cssText = 'position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;border:0;opacity:0;';
+  document.body.appendChild(iframe);
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = GAS_URL;
+  form.target = frameName;
+  form.style.display = 'none';
+  const add = (name, value) => {
+    const input = document.createElement('input');
+    input.type = 'hidden'; input.name = name; input.value = value;
+    form.appendChild(input);
+  };
+  add('action', 'adminLogin');
+  add('key', cleanPass);
+  add('responseMode', 'postMessage');
+  add('responseOrigin', window.location.origin);
+  document.body.appendChild(form);
+
+  const cleanup = () => {
+    clearTimeout(timer);
+    window.removeEventListener('message', onMessage);
+    form.remove(); iframe.remove();
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.oldText || 'Admin'; }
+  };
+
+  let finished = false;
+  const finish = data => {
+    if (finished) return;
+    finished = true;
+    cleanup();
+    if (!data || data.success !== true) {
+      sessionStorage.removeItem('muhs_admin_key');
+      isAdminUnlocked = false;
+      if (data && data.error === 'invalid_admin_key') showToast('❌ ভুল এডমিন পাসওয়ার্ড!', 'error');
+      else showToast('❌ Google Apps Script server থেকে সঠিক response পাওয়া যায়নি।', 'error');
+      console.error('Admin response:', data);
+      return;
+    }
+    sessionStorage.setItem('muhs_admin_key', cleanPass);
+    isAdminUnlocked = true;
+    cloudSummary = data.summary || cloudSummary;
+    const localMap = {};
+    registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
+    registrations = Array.isArray(data.registrations) ? data.registrations.map(r => ({
+      ...r, photo: localMap[r.uniqueId] || r.photo || ''
+    })) : [];
+    localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+    updateSummary(); updateBatchFilter(); renderTable();
+    document.getElementById('adminLockedView').style.display = 'none';
+    document.getElementById('adminUnlockedView').style.display = 'block';
+    showToast(`✅ এডমিন মোড চালু হয়েছে — ${data.total || registrations.length}টি নিবন্ধন`);
+  };
+  const onMessage = event => {
+    // GAS HtmlService may report the googleusercontent origin rather than GAS_URL.
+    // The payload contains a nonce-free action marker; accept only our expected shape.
+    const data = event && event.data;
+    if (!data || data.__muhsAdminResponse !== true) return;
+    finish(data.payload);
+  };
+  window.addEventListener('message', onMessage);
+  const timer = setTimeout(() => {
+    if (!finished) {
+      finished = true; cleanup();
+      sessionStorage.removeItem('muhs_admin_key'); isAdminUnlocked = false;
+      showToast('❌ Google Apps Script server-এ response আসেনি। Web App deployment check করুন।', 'error');
+    }
+  }, 30000);
+
+  form.submit();
+}
+
+function adminLock() {
+  sessionStorage.removeItem('muhs_admin_key');
+  isAdminUnlocked = false;
+  document.getElementById('adminLockedView').style.display = 'flex';
+  document.getElementById('adminUnlockedView').style.display = 'none';
 }
 
 // ─── TOAST ───
@@ -3477,8 +3613,15 @@ document.addEventListener('DOMContentLoaded', () => {
 updateSummary();
 updateBatchFilter();
 renderTable();
-// Public management list — no login required
-loadFromCloud();
+// ☁️ Cloud থেকে latest count লোড (সবার জন্য, PII ছাড়া)
+loadFromCloud(false);
+// 🔓 আগে থেকে admin login করা থাকলে (এই ব্রাউজার সেশনে) পুনরায় unlock করো
+if (isAdminUnlocked) {
+  loadFromCloud(true).then(() => {
+    document.getElementById('adminLockedView') && (document.getElementById('adminLockedView').style.display = 'none');
+    document.getElementById('adminUnlockedView') && (document.getElementById('adminUnlockedView').style.display = 'block');
+  });
+}
 
 </script>
 </body>
