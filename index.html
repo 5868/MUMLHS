@@ -1348,6 +1348,8 @@
   }
   .person-card:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 16px 40px rgba(0,0,0,0.28); }
   /* Full-bleed image — background set inline per card */
+  .photo-card-render { aspect-ratio: 3/4; background:#111; }
+  .person-card-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
   .person-card-top {
     position: absolute; inset: 0;
     background: transparent;
@@ -3229,32 +3231,69 @@ function downloadIdCard(reg, shouldDownload) {
   }
 }
 
+function buildPhotoCardCanvas(reg, done) {
+  const W=600,H=800;
+  const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const typeColorsPhoto={alumni:['#B9151C','#E51C23'],student:['#355783','#6385B8'],teacher:['#152943','#294C78'],other:['#416F96','#709FC3']};
+  const tc=typeColorsPhoto[reg.type]||typeColorsPhoto.other;
+  const img=new Image();
+  const seal=new Image();
+  img.onload=()=>draw(); img.onerror=()=>draw();
+  seal.onload=()=>draw(); seal.onerror=()=>draw();
+  let photoReady=false, sealReady=false;
+  function draw(){
+    if(arguments.callee._drawing) return;
+    if(!photoReady && img.complete) photoReady=true;
+    if(!sealReady && seal.complete) sealReady=true;
+    if(!img.complete || !seal.complete) return;
+    arguments.callee._drawing=true;
+    ctx.clearRect(0,0,W,H);
+    // Full-bleed photo exactly matching the visible card.
+    if(img.naturalWidth){
+      const ar=img.naturalWidth/img.naturalHeight; let iw=W,ih=H,ix=0,iy=0;
+      if(ar>W/H){ iw=H*ar; ix=-(iw-W)/2; } else { ih=W/ar; iy=-(ih-H)/2; }
+      ctx.drawImage(img,ix,iy,iw,ih);
+    } else { ctx.fillStyle='#25352f';ctx.fillRect(0,0,W,H);ctx.fillStyle='#aaa';ctx.font='80px Arial';ctx.textAlign='center';ctx.fillText('🧑',W/2,H/2); }
+    // Bottom gradient.
+    const grad=ctx.createLinearGradient(0,H*.28,0,H);grad.addColorStop(0,'rgba(0,0,0,0)');grad.addColorStop(.48,'rgba(0,0,0,.30)');grad.addColorStop(.72,'rgba(0,0,0,.76)');grad.addColorStop(1,'rgba(0,0,0,.94)');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+    // Category badge.
+    ctx.fillStyle=tc[1];roundRect(ctx,20,20,145,38,19);ctx.fillStyle='#fff';ctx.font='700 19px Arial,sans-serif';ctx.textAlign='center';ctx.fillText(reg.type==='alumni'?'প্রাক্তন':reg.type==='student'?'বর্তমান':reg.type==='teacher'?'শিক্ষক':'অন্যান্য',92.5,46);
+    // Large transparent registered seal: approximately 50% of card width.
+    if(seal.naturalWidth){
+      const sw=300, sh=303; ctx.globalAlpha=.92; ctx.drawImage(seal,W-sw-18,H*.28,sw,sh); ctx.globalAlpha=1;
+    }
+    // Text block: same order as on-screen card.
+    ctx.textAlign='left'; ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=4;
+    ctx.font='800 31px Arial,sans-serif'; ctx.fillText(reg.name||'Full Name',24,H-170);
+    ctx.font='700 18px Arial,sans-serif'; ctx.fillText('ID: '+(reg.uniqueId||'—'),24,H-138);
+    ctx.font='500 18px Arial,sans-serif'; ctx.fillText('PHONE: '+normalizeBDPhone(reg.phone||'—'),24,H-108);
+    ctx.fillText('Blood Group: '+(reg.bloodGroup||'—'),24,H-82);
+    const academic=participantAcademicLabel(reg); if(academic) ctx.fillText(academic,24,H-56);
+    // Bottom-right branding requested by user.
+    ctx.textAlign='right'; ctx.fillStyle='#FFD84D'; ctx.font='900 24px Arial,sans-serif'; ctx.fillText('GOLDEN JUBILEE',W-20,H-52);
+    ctx.fillStyle='#fff'; ctx.font='800 17px Arial,sans-serif'; ctx.fillText('Mansur Uddin ML High School',W-20,H-25);
+    ctx.shadowBlur=0;
+    done(canvas);
+  }
+  // Ensure both images have explicit src before checking complete.
+  img.src=reg.photo&&String(reg.photo).indexOf('data:')===0?reg.photo:'';
+  seal.src='images/School/registered-seal.png';
+  // If photo is empty, onload may not fire; force draw once seal loads.
+  if(!img.src) { photoReady=true; img.complete=true; }
+  if(seal.complete) draw();
+}
+
 function downloadPhotoCard(reg, shouldDownload) {
   if(!reg)return;
   shouldDownload=(shouldDownload!==false);
-  var W=600,H=800,canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;var ctx=canvas.getContext('2d');
-  var typeColorsPhoto={alumni:['#B9151C','#E51C23'],student:['#355783','#6385B8'],teacher:['#152943','#294C78'],other:['#416F96','#709FC3']};
-  var tc=typeColorsPhoto[reg.type]||typeColorsPhoto.other;
-  ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
-  var img=new Image();
-  function finish(){
-    // Bottom dark gradient, matching the on-screen photo card.
-    var grad=ctx.createLinearGradient(0,H*0.35,0,H);grad.addColorStop(0,'rgba(0,0,0,0)');grad.addColorStop(.55,'rgba(0,0,0,.58)');grad.addColorStop(1,'rgba(0,0,0,.94)');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
-    ctx.fillStyle=tc[1];roundRect(ctx,20,20,125,34,17);ctx.fill();ctx.fillStyle='#fff';ctx.font='700 18px Arial,sans-serif';ctx.textAlign='center';ctx.fillText(reg.type==='alumni'?'প্রাক্তন':reg.type==='student'?'বর্তমান':reg.type==='teacher'?'শিক্ষক':'অন্যান্য',82.5,43);
-    // Registered seal at right-middle.
-    ctx.save();ctx.translate(W-78,H*0.47);ctx.rotate(-0.12);ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.globalAlpha=.95;ctx.beginPath();ctx.arc(0,0,52,0,Math.PI*2);ctx.stroke();ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,43,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#fff';ctx.font='800 14px Arial,sans-serif';ctx.fillText('REGISTERED',0,5);ctx.restore();
-    ctx.textAlign='left';ctx.fillStyle='#fff';ctx.font='800 31px Arial,sans-serif';ctx.fillText(reg.name||'Full Name',24,H-155);
-    ctx.font='700 18px Arial,sans-serif';ctx.fillText('ID: '+(reg.uniqueId||'—'),24,H-124);
-    ctx.font='500 18px Arial,sans-serif';ctx.fillText('PHONE: '+normalizeBDPhone(reg.phone||'—'),24,H-96);
-    ctx.fillText('Blood Group: '+(reg.bloodGroup||'—'),24,H-70);
-    var academic=participantAcademicLabel(reg);if(academic)ctx.fillText(academic,24,H-44);
-    // Bottom-right requested branding.
-    ctx.textAlign='right';ctx.fillStyle='#FFD84D';ctx.font='900 22px Arial,sans-serif';ctx.fillText('50 YEARS',W-22,H-70);ctx.fillStyle='#fff';ctx.font='700 14px Arial,sans-serif';ctx.fillText('Mansur Uddin ML High School',W-22,H-45);
-    var data=canvas.toDataURL('image/jpeg',.95); uploadIdCardToDrive({...reg,_driveKind:'photoCard'},data);
-    if(shouldDownload){var a=document.createElement('a');a.download=(reg.uniqueId||'photo_card')+'_photo-card.jpg';a.href=data;document.body.appendChild(a);a.click();document.body.removeChild(a);showToast('📥 Photo Card ডাউনলোড হচ্ছে!');}
-  }
-  function drawPhoto(){if(img.complete&&img.naturalWidth){var ar=img.width/img.height,iw=W,ih=H,ix=0,iy=0;if(ar>W/H){iw=H*ar;ix=-(iw-W)/2;}else{ih=W/ar;iy=-(ih-H)/2;}ctx.drawImage(img,ix,iy,iw,ih);}else{ctx.fillStyle='#334';ctx.fillRect(0,0,W,H);ctx.fillStyle='#999';ctx.font='80px Arial';ctx.textAlign='center';ctx.fillText('🧑',W/2,H/2);}finish();}
-  img.onload=drawPhoto;img.onerror=drawPhoto;img.src=reg.photo&&reg.photo.indexOf('data:')===0?reg.photo:'';
+  buildPhotoCardCanvas(reg, function(canvas){
+    const data=canvas.toDataURL('image/jpeg',.96);
+    uploadIdCardToDrive({...reg,_driveKind:'photoCard'},data);
+    if(shouldDownload){
+      const a=document.createElement('a');a.download=(reg.uniqueId||'photo_card')+'_photo-card.jpg';a.href=data;document.body.appendChild(a);a.click();document.body.removeChild(a);showToast('📥 Photo Card ডাউনলোড হচ্ছে!');
+    }
+  });
 }
 
 function renderTable() {
@@ -3275,36 +3314,22 @@ function renderTable() {
     if (data.length === 0) { cv.innerHTML = `<div style="grid-column:1/-1"><div class="empty-state"><div class="empty-icon">📋</div><p>কোনো নিবন্ধন পাওয়া যায়নি।</p></div></div>`; return; }
     const [fc, bc] = (typeColors[data[0]?.type]||'#616161:#F5F5F5').split(':');
     window._renderedCardRecords = data;
-    cv.innerHTML = data.map((r,i) => {
-      const [fc, bc] = (typeColors[r.type]||'#616161:#F5F5F5').split(':');
-      const topStyle = r.photo
-        ? `background-image:url(${r.photo});background-size:cover;background-position:center top;background-repeat:no-repeat;`
-        : `background:linear-gradient(135deg,var(--deep-green),var(--light-green));display:flex;align-items:center;justify-content:center;`;
-      const fallbackIcon = !r.photo ? `<span style="font-size:4.5rem;opacity:0.55">${avatarFallback[r.gender]||'🧑'}</span>` : '';
-      return `
-      <div class="person-card">
-        <div class="person-card-top" style="${topStyle}">${fallbackIcon}</div>
+    cv.innerHTML = data.map((r,i) => `
+      <div class="person-card photo-card-render" data-card-index="${i}">
+        <canvas class="person-card-canvas" id="photo-card-canvas-${i}"></canvas>
         <div class="person-card-downloads">
           <button class="person-card-download-btn" title="Photo Card Download" onclick="event.stopPropagation();downloadPhotoCard(window._renderedCardRecords[${i}],true)">⬇</button>
           <button class="person-card-download-btn" title="ID Card Download" onclick="event.stopPropagation();downloadIdCard(window._renderedCardRecords[${i}],true)">🪪</button>
         </div>
-        <div class="person-type-badge" style="background:${bc};color:${fc}">${typeMap[r.type]||r.type}</div>
-
-        <div class="person-card-body">
-          <div class="person-name">${r.name}</div>
-          <div style="font-size:0.7rem;font-weight:700;letter-spacing:2px;color:var(--gold);background:rgba(200,150,12,0.08);border:1px solid rgba(200,150,12,0.2);border-radius:6px;padding:3px 10px;display:inline-block;margin-bottom:8px;">ID: ${r.uniqueId||'—'}</div>
-          <div class="person-meta">
-            <span>📱 ${normalizeBDPhone(r.phone)}</span>
-            <span>🩸 ${r.bloodGroup || '—'}</span>
-            ${r.type === 'alumni' && r.batch ? `<span>🎓 ব্যাচ ${toEnglishDigits(r.batch)}</span>` : ''}
-            ${r.type === 'student' && r.studentClass ? `<span>📚 শ্রেনী: ${r.studentClass}</span>` : ''}
-            ${r.type === 'student' && r.branch ? `<span>▣ শাখা: ${r.branch}</span>` : ''}
-            ${r.district ? `<span>📍 ${r.district}</span>` : ''}
-            <span>${genderMap[r.gender]||''}</span>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
+      </div>`).join('');
+    data.forEach((r,i)=>{
+      buildPhotoCardCanvas(r,function(canvas){
+        const host=document.getElementById('photo-card-canvas-'+i);
+        if(!host)return;
+        host.width=600;host.height=800;
+        const c=host.getContext('2d');c.clearRect(0,0,600,800);c.drawImage(canvas,0,0);
+      });
+    });
     return;
   }
 
