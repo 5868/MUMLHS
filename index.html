@@ -3111,7 +3111,7 @@ async function uploadIdCardToDrive(reg, imageData) {
       const st = document.getElementById('driveStatus');
       if (st) {
         st.style.display = 'block';
-        st.textContent = '🪪 ID Card Google Drive-এ সংরক্ষিত হয়েছে';
+        st.textContent = ((reg._driveKind || 'idcard') === 'photoCard') ? '📸 Photo Card Google Drive-এ সংরক্ষিত হয়েছে' : '🪪 ID Card Google Drive-এ সংরক্ষিত হয়েছে';
       }
     }
     return result;
@@ -3183,22 +3183,38 @@ function participantAcademicLabel(reg) {
   return '';
 }
 
+function extractDriveFileIdFromValue(value){
+  const raw=String(value||'').trim();
+  if(!raw || raw.indexOf('data:image/')===0) return '';
+  let m=raw.match(/\/file\/d\/([A-Za-z0-9_-]+)/);
+  if(!m) m=raw.match(/[?&]id=([A-Za-z0-9_-]+)/);
+  if(!m) m=raw.match(/\/d\/([A-Za-z0-9_-]+)/);
+  return m ? m[1] : '';
+}
+
+async function resolveCardPhotoSource(reg){
+  const local=reg && reg.photo && String(reg.photo).indexOf('data:image/')===0 ? String(reg.photo) : '';
+  if(local) return local;
+  const fileId=extractDriveFileIdFromValue(reg && (reg.photoUrl || reg.photo));
+  if(!fileId || !USE_CLOUD) return '';
+  try{
+    const res=await fetch(GAS_URL+'?action=getPhoto&fileId='+encodeURIComponent(fileId)+'&t='+Date.now(),{cache:'no-store'});
+    const data=await res.json();
+    if(data && data.success && data.dataUrl) return data.dataUrl;
+  }catch(err){ console.warn('Card photo resolver failed:',err); }
+  return '';
+}
+
 async function downloadIdCard(reg, shouldDownload) {
   shouldDownload = (shouldDownload !== false);
   if (!reg) return;
 
-  // Reuse the existing Drive file. Never create another ID card file on repeat downloads.
-  if (reg.idCardUrl && /^https?:\/\/drive\.google\.com\//i.test(String(reg.idCardUrl))) {
-    if (shouldDownload) {
-      const a = document.createElement('a');
-      a.href = reg.idCardUrl;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      showToast('📥 সংরক্ষিত ID Card খোলা হচ্ছে!');
-    }
-    return;
-  }
+  // IMPORTANT: even when an archived Drive URL already exists, render a fresh
+  // local card from the participant data for the actual browser download.
+  // Otherwise an old card (possibly created before the photo was available)
+  // would be reopened and the current photo would never reach the download.
+  // The archive upload routine itself still reuses the existing Drive file, so
+  // this does NOT create duplicate Drive files.
 
   var W = 816, H = 1220;
   var canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
@@ -3280,20 +3296,35 @@ async function downloadIdCard(reg, shouldDownload) {
       // Watermark is already positioned and centered behind the photo.
       drawDetailsAndDownload();
     }
-    if(reg.photo&&reg.photo.indexOf('data:')===0){
-      var img=new Image(); img.onload=function(){ctx.save();roundRect(ctx,photoX+6,photoY+6,photoW-12,photoH-12,28);ctx.clip();var ar=img.width/img.height,iw=photoW-12,ih=photoH-12,ix=photoX+6,iy=photoY+6;if(ar>iw/ih){iw=ih*ar;ix-=(iw-(photoW-12))/2;}else{ih=iw/ar;iy-=(ih-(photoH-12))/2;}ctx.drawImage(img,ix,iy,iw,ih);ctx.restore();afterPhoto();};img.onerror=function(){fallback();afterPhoto();};img.src=reg.photo;
-    }else{fallback();afterPhoto();}
+    // Use the same cross-device photo resolver as Photo Card. Local base64 is
+    // preferred; otherwise GAS fetches the registered Drive photo and returns a
+    // data URL, so the canvas remains untainted and exportable on every device.
+    resolveCardPhotoSource(reg).then(function(photoSource){
+      if(photoSource){
+        var img=new Image();
+        img.onload=function(){
+          ctx.save();
+          roundRect(ctx,photoX+6,photoY+6,photoW-12,photoH-12,28);ctx.clip();
+          var ar=img.width/img.height,iw=photoW-12,ih=photoH-12,ix=photoX+6,iy=photoY+6;
+          if(ar>iw/ih){iw=ih*ar;ix-=(iw-(photoW-12))/2;}
+          else {ih=iw/ar;iy-=(ih-(photoH-12))/2;}
+          ctx.drawImage(img,ix,iy,iw,ih);ctx.restore();afterPhoto();
+        };
+        img.onerror=function(){fallback();afterPhoto();};
+        img.src=photoSource;
+      }else{fallback();afterPhoto();}
+    }).catch(function(){fallback();afterPhoto();});
     function fallback(){ctx.fillStyle='#D9D9D9';roundRect(ctx,photoX+6,photoY+6,photoW-12,photoH-12,28);ctx.fill();ctx.fillStyle='#A0A0A0';ctx.beginPath();ctx.arc(W/2,photoY+142,63,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(W/2,photoY+280,120,80,0,0,Math.PI*2);ctx.fill();}
 
     function drawDetailsAndDownload(){
       ctx.textAlign='center';ctx.fillStyle=black;ctx.font='800 48px Arial,sans-serif';var nm=reg.name||'Full Name';if(nm.length>24)ctx.font='800 40px Arial,sans-serif';ctx.fillText(nm,W/2,850);
-      ctx.font='700 24px Arial,sans-serif';ctx.fillText('Blood Group: '+(reg.bloodGroup||'—'),W/2,887);
+      ctx.font='700 24px Arial,sans-serif';ctx.fillText(reg.bloodGroup ? ('Blood Group: '+reg.bloodGroup) : '',W/2,887);
       var academic=participantAcademicLabel(reg);if(academic){ctx.font='600 24px Arial,sans-serif';ctx.fillText(academic,W/2,920);}
       var idY=academic?962:930;
       // Bold white ID No on rounded black box.
-      var idText='ID NO: '+(reg.uniqueId||'MUHS-2026-0001');ctx.font='800 24px Arial,sans-serif';var idW=Math.max(310,ctx.measureText(idText).width+70);
+      var idText='ID NO: '+(reg.uniqueId||'');ctx.font='800 24px Arial,sans-serif';var idW=Math.max(310,ctx.measureText(idText).width+70);
       ctx.fillStyle=black;roundRect(ctx,(W-idW)/2,idY-34,idW,52,16);ctx.fill();ctx.fillStyle=white;ctx.fillText(idText,W/2,idY);
-      ctx.font='500 23px Arial,sans-serif';ctx.fillStyle=black;ctx.fillText('PHONE: '+normalizeBDPhone(reg.phone||'+8801XXXXXXXXX'),W/2,idY+44);
+      ctx.font='500 23px Arial,sans-serif';ctx.fillStyle=black;ctx.fillText(reg.phone ? ('PHONE: '+normalizeBDPhone(reg.phone)) : '',W/2,idY+44);
       ctx.font='700 22px Arial,sans-serif';ctx.fillText((reg.type==='student'?'Student':reg.type==='alumni'?'Alumni':reg.type==='teacher'?'Teacher / Staff':'Participant'),W/2,idY+82);
 
       var cardDataUrl=canvas.toDataURL('image/jpeg',0.96); uploadIdCardToDrive({...reg,_driveKind:'idcard'},cardDataUrl);
@@ -3455,7 +3486,7 @@ function buildPhotoCardCanvas(reg, done) {
     });
 
     const idY=nameY+(nameLines.length*nameLineHeight)+5;
-    const idText='ID: '+toEnglishDigits(reg.uniqueId||'—');
+    const idText='ID: '+toEnglishDigits(reg.uniqueId||'');
     ctx.shadowBlur=0;
     ctx.font='800 22px "Courier New",monospace';
     const idW=Math.min(260,Math.max(185,ctx.measureText(idText).width+38));
@@ -3472,13 +3503,13 @@ function buildPhotoCardCanvas(reg, done) {
     drawPhoneIcon(27,phoneY);
     ctx.fillStyle='#fff';
     ctx.font='600 21px Arial,sans-serif';
-    ctx.fillText(normalizeBDPhone(reg.phone||'—'),53,phoneY);
+    ctx.fillText(normalizeBDPhone(reg.phone||''),53,phoneY);
 
     const bloodY=phoneY+33;
     drawDropIcon(27,bloodY);
     ctx.fillStyle='#fff';
     ctx.font='600 21px Arial,sans-serif';
-    ctx.fillText(reg.bloodGroup||'—',53,bloodY+1);
+    ctx.fillText(reg.bloodGroup||'',53,bloodY+1);
 
     const academic=participantAcademicLabel(reg);
     let nextY=bloodY+33;
@@ -3558,23 +3589,26 @@ async function downloadPhotoCard(reg, shouldDownload) {
   if(!reg)return;
   shouldDownload=(shouldDownload!==false);
 
-  // Reuse the existing Drive file. Never create another Photo Card file on repeat downloads.
-  if (reg.photoCardUrl && /^https?:\/\/drive\.google\.com\//i.test(String(reg.photoCardUrl))) {
-    if (shouldDownload) {
-      const a = document.createElement('a');
-      a.href = reg.photoCardUrl;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      showToast('📥 সংরক্ষিত Photo Card খোলা হচ্ছে!');
-    }
-    return;
-  }
+  // Always render the card locally for the actual download. If a Drive archive
+  // already exists, uploadIdCardToDrive() will detect its saved URL and reuse it
+  // instead of creating a duplicate. This keeps the downloaded card current
+  // while preserving the one-file-per-participant archive rule.
   buildPhotoCardCanvas(reg, function(canvas){
-    const data=canvas.toDataURL('image/jpeg',.96);
+    let data;
+    try {
+      data=canvas.toDataURL('image/jpeg',.96);
+    } catch(err) {
+      console.error('Photo Card canvas export failed:',err);
+      showToast('❌ Photo Card তৈরি করা যায়নি।', 'error');
+      return;
+    }
     uploadIdCardToDrive({...reg,_driveKind:'photoCard'},data);
     if(shouldDownload){
-      const a=document.createElement('a');a.download=(reg.uniqueId||'photo_card')+'_photo-card.jpg';a.href=data;document.body.appendChild(a);a.click();document.body.removeChild(a);showToast('📥 Photo Card ডাউনলোড হচ্ছে!');
+      const a=document.createElement('a');
+      a.download=(reg.uniqueId||'photo_card')+'_photo-card.jpg';
+      a.href=data;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      showToast('📥 Photo Card ডাউনলোড হচ্ছে!');
     }
   });
 }
