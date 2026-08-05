@@ -4997,5 +4997,59 @@ if (isAdminUnlocked) {
 }
 
 </script>
+
+<script>
+/* Volunteer Admin tab visibility safeguard */
+(function () {
+  function openVolunteerAdminPanel() {
+    var tab = document.getElementById('adminTabVolunteer');
+    var panel = document.getElementById('adminVolunteerPanel');
+    if (!tab || !panel) return false;
+
+    document.querySelectorAll('.admin-tab').forEach(function (el) {
+      el.classList.remove('active');
+    });
+    document.querySelectorAll('.admin-panel').forEach(function (el) {
+      el.classList.remove('active');
+    });
+
+    tab.classList.add('active');
+    panel.classList.add('active');
+
+    if (typeof adminVolunteerList === 'function') {
+      try { adminVolunteerList(); } catch (e) { console.warn(e); }
+    }
+    return true;
+  }
+
+  window.openVolunteerAdminPanel = openVolunteerAdminPanel;
+
+  document.addEventListener('click', function (ev) {
+    var tab = ev.target.closest && ev.target.closest('#adminTabVolunteer');
+    if (tab) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      openVolunteerAdminPanel();
+    }
+  }, true);
+
+  // If the tab exists but is accidentally hidden by an inline/style rule,
+  // restore its normal tab display once the admin panel is rendered.
+  var observer = new MutationObserver(function () {
+    var tab = document.getElementById('adminTabVolunteer');
+    if (tab) {
+      tab.style.display = '';
+      tab.style.visibility = 'visible';
+    }
+  });
+
+  observer.observe(document.documentElement, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class']
+  });
+})();
+</script>
+
 </body>
 </html>
