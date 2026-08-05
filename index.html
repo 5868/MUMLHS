@@ -2082,7 +2082,7 @@
   }
   .pdf-qr{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:82px;width:92px;text-align:center;
+    bottom:132px;width:92px;text-align:center;
   }
   .pdf-qr-box{
     width:82px;height:82px;margin:0 auto;background:#fff;
@@ -4732,6 +4732,16 @@ function openVolunteerPanel() {
 }
 
 function volunteerLogout() {
+  try{
+    const _vu=String(localStorage.getItem('muhs_volunteer_username')||'');
+    const _vt=String(localStorage.getItem('muhs_volunteer_session_token')||'');
+    if(_vu && _vt && typeof USE_CLOUD!=='undefined' && USE_CLOUD){
+      fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},
+        body:JSON.stringify({action:'volunteerLogout',username:_vu,sessionToken:_vt})
+      }).catch(()=>{});
+    }
+  }catch(e){}
+
   stopVolunteerScanner();
   volunteerToken = '';
   volunteerName = '';
