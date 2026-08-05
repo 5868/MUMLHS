@@ -2469,21 +2469,22 @@ async function loadFromCloud(admin = false) {
 
     if (data.summary) cloudSummary = data.summary;
 
-    if (admin && Array.isArray(data.registrations)) {
-      // Merge: cloud is source of truth, but keep freshest local photo if newer than cloud's
+    if (Array.isArray(data.registrations)) {
+      // Cloud is the source of truth for cards on every device. Keep local base64
+      // only as a fallback; the permanent Drive photo URL always travels with the record.
       const localMap = {};
       registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
       registrations = data.registrations.map(r => ({
         ...r,
-        photo: localMap[r.uniqueId] || r.photoUrl || r.photo || '' // prefer local cache, else permanent Drive URL from cloud
+        photo: localMap[r.uniqueId] || r.photoUrl || r.photo || ''
       }));
       localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
       updateBatchFilter();
-      renderTable();
-      showToast(`☁️ ${data.total}টি নিবন্ধন লোড হয়েছে`);
+      if (admin) { renderTable(); showToast(`☁️ ${data.total}টি নিবন্ধন লোড হয়েছে`); }
     }
 
     updateSummary();
+    if (!admin && Array.isArray(data.registrations)) { renderTable(); }
   } catch (err) {
     console.warn('Cloud load failed, using local data:', err.message);
   } finally {
@@ -3491,7 +3492,16 @@ function buildPhotoCardCanvas(reg, done) {
     done(canvas);
   }
 
-  img.src=reg.photo&&String(reg.photo).indexOf('data:')===0 ? reg.photo : '';
+  // Use the permanent Google Drive photo URL on every device.
+  // Local base64 is preferred only when available; otherwise fall back to photoUrl.
+  const permanentPhoto = reg.photoUrl || reg.photo || '';
+  img.src = String(permanentPhoto).trim();
+  img.onerror = function(){
+    // If a Drive thumbnail cannot be loaded, keep the card rendering instead of breaking the canvas.
+    img.removeAttribute('src');
+    img.complete = true;
+    draw();
+  };
   seal.src='images/School/registered-seal.png';
   if(!img.src){ img.complete=true; }
   if(seal.complete) draw();
