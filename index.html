@@ -1956,6 +1956,21 @@
     .result-photo-wrap { width:min(320px,94%); }
   }
 
+
+/* ─── VOLUNTEER ADMIN MANAGEMENT ─── */
+.vol-admin-wrap{padding:1.25rem;background:#f8faf8;border:1px solid rgba(11,61,46,.12);border-radius:18px;margin-top:1rem}
+.vol-admin-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:1rem}
+.vol-admin-form{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}
+.vol-admin-form label span{display:block;font-size:.76rem;font-weight:800;margin-bottom:5px;color:#33423a}
+.vol-admin-form input{width:100%;padding:10px 12px;border:1px solid #d8dfda;border-radius:9px;background:#fff}
+.vol-admin-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}
+.vol-admin-table th,.vol-admin-table td{padding:10px 9px;border-bottom:1px solid #edf0ed;text-align:left;font-size:.82rem}
+.vol-admin-table th{background:#173f76;color:#fff;font-weight:800}
+.vol-status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:.72rem;font-weight:800}
+.vol-status.on{background:#e9f8ed;color:#18733a}.vol-status.off{background:#fcecec;color:#a42a2a}
+.vol-admin-actions button{border:1px solid #d7ddd8;background:#fff;border-radius:7px;padding:6px 9px;cursor:pointer;margin-right:4px}
+@media(max-width:800px){.vol-admin-form{grid-template-columns:1fr 1fr}.vol-admin-form button{grid-column:1/-1}}
+@media(max-width:560px){.vol-admin-form{grid-template-columns:1fr}.vol-admin-form button{grid-column:auto}.vol-admin-table{font-size:.75rem}.vol-admin-table th,.vol-admin-table td{padding:8px 6px}}
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -2640,6 +2655,7 @@
         <button class="mgmt-tab" onclick="switchTab('student', this)">বর্তমান শিক্ষার্থী</button>
         <button class="mgmt-tab" onclick="switchTab('teacher', this)">শিক্ষক</button>
         <button class="mgmt-tab" onclick="switchTab('guest', this)">অতিথি</button>
+        <button class="mgmt-tab" onclick="switchTab('volunteers', this)">🛡️ ভলান্টিয়ার</button>
       </div>
 
       <!-- Panel -->
@@ -2689,7 +2705,29 @@
         </div>
         </div><!-- /table-view -->
       </div>
-    </div><!-- /adminUnlockedView -->
+    
+      <div class="mgmt-panel" id="panel-volunteers">
+        <div class="vol-admin-wrap">
+          <div class="vol-admin-toolbar">
+            <div><h3 style="margin:0;color:var(--deep-green);">🛡️ ভলান্টিয়ার ব্যবস্থাপনা</h3><p style="margin:.25rem 0 0;color:#68736c;font-size:.82rem;">Volunteer User ID, Password, Name ও Active status এখান থেকে পরিচালনা করুন।</p></div>
+            <button class="btn-export" onclick="loadVolunteerAdminList()">🔄 রিফ্রেশ</button>
+          </div>
+          <form class="vol-admin-form" onsubmit="event.preventDefault(); saveVolunteerAdmin();">
+            <label><span>User ID</span><input id="va-username" required autocomplete="off" placeholder="যেমন: volunteer01"></label>
+            <label><span>Password</span><input id="va-password" type="password" required autocomplete="new-password" placeholder="Password"></label>
+            <label><span>নাম</span><input id="va-name" required placeholder="ভলান্টিয়ারের নাম"></label>
+            <button class="btn-export" type="submit" id="va-save-btn">➕ যোগ করুন</button>
+          </form>
+          <div id="va-edit-note" style="display:none;margin:.7rem 0;color:#173f76;font-size:.8rem;"></div>
+          <div style="overflow:auto;margin-top:1.25rem;">
+            <table class="vol-admin-table">
+              <thead><tr><th>#</th><th>User ID</th><th>নাম</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="volunteer-admin-body"><tr><td colspan="5" style="text-align:center;color:#7b857e;padding:20px;">ভলান্টিয়ার তালিকা লোড করতে রিফ্রেশ করুন।</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+</div><!-- /adminUnlockedView -->
   </div>
 </section>
 
@@ -4207,10 +4245,80 @@ function updateBatchFilter() {
   }
 }
 
+async function volunteerAdminPost(payload) {
+  const key = sessionStorage.getItem('muhs_admin_key') || '';
+  if (!key) throw new Error('Admin login required');
+  const res = await fetch(GAS_URL, {method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload, adminKey:key})});
+  return await res.json();
+}
+
+async function loadVolunteerAdminList() {
+  const body=document.getElementById('volunteer-admin-body');
+  if(!body) return;
+  body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;">⏳ লোড হচ্ছে...</td></tr>';
+  try {
+    const data=await volunteerAdminPost({action:'adminVolunteerList'});
+    if(!data.success) throw new Error(data.message || data.error || 'লোড ব্যর্থ');
+    if(!data.volunteers.length){ body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;">কোনো ভলান্টিয়ার নেই। উপরের ফর্ম থেকে যোগ করুন।</td></tr>'; return; }
+    body.innerHTML=data.volunteers.map((v,i)=>`<tr><td>${i+1}</td><td><strong>${escapeHtml(v.username)}</strong></td><td>${escapeHtml(v.name)}</td><td><span class="vol-status ${v.active?'on':'off'}">${v.active?'ACTIVE':'INACTIVE'}</span></td><td class="vol-admin-actions"><button onclick="toggleVolunteerAdmin('${escapeJs(v.username)}',${v.active})">${v.active?'⏸ Deactivate':'▶ Activate'}</button><button onclick="editVolunteerAdmin('${escapeJs(v.username)}','${escapeJs(v.name)}')">✏️ Edit</button><button onclick="deleteVolunteerAdmin('${escapeJs(v.username)}')">🗑 Delete</button></td></tr>`).join('');
+  } catch(e){ body.innerHTML=`<tr><td colspan="5" style="text-align:center;color:#b42318;padding:20px;">❌ ${escapeHtml(e.message)}</td></tr>`; }
+}
+
+function escapeHtml(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));}
+function escapeJs(s){return String(s??'').replace(/\/g,'\\').replace(/'/g,"\'").replace(/\n/g,' ');}
+
+function editVolunteerAdmin(username,name){
+  document.getElementById('va-username').value=username;
+  document.getElementById('va-username').readOnly=true;
+  document.getElementById('va-name').value=name;
+  document.getElementById('va-password').required=false;
+  document.getElementById('va-password').value='';
+  document.getElementById('va-save-btn').textContent='💾 আপডেট করুন';
+  const n=document.getElementById('va-edit-note'); n.style.display='block'; n.textContent='Editing: '+username+' — নতুন password না দিলে আগের password থাকবে।';
+}
+
+function resetVolunteerAdminForm(){
+  document.getElementById('va-username').value=''; document.getElementById('va-username').readOnly=false;
+  document.getElementById('va-password').value=''; document.getElementById('va-password').required=true;
+  document.getElementById('va-name').value=''; document.getElementById('va-save-btn').textContent='➕ যোগ করুন';
+  document.getElementById('va-edit-note').style.display='none';
+}
+
+async function saveVolunteerAdmin(){
+  const username=document.getElementById('va-username').value.trim();
+  const password=document.getElementById('va-password').value;
+  const name=document.getElementById('va-name').value.trim();
+  if(!username||!name||(document.getElementById('va-password').required&&!password)){showToast('সব প্রয়োজনীয় তথ্য দিন।','error');return;}
+  const editing=document.getElementById('va-username').readOnly;
+  try{
+    const data=await volunteerAdminPost({action:editing?'adminVolunteerUpdate':'adminVolunteerCreate',username,password,name});
+    if(!data.success) throw new Error(data.message||data.error||'সংরক্ষণ ব্যর্থ');
+    showToast(editing?'ভলান্টিয়ার আপডেট হয়েছে।':'ভলান্টিয়ার যোগ হয়েছে।','success');
+    resetVolunteerAdminForm(); loadVolunteerAdminList();
+  }catch(e){showToast('❌ '+e.message,'error');}
+}
+
+async function toggleVolunteerAdmin(username,active){
+  try{const data=await volunteerAdminPost({action:'adminVolunteerToggle',username,active:!active}); if(!data.success)throw new Error(data.message||data.error); showToast('Status আপডেট হয়েছে।','success'); loadVolunteerAdminList();}catch(e){showToast('❌ '+e.message,'error');}
+}
+
+async function deleteVolunteerAdmin(username){
+  if(!confirm('এই ভলান্টিয়ারকে মুছে ফেলবেন?')) return;
+  try{const data=await volunteerAdminPost({action:'adminVolunteerDelete',username}); if(!data.success)throw new Error(data.message||data.error); showToast('ভলান্টিয়ার মুছে ফেলা হয়েছে।','success'); loadVolunteerAdminList();}catch(e){showToast('❌ '+e.message,'error');}
+}
+
 function switchTab(type, btn) {
   currentFilter = type;
   document.querySelectorAll('.mgmt-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
+  if (type === 'volunteers') {
+    document.getElementById('panel-content').classList.remove('active');
+    document.getElementById('panel-volunteers').classList.add('active');
+    loadVolunteerAdminList();
+    return;
+  }
+  document.getElementById('panel-volunteers').classList.remove('active');
+  document.getElementById('panel-content').classList.add('active');
   renderTable();
 }
 
