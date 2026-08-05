@@ -3430,7 +3430,8 @@ function buildPhotoCardCanvas(reg, done) {
   let drawn=false;
   function draw(){
     if(drawn) return;
-    if(!img.complete || !seal.complete) return;
+    if(!img.complete) return;
+    // Seal is optional for rendering; a missing seal must never suppress the photo.
     drawn=true;
 
     ctx.clearRect(0,0,W,H);
@@ -3458,7 +3459,7 @@ function buildPhotoCardCanvas(reg, done) {
 
     // Registered seal: moved substantially lower, ending just above
     // the GOLDEN JUBILEE branding. White background is already transparent.
-    if(seal.naturalWidth){
+    if(seal.complete && seal.naturalWidth){
       const sw=300, sh=303;
       const sx=W-sw-16;
       const sy=H-52-sh-72; // lift seal about two text lines above GOLDEN JUBILEE
@@ -3544,45 +3545,19 @@ function buildPhotoCardCanvas(reg, done) {
     done(canvas);
   }
 
-  // IMPORTANT: Google Drive thumbnail URLs are not reliably CORS-enabled.
-  // Drawing them directly into a canvas makes the canvas tainted, which then
-  // breaks download via canvas.toDataURL(). Therefore remote photos are first
-  // fetched through our GAS endpoint and converted to a data URL.
-  function extractDriveFileId(value){
-    const raw=String(value||'').trim();
-    if(!raw) return '';
-    if(raw.indexOf('data:image/')===0) return '';
-    let m=raw.match(/\/file\/d\/([A-Za-z0-9_-]+)/);
-    if(!m) m=raw.match(/[?&]id=([A-Za-z0-9_-]+)/);
-    if(!m) m=raw.match(/\/d\/([A-Za-z0-9_-]+)/);
-    return m ? m[1] : '';
-  }
-
-  async function resolvePhotoSource(){
-    const localPhoto=(reg.photo&&String(reg.photo).indexOf('data:image/')===0) ? reg.photo : '';
-    if(localPhoto) return localPhoto;
-
-    const fileId=extractDriveFileId(reg.photoUrl||reg.photo||'');
-    if(!fileId || typeof GAS_URL==='undefined' || !GAS_URL || GAS_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') return '';
-
-    try{
-      const res=await fetch(GAS_URL+'?action=getPhoto&fileId='+encodeURIComponent(fileId),{cache:'no-store'});
-      const data=await res.json();
-      if(data && data.success && data.dataUrl) return data.dataUrl;
-    }catch(err){
-      console.warn('Remote photo fetch failed:',err);
-    }
-    return '';
-  }
-
-  seal.src='images/School/registered-seal.png';
-  resolvePhotoSource().then(photoSource=>{
-    // Never set crossOrigin for the Drive URL: remote Drive images are not
-    // guaranteed to send CORS headers. We use a local data URL from GAS instead.
+  // Use the exact same cloud-photo resolver used by the working ID Card.
+  // This is deliberately shared so Photo Card and ID Card cannot diverge.
+  // Prefer the permanent Drive photo via GAS; fall back to local data only if needed.
+  resolveCardPhotoSource(reg).then(photoSource=>{
+    img.onload=()=>draw();
+    img.onerror=()=>draw();
+    seal.onload=()=>draw();
+    seal.onerror=()=>draw();
     img.src=photoSource||'';
+    seal.src='images/School/registered-seal.png';
     if(!img.src) img.complete=true;
-    if(seal.complete) draw();
   });
+
 }
 
 async function downloadPhotoCard(reg, shouldDownload) {
