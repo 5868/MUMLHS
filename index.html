@@ -2311,7 +2311,7 @@
 
 <script>
 // ─── PRELOADER ───
-// Preloader — keep visible for a polished 2.5 second intro
+// Preloader — keep visible for a polished 1.5 second intro
 let preloaderHidden = false;
 function hidePreloader() {
   const pre = document.getElementById('preloader');
@@ -2321,8 +2321,8 @@ function hidePreloader() {
   pre.style.pointerEvents = 'none';
   setTimeout(() => { pre.style.display = 'none'; }, 550);
 }
-// Minimum display time: 2.5 seconds
-setTimeout(hidePreloader, 2500);
+// Minimum display time: 1.5 seconds
+setTimeout(hidePreloader, 1500);
 
 // ─── HERO BACKGROUND SLIDESHOW ───
 (function() {
