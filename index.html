@@ -2311,7 +2311,7 @@
 
 <script>
 // ─── PRELOADER ───
-// Preloader — keep visible for a polished 1.5 second intro
+// Preloader — keep visible for a polished 2.5 second intro
 let preloaderHidden = false;
 function hidePreloader() {
   const pre = document.getElementById('preloader');
@@ -2475,7 +2475,7 @@ async function loadFromCloud(admin = false) {
       registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
       registrations = data.registrations.map(r => ({
         ...r,
-        photo: localMap[r.uniqueId] || r.photo || '' // prefer local cache, else Drive URL from cloud
+        photo: localMap[r.uniqueId] || r.photoUrl || r.photo || '' // prefer local cache, else permanent Drive URL from cloud
       }));
       localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
       updateBatchFilter();
@@ -2628,7 +2628,7 @@ function generateUniqueId(batchVal, type) {
 // ─── ADDRESS + IDENTITY + FEE ───
 function getAddress(prefix) {
   const ids = ['village','post','upazila','district'];
-  return ids.map(k => document.getElementById(`reg-${prefix}-${k}`).value.trim()).join(', ');
+  return ids.map(k => document.getElementById(`reg-${prefix}-${k}`).value.trim()).filter(Boolean).join(', ');
 }
 function setAddress(prefix, values) {
   const ids = ['village','post','upazila','district'];
@@ -2795,7 +2795,7 @@ function resetPaymentFields() {
   updatePaymentProofRequirement();
 }
 
-function submitRegistration() {
+async function submitRegistration() {
   const name = document.getElementById('reg-name').value.trim();
   const phone = document.getElementById('reg-phone').value.trim();
   const type = document.getElementById('reg-type').value;
@@ -2879,7 +2879,7 @@ function submitRegistration() {
   localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
 
   // ☁️ Cloud এ save
-  if (USE_CLOUD) saveToCloud(reg);
+  if (USE_CLOUD) await saveToCloud(reg);
 
   // Reset
   ['reg-name','reg-phone','reg-email','reg-message','reg-current-village','reg-current-post','reg-current-upazila','reg-current-district','reg-permanent-village','reg-permanent-post','reg-permanent-upazila','reg-permanent-district'].forEach(id => document.getElementById(id).value = '');
@@ -2892,10 +2892,13 @@ function submitRegistration() {
   resetPaymentFields();
 
   // Google Drive-এ ছবি আপলোড (async — background এ চলবে)
-  uploadPhotoToDrive(reg);
-  if (reg.paymentScreenshot) uploadPaymentScreenshotToDrive(reg);
-  // Generate and archive the participant ID card automatically; no browser download here.
-  if (USE_CLOUD) downloadIdCard(reg, false);
+  // Upload after the Sheet row exists, so the returned Drive URLs are saved to the correct row.
+  if (USE_CLOUD) {
+    await uploadPhotoToDrive(reg);
+    if (reg.paymentScreenshot) await uploadPaymentScreenshotToDrive(reg);
+    // Generate and archive the participant ID card automatically; no browser download here.
+    await downloadIdCard(reg, false);
+  }
 
   showToast(`✅ নিবন্ধন সফল! আপনার আইডি: ${uniqueId}`);
   // Show ID in a visible box too
@@ -2989,11 +2992,12 @@ async function saveToCloud(reg) {
     const payload = { action: 'register', ...reg };
     delete payload.photo; // photo Drive-এ আলাদা, Sheets-এ base64 রাখব না
     delete payload.paymentScreenshot; // এটাও Drive-এ আলাদা যাবে
-    await fetch(GAS_URL, {
+    const response = await fetch(GAS_URL, {
       method : 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body   : JSON.stringify(payload)
     });
+    return await response.json();
   } catch (err) {
     console.warn('Cloud save failed (data safe in localStorage):', err.message);
   }
@@ -3079,14 +3083,19 @@ async function uploadIdCardToDrive(reg, imageData) {
     });
     const result = await res.json();
     if (result && result.success) {
+      if ((reg._driveKind || 'idcard') === 'photoCard') reg.photoCardUrl = result.url || reg.photoCardUrl || '';
+      else reg.idCardUrl = result.url || reg.idCardUrl || '';
+      localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
       const st = document.getElementById('driveStatus');
       if (st) {
         st.style.display = 'block';
         st.textContent = '🪪 ID Card Google Drive-এ সংরক্ষিত হয়েছে';
       }
     }
+    return result;
   } catch (err) {
     console.warn('ID card Drive upload skipped:', err.message);
+    return { success:false, error: err.message };
   }
 }
 
@@ -3152,9 +3161,22 @@ function participantAcademicLabel(reg) {
   return '';
 }
 
-function downloadIdCard(reg, shouldDownload) {
+async function downloadIdCard(reg, shouldDownload) {
   shouldDownload = (shouldDownload !== false);
   if (!reg) return;
+
+  // Reuse the existing Drive file. Never create another ID card file on repeat downloads.
+  if (reg.idCardUrl && /^https?:\/\/drive\.google\.com\//i.test(String(reg.idCardUrl))) {
+    if (shouldDownload) {
+      const a = document.createElement('a');
+      a.href = reg.idCardUrl;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast('📥 সংরক্ষিত ID Card খোলা হচ্ছে!');
+    }
+    return;
+  }
 
   var W = 816, H = 1220;
   var canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
@@ -3475,9 +3497,22 @@ function buildPhotoCardCanvas(reg, done) {
   if(seal.complete) draw();
 }
 
-function downloadPhotoCard(reg, shouldDownload) {
+async function downloadPhotoCard(reg, shouldDownload) {
   if(!reg)return;
   shouldDownload=(shouldDownload!==false);
+
+  // Reuse the existing Drive file. Never create another Photo Card file on repeat downloads.
+  if (reg.photoCardUrl && /^https?:\/\/drive\.google\.com\//i.test(String(reg.photoCardUrl))) {
+    if (shouldDownload) {
+      const a = document.createElement('a');
+      a.href = reg.photoCardUrl;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast('📥 সংরক্ষিত Photo Card খোলা হচ্ছে!');
+    }
+    return;
+  }
   buildPhotoCardCanvas(reg, function(canvas){
     const data=canvas.toDataURL('image/jpeg',.96);
     uploadIdCardToDrive({...reg,_driveKind:'photoCard'},data);
