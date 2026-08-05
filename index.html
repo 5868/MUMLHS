@@ -3491,33 +3491,45 @@ function buildPhotoCardCanvas(reg, done) {
     done(canvas);
   }
 
-  // Photo Card must work on every device. Use the permanent Google Drive photo URL
-  // when local/base64 photo data is unavailable. Convert common Drive view links
-  // to the thumbnail endpoint so the image can be rendered by the canvas.
-  function driveImageUrl(value){
+  // IMPORTANT: Google Drive thumbnail URLs are not reliably CORS-enabled.
+  // Drawing them directly into a canvas makes the canvas tainted, which then
+  // breaks download via canvas.toDataURL(). Therefore remote photos are first
+  // fetched through our GAS endpoint and converted to a data URL.
+  function extractDriveFileId(value){
     const raw=String(value||'').trim();
     if(!raw) return '';
-    if(raw.indexOf('data:image/')===0) return raw;
+    if(raw.indexOf('data:image/')===0) return '';
     let m=raw.match(/\/file\/d\/([A-Za-z0-9_-]+)/);
     if(!m) m=raw.match(/[?&]id=([A-Za-z0-9_-]+)/);
     if(!m) m=raw.match(/\/d\/([A-Za-z0-9_-]+)/);
-    if(m) return 'https://drive.google.com/thumbnail?id='+encodeURIComponent(m[1])+'&sz=w1200';
-    return raw;
+    return m ? m[1] : '';
   }
 
-  const localPhoto=(reg.photo&&String(reg.photo).indexOf('data:image/')===0) ? reg.photo : '';
-  const permanentPhoto=driveImageUrl(reg.photoUrl||reg.photo||'');
-  const photoSource=localPhoto||permanentPhoto;
+  async function resolvePhotoSource(){
+    const localPhoto=(reg.photo&&String(reg.photo).indexOf('data:image/')===0) ? reg.photo : '';
+    if(localPhoto) return localPhoto;
 
-  // crossOrigin is required before src is assigned so canvas.toDataURL() can
-  // include a remotely hosted photo when the host permits CORS.
-  if(photoSource && photoSource.indexOf('data:image/')!==0){
-    img.crossOrigin='anonymous';
+    const fileId=extractDriveFileId(reg.photoUrl||reg.photo||'');
+    if(!fileId || typeof GAS_URL==='undefined' || !GAS_URL || GAS_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') return '';
+
+    try{
+      const res=await fetch(GAS_URL+'?action=getPhoto&fileId='+encodeURIComponent(fileId),{cache:'no-store'});
+      const data=await res.json();
+      if(data && data.success && data.dataUrl) return data.dataUrl;
+    }catch(err){
+      console.warn('Remote photo fetch failed:',err);
+    }
+    return '';
   }
-  img.src=photoSource;
+
   seal.src='images/School/registered-seal.png';
-  if(!img.src){ img.complete=true; }
-  if(seal.complete) draw();
+  resolvePhotoSource().then(photoSource=>{
+    // Never set crossOrigin for the Drive URL: remote Drive images are not
+    // guaranteed to send CORS headers. We use a local data URL from GAS instead.
+    img.src=photoSource||'';
+    if(!img.src) img.complete=true;
+    if(seal.complete) draw();
+  });
 }
 
 async function downloadPhotoCard(reg, shouldDownload) {
