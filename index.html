@@ -1986,6 +1986,22 @@
   <div class="loader-bar"><div class="loader-fill"></div></div>
 </div>
 
+<!-- PRELOADER FAIL-SAFE: never leave the site trapped behind the splash -->
+<script>
+(function () {
+  function forceHidePreloader() {
+    var pre = document.getElementById('preloader');
+    if (!pre) return;
+    pre.style.opacity = '0';
+    pre.style.pointerEvents = 'none';
+    setTimeout(function () {
+      pre.style.display = 'none';
+    }, 550);
+  }
+  window.setTimeout(forceHidePreloader, 1800);
+})();
+</script>
+
 <!-- NAV -->
 <nav id="navbar">
   <a href="#hero" class="brand">
@@ -4265,7 +4281,12 @@ async function loadVolunteerAdminList() {
 }
 
 function escapeHtml(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));}
-function escapeJs(s){return String(s??'').replace(/\/g,'\\').replace(/'/g,"\'").replace(/\n/g,' ');}
+function escapeJs(s){
+  return String(s ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r?\n/g, ' ');
+}
 
 function editVolunteerAdmin(username,name){
   document.getElementById('va-username').value=username;
