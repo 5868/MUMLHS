@@ -322,8 +322,11 @@
   }
   .scanner-status.active { color:#17803b; }
   .qr-reader {
-    width:100%;
-    min-height:420px;
+    width:min(100%, 500px);
+    aspect-ratio:1 / 1;
+    height:auto;
+    min-height:0;
+    margin:0 auto;
     border:2px solid rgba(23,63,118,.16);
     border-radius:18px;
     overflow:hidden;
@@ -331,8 +334,9 @@
   }
   .qr-reader video {
     width:100% !important;
-    height:auto !important;
-    min-height:380px;
+    height:100% !important;
+    min-height:0 !important;
+    aspect-ratio:1 / 1;
     object-fit:cover;
   }
   .qr-reader__dashboard {
@@ -399,7 +403,7 @@
     border-color:#9fd4b0;
   }
   .result-photo-wrap {
-    width:min(310px,82%);
+    width:min(360px,92%);
     aspect-ratio:3/4;
     margin:0 auto 1rem;
     border-radius:18px;
@@ -1482,6 +1486,18 @@
   }
   .btn-export:hover { background: var(--mid-green); }
 
+
+  .vol-perm-buttons { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .vol-perm-btn { border:1px solid #d6ddd8; background:#f6f8f6; color:#516058; border-radius:8px; padding:6px 9px; font-size:.72rem; font-weight:800; cursor:pointer; transition:.18s; }
+  .vol-perm-btn.on { background:#e8f7ee; color:#16733a; border-color:#9fd4b0; box-shadow:0 0 0 1px rgba(22,115,58,.05); }
+  .vol-perm-btn.off { background:#f7f7f7; color:#8a918c; }
+  .vol-perm-btn:hover { transform:translateY(-1px); }
+  .vol-perm-note { font-size:.7rem; color:#78827b; margin-top:6px; }
+  .vol-form-perms { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px 12px; background:#f7faf7; border:1px solid #e1e8e2; border-radius:10px; }
+  .vol-form-perms strong { font-size:.78rem; color:#405047; margin-right:4px; }
+  .vol-form-perms label { display:inline-flex; align-items:center; gap:6px; font-size:.78rem; font-weight:700; color:#405047; cursor:pointer; }
+  .vol-form-perms input { accent-color:#173f76; }
+
   /* ─── CONTACT ─── */
   #contact { background: linear-gradient(135deg, #071a0e 0%, var(--deep-green) 60%, #0d4a35 100%); position: relative; }
   #contact::before {
@@ -1943,15 +1959,15 @@
 
   @media (max-width: 900px) {
     .scanner-layout { grid-template-columns:1fr; }
-    .qr-reader { min-height:460px; }
+    .qr-reader { width:min(100%, 460px); aspect-ratio:1 / 1; min-height:0; }
     .scan-empty { min-height:260px; }
   }
   @media (max-width: 560px) {
     .volunteer-login-card { padding:1.4rem; }
     .vol-form-grid { grid-template-columns:1fr; }
     .volunteer-panel { padding:.8rem; }
-    .qr-reader { min-height:420px; }
-    .qr-reader video { min-height:360px; }
+    .qr-reader { width:min(100%, 390px); aspect-ratio:1 / 1; min-height:0; }
+    .qr-reader video { min-height:0; height:100% !important; }
     .distribution-grid { grid-template-columns:1fr; }
     .result-photo-wrap { width:min(320px,94%); }
   }
@@ -2732,12 +2748,18 @@
             <label><span>User ID</span><input id="va-username" required autocomplete="off" placeholder="যেমন: volunteer01"></label>
             <label><span>Password</span><input id="va-password" type="password" required autocomplete="new-password" placeholder="Password"></label>
             <label><span>নাম</span><input id="va-name" required placeholder="ভলান্টিয়ারের নাম"></label>
+            <div class="vol-form-perms">
+              <strong>Permission:</strong>
+              <label><input type="checkbox" id="va-perm-tshirtcap"> 👕 T-Shirt & Cap</label>
+              <label><input type="checkbox" id="va-perm-breakfast"> 🍳 Breakfast</label>
+              <label><input type="checkbox" id="va-perm-lunch"> 🍱 Lunch</label>
+            </div>
             <button class="btn-export" type="submit" id="va-save-btn">➕ যোগ করুন</button>
           </form>
           <div id="va-edit-note" style="display:none;margin:.7rem 0;color:#173f76;font-size:.8rem;"></div>
           <div style="overflow:auto;margin-top:1.25rem;">
             <table class="vol-admin-table">
-              <thead><tr><th>#</th><th>User ID</th><th>নাম</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>#</th><th>User ID</th><th>নাম</th><th>Status</th><th>Permission / Action</th></tr></thead>
               <tbody id="volunteer-admin-body"><tr><td colspan="5" style="text-align:center;color:#7b857e;padding:20px;">ভলান্টিয়ার তালিকা লোড করতে রিফ্রেশ করুন।</td></tr></tbody>
             </table>
           </div>
@@ -4276,7 +4298,27 @@ async function loadVolunteerAdminList() {
     const data=await volunteerAdminPost({action:'adminVolunteerList'});
     if(!data.success) throw new Error(data.message || data.error || 'লোড ব্যর্থ');
     if(!data.volunteers.length){ body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;">কোনো ভলান্টিয়ার নেই। উপরের ফর্ম থেকে যোগ করুন।</td></tr>'; return; }
-    body.innerHTML=data.volunteers.map((v,i)=>`<tr><td>${i+1}</td><td><strong>${escapeHtml(v.username)}</strong></td><td>${escapeHtml(v.name)}</td><td><span class="vol-status ${v.active?'on':'off'}">${v.active?'ACTIVE':'INACTIVE'}</span></td><td class="vol-admin-actions"><button onclick="toggleVolunteerAdmin('${escapeJs(v.username)}',${v.active})">${v.active?'⏸ Deactivate':'▶ Activate'}</button><button onclick="editVolunteerAdmin('${escapeJs(v.username)}','${escapeJs(v.name)}')">✏️ Edit</button><button onclick="deleteVolunteerAdmin('${escapeJs(v.username)}')">🗑 Delete</button></td></tr>`).join('');
+    body.innerHTML=data.volunteers.map((v,i)=>{
+      const p=v.permissions||{};
+      return `<tr>
+        <td>${i+1}</td>
+        <td><strong>${escapeHtml(v.username)}</strong></td>
+        <td>${escapeHtml(v.name)}</td>
+        <td><span class="vol-status ${v.active?'on':'off'}">${v.active?'ACTIVE':'INACTIVE'}</span><div class="vol-perm-note">শুধু অনুমোদিত item-ই scan-এর পরে দেখাবে</div></td>
+        <td>
+          <div class="vol-perm-buttons">
+            <button class="vol-perm-btn ${p.tshirtCap?'on':'off'}" onclick="toggleVolunteerPermission('${escapeJs(v.username)}','tshirtCap',${!!p.tshirtCap})">👕 T-Shirt & Cap ${p.tshirtCap?'✓':'✕'}</button>
+            <button class="vol-perm-btn ${p.breakfast?'on':'off'}" onclick="toggleVolunteerPermission('${escapeJs(v.username)}','breakfast',${!!p.breakfast})">🍳 Breakfast ${p.breakfast?'✓':'✕'}</button>
+            <button class="vol-perm-btn ${p.lunch?'on':'off'}" onclick="toggleVolunteerPermission('${escapeJs(v.username)}','lunch',${!!p.lunch})">🍱 Lunch ${p.lunch?'✓':'✕'}</button>
+          </div>
+          <div class="vol-perm-buttons">
+            <button class="vol-perm-btn" onclick="toggleVolunteerAdmin('${escapeJs(v.username)}',${v.active})">${v.active?'⏸ Deactivate':'▶ Activate'}</button>
+            <button class="vol-perm-btn" onclick="editVolunteerAdmin('${escapeJs(v.username)}','${escapeJs(v.name)}',${!!p.tshirtCap},${!!p.breakfast},${!!p.lunch})">✏️ Edit</button>
+            <button class="vol-perm-btn" onclick="deleteVolunteerAdmin('${escapeJs(v.username)}')">🗑 Delete</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
   } catch(e){ body.innerHTML=`<tr><td colspan="5" style="text-align:center;color:#b42318;padding:20px;">❌ ${escapeHtml(e.message)}</td></tr>`; }
 }
 
@@ -4288,20 +4330,27 @@ function escapeJs(s){
     .replace(/\r?\n/g, ' ');
 }
 
-function editVolunteerAdmin(username,name){
+function editVolunteerAdmin(username,name,tshirtCap=false,breakfast=false,lunch=false){
   document.getElementById('va-username').value=username;
   document.getElementById('va-username').readOnly=true;
   document.getElementById('va-name').value=name;
   document.getElementById('va-password').required=false;
   document.getElementById('va-password').value='';
+  document.getElementById('va-perm-tshirtcap').checked=!!tshirtCap;
+  document.getElementById('va-perm-breakfast').checked=!!breakfast;
+  document.getElementById('va-perm-lunch').checked=!!lunch;
   document.getElementById('va-save-btn').textContent='💾 আপডেট করুন';
-  const n=document.getElementById('va-edit-note'); n.style.display='block'; n.textContent='Editing: '+username+' — নতুন password না দিলে আগের password থাকবে।';
+  const n=document.getElementById('va-edit-note'); n.style.display='block'; n.textContent='Editing: '+username+' — permission ও নাম/password এখান থেকেও update করতে পারবেন।';
 }
 
 function resetVolunteerAdminForm(){
   document.getElementById('va-username').value=''; document.getElementById('va-username').readOnly=false;
   document.getElementById('va-password').value=''; document.getElementById('va-password').required=true;
-  document.getElementById('va-name').value=''; document.getElementById('va-save-btn').textContent='➕ যোগ করুন';
+  document.getElementById('va-name').value='';
+  document.getElementById('va-perm-tshirtcap').checked=false;
+  document.getElementById('va-perm-breakfast').checked=false;
+  document.getElementById('va-perm-lunch').checked=false;
+  document.getElementById('va-save-btn').textContent='➕ যোগ করুন';
   document.getElementById('va-edit-note').style.display='none';
 }
 
@@ -4309,10 +4358,15 @@ async function saveVolunteerAdmin(){
   const username=document.getElementById('va-username').value.trim();
   const password=document.getElementById('va-password').value;
   const name=document.getElementById('va-name').value.trim();
+  const permissions={
+    tshirtCap:document.getElementById('va-perm-tshirtcap').checked,
+    breakfast:document.getElementById('va-perm-breakfast').checked,
+    lunch:document.getElementById('va-perm-lunch').checked
+  };
   if(!username||!name||(document.getElementById('va-password').required&&!password)){showToast('সব প্রয়োজনীয় তথ্য দিন।','error');return;}
   const editing=document.getElementById('va-username').readOnly;
   try{
-    const data=await volunteerAdminPost({action:editing?'adminVolunteerUpdate':'adminVolunteerCreate',username,password,name});
+    const data=await volunteerAdminPost({action:editing?'adminVolunteerUpdate':'adminVolunteerCreate',username,password,name,permissions});
     if(!data.success) throw new Error(data.message||data.error||'সংরক্ষণ ব্যর্থ');
     showToast(editing?'ভলান্টিয়ার আপডেট হয়েছে।':'ভলান্টিয়ার যোগ হয়েছে।','success');
     resetVolunteerAdminForm(); loadVolunteerAdminList();
@@ -4321,6 +4375,15 @@ async function saveVolunteerAdmin(){
 
 async function toggleVolunteerAdmin(username,active){
   try{const data=await volunteerAdminPost({action:'adminVolunteerToggle',username,active:!active}); if(!data.success)throw new Error(data.message||data.error); showToast('Status আপডেট হয়েছে।','success'); loadVolunteerAdminList();}catch(e){showToast('❌ '+e.message,'error');}
+}
+
+async function toggleVolunteerPermission(username,permission,enabled){
+  try{
+    const data=await volunteerAdminPost({action:'adminVolunteerPermission',username,permission,enabled:!enabled});
+    if(!data.success) throw new Error(data.message||data.error||'Permission update failed');
+    showToast('Permission আপডেট হয়েছে।','success');
+    loadVolunteerAdminList();
+  }catch(e){showToast('❌ '+e.message,'error');}
 }
 
 async function deleteVolunteerAdmin(username){
@@ -4404,6 +4467,7 @@ function exportCSV() {
 // ═══════════════════════════════════════════════════
 let volunteerToken = sessionStorage.getItem('muhs_volunteer_token') || '';
 let volunteerName = sessionStorage.getItem('muhs_volunteer_name') || '';
+let volunteerPermissions = JSON.parse(sessionStorage.getItem('muhs_volunteer_permissions') || '{"tshirtCap":false,"breakfast":false,"lunch":false}');
 let volunteerScanner = null;
 let volunteerScanning = false;
 let volunteerCurrent = null;
@@ -4458,9 +4522,11 @@ async function volunteerLogin() {
 
     volunteerToken = data.token;
     volunteerName = data.name || username;
+    volunteerPermissions = data.permissions || {tshirtCap:false,breakfast:false,lunch:false};
 
     sessionStorage.setItem('muhs_volunteer_token', volunteerToken);
     sessionStorage.setItem('muhs_volunteer_name', volunteerName);
+    sessionStorage.setItem('muhs_volunteer_permissions', JSON.stringify(volunteerPermissions));
 
     openVolunteerPanel();
     showVolunteerMessage('');
@@ -4488,6 +4554,7 @@ function volunteerLogout() {
   volunteerVerified = false;
   sessionStorage.removeItem('muhs_volunteer_token');
   sessionStorage.removeItem('muhs_volunteer_name');
+  sessionStorage.removeItem('muhs_volunteer_permissions');
 
   document.getElementById('volunteerPanel').style.display = 'none';
   document.getElementById('volunteerLoginCard').style.display = 'block';
@@ -4535,12 +4602,13 @@ async function startVolunteerScanner() {
     await volunteerScanner.start(
       {facingMode:'environment'},
       {
-        fps: 10,
+        fps: 20,
         qrbox: function(viewfinderWidth, viewfinderHeight) {
-          const size = Math.min(viewfinderWidth * .72, viewfinderHeight * .72, 340);
-          return { width: Math.floor(size), height: Math.floor(size) };
+          const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * .70);
+          return { width: size, height: size };
         },
         aspectRatio: 1.0,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
         disableFlip: false
       },
       onVolunteerQrSuccess,
@@ -4582,6 +4650,10 @@ async function onVolunteerQrSuccess(decodedText) {
   if (decodedText === lastScannedQr && now - lastScannedAt < 3500) return;
   lastScannedQr = decodedText;
   lastScannedAt = now;
+
+  // Stop camera immediately after the first valid QR. This prevents repeated
+  // scans and lets the participant result take over the screen quickly.
+  await stopVolunteerScanner();
 
   let uniqueId = String(decodedText || '').trim();
   if (uniqueId.indexOf('MUHS:') === 0) uniqueId = uniqueId.substring(5).trim();
@@ -4649,10 +4721,11 @@ async function renderVolunteerParticipant(p) {
   }
 
   const statuses = p.distribution || {};
-  setDistributionState('dist-tshirt', 'dist-tshirt-status', statuses['T-Shirt']);
-  setDistributionState('dist-cap', 'dist-cap-status', statuses['Cap']);
-  setDistributionState('dist-breakfast', 'dist-breakfast-status', statuses['Breakfast']);
-  setDistributionState('dist-lunch', 'dist-lunch-status', statuses['Lunch']);
+  const perms = p.permissions || volunteerPermissions || {};
+  setDistributionState('dist-tshirt', 'dist-tshirt-status', statuses['T-Shirt'], !perms.tshirtCap);
+  setDistributionState('dist-cap', 'dist-cap-status', statuses['Cap'], !perms.tshirtCap);
+  setDistributionState('dist-breakfast', 'dist-breakfast-status', statuses['Breakfast'], !perms.breakfast);
+  setDistributionState('dist-lunch', 'dist-lunch-status', statuses['Lunch'], !perms.lunch);
 
   document.getElementById('vol-confirm-area').style.display = 'none';
   document.getElementById('vol-result-msg').textContent = '';
@@ -4663,19 +4736,22 @@ async function renderVolunteerParticipant(p) {
   badge.classList.remove('verified');
 }
 
-function setDistributionState(inputId, statusId, distributed) {
+function setDistributionState(inputId, statusId, distributed, notPermitted=false) {
   const input = document.getElementById(inputId);
   const status = document.getElementById(statusId);
   if (!input || !status) return;
 
   input.checked = false;
-  input.disabled = !!distributed;
+  input.disabled = !!distributed || !!notPermitted;
 
   const label = input.closest('.distribution-item');
-  if (label) label.classList.toggle('distributed', !!distributed);
+  if (label) {
+    label.style.display = notPermitted ? 'none' : '';
+    label.classList.toggle('distributed', !!distributed);
+  }
 
-  status.textContent = distributed ? '✓ বিতরণ হয়েছে' : 'প্রাপ্য';
-  status.style.color = distributed ? '#16733a' : '#9a6500';
+  status.textContent = notPermitted ? 'অনুমতি নেই' : (distributed ? '✓ বিতরণ হয়েছে' : 'প্রাপ্য');
+  status.style.color = notPermitted ? '#999' : (distributed ? '#16733a' : '#9a6500');
 }
 
 function verifyVolunteerParticipant() {
@@ -4692,8 +4768,19 @@ function verifyVolunteerParticipant() {
     if (el && el.checked && !el.disabled) selected.push(item);
   });
 
+  const allowedByVolunteer = {
+    'T-Shirt': !!(volunteerPermissions && volunteerPermissions.tshirtCap),
+    'Cap': !!(volunteerPermissions && volunteerPermissions.tshirtCap),
+    'Breakfast': !!(volunteerPermissions && volunteerPermissions.breakfast),
+    'Lunch': !!(volunteerPermissions && volunteerPermissions.lunch)
+  };
+  const unauthorized = selected.filter(item => !allowedByVolunteer[item]);
+  if (unauthorized.length) {
+    document.getElementById('vol-result-msg').textContent = 'আপনার অনুমোদিত distribution item-এর বাইরে নির্বাচন করা যাবে না।';
+    return;
+  }
   if (!selected.length) {
-    document.getElementById('vol-result-msg').textContent = 'অন্তত একটি distribution item নির্বাচন করুন।';
+    document.getElementById('vol-result-msg').textContent = 'আপনার জন্য অনুমোদিত item নির্বাচন করুন।';
     return;
   }
 
