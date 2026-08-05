@@ -2469,13 +2469,35 @@ async function loadFromCloud(admin = false) {
 
     if (data.summary) cloudSummary = data.summary;
 
+    // Public mode also receives the card-safe registration dataset from GAS.
+    // Use it as the cloud source of truth so Photo/ID cards work on every device,
+    // not only on the browser that originally registered the participant.
+    if (!admin && Array.isArray(data.registrations)) {
+      const localMap = {};
+      registrations.forEach(r => {
+        if (r && r.uniqueId) localMap[r.uniqueId] = r;
+      });
+      registrations = data.registrations.map(r => ({
+        ...r,
+        photo: (localMap[r.uniqueId] && localMap[r.uniqueId].photo) || r.photoUrl || '',
+        photoUrl: r.photoUrl || '',
+        idCardUrl: r.idCardUrl || '',
+        photoCardUrl: r.photoCardUrl || ''
+      }));
+      localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+      updateBatchFilter();
+      renderTable();
+    }
+
     if (admin && Array.isArray(data.registrations)) {
       // Merge: cloud is source of truth, but keep freshest local photo if newer than cloud's
       const localMap = {};
       registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
       registrations = data.registrations.map(r => ({
         ...r,
-        photo: localMap[r.uniqueId] || r.photoUrl || r.photo || '' // prefer local cache, else permanent Drive URL from cloud
+        photo: (localMap[r.uniqueId] && String(localMap[r.uniqueId]).indexOf('data:image/') === 0)
+          ? localMap[r.uniqueId]
+          : (r.photoUrl || r.photo || '') // permanent Drive URL is the cross-device source
       }));
       localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
       updateBatchFilter();
