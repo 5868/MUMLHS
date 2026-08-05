@@ -3348,8 +3348,26 @@ function buildPhotoCardCanvas(reg, done) {
 
   const img=new Image();
   const seal=new Image();
-  img.onload=()=>draw(); img.onerror=()=>draw();
-  seal.onload=()=>draw(); seal.onerror=()=>draw();
+
+  // Load every canvas image completely before drawing/exporting. This prevents
+  // the preview/download/Drive copy from being created before the seal arrives.
+  function loadImageElement(image, sources, optional){
+    sources=(Array.isArray(sources)?sources:[sources]).filter(Boolean);
+    return new Promise(function(resolve){
+      let index=0;
+      function tryNext(){
+        if(index>=sources.length){
+          resolve(optional ? null : image);
+          return;
+        }
+        image.onload=function(){ resolve(image); };
+        image.onerror=function(){ index++; tryNext(); };
+        image.src=sources[index];
+      }
+      if(!sources.length){ resolve(optional ? null : image); return; }
+      tryNext();
+    });
+  }
 
   function roundRectFill(x,y,w,h,r,fill){
     ctx.beginPath();
@@ -3430,8 +3448,6 @@ function buildPhotoCardCanvas(reg, done) {
   let drawn=false;
   function draw(){
     if(drawn) return;
-    if(!img.complete) return;
-    // Seal is optional for rendering; a missing seal must never suppress the photo.
     drawn=true;
 
     ctx.clearRect(0,0,W,H);
@@ -3459,7 +3475,7 @@ function buildPhotoCardCanvas(reg, done) {
 
     // Registered seal: moved substantially lower, ending just above
     // the GOLDEN JUBILEE branding. White background is already transparent.
-    if(seal.complete && seal.naturalWidth){
+    if(seal.naturalWidth){
       const sw=300, sh=303;
       const sx=W-sw-16;
       const sy=H-52-sh-72; // lift seal about two text lines above GOLDEN JUBILEE
@@ -3545,18 +3561,30 @@ function buildPhotoCardCanvas(reg, done) {
     done(canvas);
   }
 
-  // Use the exact same cloud-photo resolver used by the working ID Card.
-  // This is deliberately shared so Photo Card and ID Card cannot diverge.
-  // Prefer the permanent Drive photo via GAS; fall back to local data only if needed.
-  resolveCardPhotoSource(reg).then(photoSource=>{
-    img.onload=()=>draw();
-    img.onerror=()=>draw();
-    seal.onload=()=>draw();
-    seal.onerror=()=>draw();
-    img.src=photoSource||'';
-    seal.src='images/School/registered-seal.png';
-    if(!img.src) img.complete=true;
-  });
+  // Resolve the participant photo first, then preload BOTH the photo and seal.
+  // Drawing starts only after both requests have completed (or exhausted fallback).
+  resolveCardPhotoSource(reg)
+    .then(function(photoSource){
+      return Promise.all([
+        loadImageElement(img, photoSource ? [photoSource] : [], true),
+        loadImageElement(seal, [
+          'School/registered-seal.png',
+          './School/registered-seal.png',
+          'images/School/registered-seal.png',
+          './images/School/registered-seal.png'
+        ], true)
+      ]);
+    })
+    .catch(function(err){
+      console.warn('Photo Card image preload failed:',err);
+      return loadImageElement(seal, [
+        'School/registered-seal.png',
+        './School/registered-seal.png',
+        'images/School/registered-seal.png',
+        './images/School/registered-seal.png'
+      ], true);
+    })
+    .then(function(){ draw(); });
 
 }
 
