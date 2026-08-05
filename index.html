@@ -1987,10 +1987,61 @@
 .vol-admin-actions button{border:1px solid #d7ddd8;background:#fff;border-radius:7px;padding:6px 9px;cursor:pointer;margin-right:4px}
 @media(max-width:800px){.vol-admin-form{grid-template-columns:1fr 1fr}.vol-admin-form button{grid-column:1/-1}}
 @media(max-width:560px){.vol-admin-form{grid-template-columns:1fr}.vol-admin-form button{grid-column:auto}.vol-admin-table{font-size:.75rem}.vol-admin-table th,.vol-admin-table td{padding:8px 6px}}
+
+  /* ─── PAYMENT VERIFICATION / APPLICATION ─── */
+  .payment-waiting-card{margin-top:1.5rem;background:#fff;border:1px solid rgba(200,150,12,.24);border-radius:18px;box-shadow:0 10px 30px rgba(11,61,46,.08);overflow:hidden;}
+  .payment-waiting-head{padding:1rem 1.15rem;background:linear-gradient(135deg,#0b3d2e,#145a3e);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .payment-waiting-head h3{margin:0;font-family:'Noto Serif Bengali',serif;font-size:1.05rem;}
+  .payment-waiting-head span{font-size:.72rem;opacity:.75;}
+  .payment-waiting-scroll{max-height:430px;overflow:auto;overscroll-behavior:contain;}
+  .payment-row{display:grid;grid-template-columns:110px 1.3fr 1fr 1fr 130px 120px 110px;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid #edf0ed;font-size:.78rem;background:#fff;}
+  .payment-row:nth-child(even){background:#fbfcfa;}
+  .payment-row.head{position:sticky;top:0;z-index:2;background:#f2f6f2;color:#466054;font-weight:800;font-size:.72rem;}
+  .payment-row .pid{font-family:'Courier New',monospace;font-weight:900;color:#173f76;}
+  .payment-row .pname{font-weight:800;color:#183326;}
+  .payment-row .ptxn{font-family:'Courier New',monospace;word-break:break-all;}
+  .pay-verify-btn{border:0;border-radius:9px;padding:8px 10px;background:#16733a;color:#fff;font-weight:800;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;font-size:.74rem;}
+  .pay-verify-btn:disabled{opacity:.5;cursor:not-allowed;}
+  .pay-proof-link{color:#173f76;text-decoration:none;font-weight:800;}
+  .pay-status-pending{color:#9a6500;font-weight:800;}
+  .pay-status-verified{color:#16733a;font-weight:800;}
+  .pay-status-notpaid{color:#b42318;font-weight:800;}
+  .application-status-card{margin-top:1rem;padding:14px 16px;border-radius:14px;background:#fff;border:1px solid rgba(11,61,46,.12);}
+  .application-status-card .status-pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:.74rem;font-weight:900;}
+  .status-pending{background:#fff4d6;color:#9a6500;}.status-notpaid{background:#ffe9e6;color:#b42318;}.status-verified{background:#e7f7ed;color:#16733a;}
+  @media(max-width:900px){.payment-row{grid-template-columns:100px 1.2fr 1fr 1fr 110px 95px 90px;min-width:760px}.payment-waiting-scroll{overflow-x:auto;}}
+
+  /* Hidden A4 application template rendered by html2canvas */
+  #applicationPdfRender{position:fixed;left:-20000px;top:0;width:794px;height:1123px;background:#fff;z-index:-1;overflow:hidden;}
+  .pdf-a4{width:794px;height:1123px;background:#fff;color:#15251b;font-family:'Noto Sans Bengali',sans-serif;padding:34px 42px;position:relative;box-sizing:border-box;}
+  .pdf-a4:before{content:'';position:absolute;inset:18px;border:2px solid #c8960c;pointer-events:none;}
+  .pdf-head{text-align:center;border-bottom:1px solid #c8960c;padding-bottom:12px;margin-bottom:14px;}
+  .pdf-head .school{font-family:'Noto Serif Bengali',serif;font-size:25px;font-weight:900;color:#0b3d2e;}
+  .pdf-head .event{font-size:14px;font-weight:800;color:#a07010;margin-top:3px;}
+  .pdf-title{font-family:'Noto Serif Bengali',serif;font-size:21px;font-weight:900;color:#173f76;margin:10px 0;}
+  .pdf-top{display:grid;grid-template-columns:1fr 150px;gap:20px;align-items:start;}
+  .pdf-meta{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;font-size:11px;}
+  .pdf-meta .full{grid-column:1/-1;}
+  .pdf-meta .label{color:#68736c;font-weight:700;display:block;font-size:9px;}
+  .pdf-meta .value{font-weight:800;color:#1a2e1e;}
+  .pdf-photo{width:145px;height:175px;border:2px solid #c8960c;border-radius:10px;object-fit:cover;background:#f1f4f1;}
+  .pdf-section-title{margin:13px 0 7px;padding:6px 9px;background:#0b3d2e;color:#fff;border-radius:6px;font-size:11px;font-weight:900;}
+  .pdf-address{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px;}
+  .pdf-address-box{border:1px solid #d9dfda;border-radius:7px;padding:8px;line-height:1.55;}
+  .pdf-payment{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:10px;}
+  .pdf-payment-box{border:1px solid #d9dfda;border-radius:7px;padding:8px;min-height:48px;}
+  .pdf-payment-status{margin-top:9px;padding:8px 10px;border-radius:7px;background:#fff4d6;border:1px solid #e6c45a;color:#8b6500;font-size:10px;font-weight:900;}
+  .pdf-qr{position:absolute;right:50px;bottom:46px;text-align:center;width:120px;}
+  .pdf-qr-box{width:110px;height:110px;margin:auto;background:#fff;}
+  .pdf-qr small{display:block;font-size:7px;color:#68736c;margin-top:4px;line-height:1.25;}
+  .pdf-footer{position:absolute;left:50px;right:190px;bottom:50px;border-top:1px solid #d9dfda;padding-top:8px;font-size:8px;color:#68736c;line-height:1.45;}
+
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -2573,6 +2624,17 @@
         <button class="vol-logout-btn" onclick="volunteerLogout()">Logout</button>
       </div>
 
+      <div id="volPaymentVerification" class="payment-waiting-card" style="display:none;">
+        <div class="payment-waiting-head">
+          <div><h3>💳 Payment Verification</h3><span>শুধু Payment Verification permission পাওয়া ভলান্টিয়াররা আপডেট করতে পারবেন।</span></div>
+          <button class="vol-secondary-btn" onclick="loadVolunteerPaymentQueue()">🔄 Refresh</button>
+        </div>
+        <div class="payment-waiting-scroll" id="vol-payment-scroll">
+          <div class="payment-row head"><div>ID</div><div>NAME</div><div>TYPE</div><div>BATCH / CLASS</div><div>TOTAL</div><div>TXNID</div><div>Action</div></div>
+          <div id="vol-payment-rows"></div>
+        </div>
+      </div>
+
       <div class="scanner-layout">
         <div class="scanner-column">
           <div class="scanner-title">
@@ -2753,6 +2815,7 @@
               <label><input type="checkbox" id="va-perm-tshirtcap"> 👕 T-Shirt & Cap</label>
               <label><input type="checkbox" id="va-perm-breakfast"> 🍳 Breakfast</label>
               <label><input type="checkbox" id="va-perm-lunch"> 🍱 Lunch</label>
+              <label><input type="checkbox" id="va-perm-payment"> 💳 Payment Verification</label>
             </div>
             <button class="btn-export" type="submit" id="va-save-btn">➕ যোগ করুন</button>
           </form>
@@ -2855,6 +2918,9 @@
   </div>
 </div>
 
+<!-- APPLICATION PDF RENDER TARGET -->
+<div id="applicationPdfRender" aria-hidden="true"></div>
+
 <!-- FOOTER -->
 <footer>
   <div class="footer-emblem">৫০</div>
@@ -2891,10 +2957,10 @@ setTimeout(hidePreloader, 1500);
 // ─── HERO BACKGROUND SLIDESHOW ───
 (function() {
   const photos = [
-    'images/School/Slide-1.JPG',
-    'images/School/Slide-2.JPG',
-    'images/School/Slide-3.JPG',
-    'images/School/Slide-4.JPG',
+    'images/School/Slide-1.jpg',
+    'images/School/Slide-2.jpg',
+    'images/School/Slide-3.jpg',
+    'images/School/Slide-4.jpg',
     'images/School/Slide-5.jpg',
     'images/School/Slide-6.jpg'
   ];
@@ -3046,7 +3112,9 @@ async function loadFromCloud(admin = false) {
         photo: (localMap[r.uniqueId] && localMap[r.uniqueId].photo) || r.photoUrl || '',
         photoUrl: r.photoUrl || '',
         idCardUrl: r.idCardUrl || '',
-        photoCardUrl: r.photoCardUrl || ''
+        photoCardUrl: r.photoCardUrl || '',
+        applicationPdfUrl: r.applicationPdfUrl || '',
+        paymentVerificationStatus: r.paymentVerificationStatus || ''
       }));
       localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
       updateBatchFilter();
@@ -3482,10 +3550,11 @@ async function submitRegistration() {
   if (USE_CLOUD) {
     await uploadPhotoToDrive(reg);
     if (reg.paymentScreenshot) await uploadPaymentScreenshotToDrive(reg);
-    // Generate and archive the participant ID card automatically; no browser download here.
-    await downloadIdCard(reg, false);
+    // ID/Photo Card are intentionally NOT generated before payment verification.
+    // Only the submitted application PDF is generated and archived here.
   }
 
+  await downloadApplicationPDF(reg, true);
   showToast(`✅ নিবন্ধন সফল! আপনার আইডি: ${uniqueId}`);
   // Show ID in a visible box too
   window._lastReg = reg;
@@ -3566,8 +3635,8 @@ function showRegSuccessModal(uid, name, reg) {
       </div>
       <div style="font-size:.72rem;color:#777;margin:-4px 0 14px;">এই QR code সংরক্ষণ করুন — অনুষ্ঠানের দিন যাচাইয়ের জন্য প্রয়োজন হবে।</div>
       <div style="display:flex;gap:10px;margin-top:0;">
-        <button onclick="downloadParticipantQR(window._lastReg)" style="flex:1;padding:12px;background:#173f76;color:#fff;border:none;border-radius:10px;font-size:0.86rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">▣ QR ডাউনলোড</button>
-        <button onclick="downloadIdCard(window._lastReg)" style="flex:1;padding:12px;background:var(--gold);color:var(--deep-green);border:none;border-radius:10px;font-size:0.86rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">📥 ID Card</button>
+        
+        <button onclick="downloadApplicationPDF(window._lastReg)" style="flex:1;padding:12px;background:var(--gold);color:var(--deep-green);border:none;border-radius:10px;font-size:0.86rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">📄 Application PDF</button>
         <button onclick="document.getElementById('regSuccessModal').remove()" style="flex:1;padding:12px;background:var(--deep-green);color:white;border:none;border-radius:10px;font-size:0.86rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">ঠিক আছে ✓</button>
       </div>
     </div>
@@ -3897,8 +3966,39 @@ async function downloadIdCard(reg, shouldDownload) {
       ctx.fillStyle=black;roundRect(ctx,(W-idW)/2,idY-34,idW,52,16);ctx.fill();ctx.fillStyle=white;ctx.fillText(idText,W/2,idY);
       ctx.font='500 23px Arial,sans-serif';ctx.fillStyle=black;ctx.fillText(reg.phone ? ('PHONE: '+normalizeBDPhone(reg.phone)) : '',W/2,idY+44);
       ctx.font='700 22px Arial,sans-serif';ctx.fillText((reg.type==='student'?'Student':reg.type==='alumni'?'Alumni':reg.type==='teacher'?'Teacher / Staff':'Participant'),W/2,idY+82);
+      if(reg.tshirtSize){
+        ctx.font='800 22px Arial,sans-serif';
+        ctx.fillStyle=black;
+        ctx.fillText('T-Shirt: '+String(reg.tshirtSize),W/2,idY+118);
+      }
 
-      var cardDataUrl=canvas.toDataURL('image/jpeg',0.96); uploadIdCardToDrive({...reg,_driveKind:'idcard'},cardDataUrl);
+      // Participant QR — bottom-left, inside a clean white rounded box.
+      // The QR opens the public payment-verification / ID-card access page.
+      try{
+        var qrHost=document.createElement('div');
+        qrHost.style.cssText='position:fixed;left:-20000px;top:0;width:130px;height:130px;background:#fff;padding:8px;';
+        document.body.appendChild(qrHost);
+        renderParticipantQR(qrHost,reg);
+        setTimeout(function(){
+          var qcanvas=qrHost.querySelector('canvas');
+          if(qcanvas){
+            ctx.save();
+            ctx.fillStyle='#fff';
+            roundRect(ctx,24,H-150,132,132,12);ctx.fill();
+            ctx.strokeStyle='rgba(0,0,0,.12)';ctx.lineWidth=1;ctx.stroke();
+            ctx.drawImage(qcanvas,35,H-139,110,110);
+            ctx.restore();
+          }
+          qrHost.remove();
+          var cardDataUrl=canvas.toDataURL('image/jpeg',0.96);
+          uploadIdCardToDrive({...reg,_driveKind:'idcard'},cardDataUrl);
+          if(shouldDownload){var link=document.createElement('a');link.download=(reg.uniqueId||'id_card')+'_card.jpg';link.href=cardDataUrl;document.body.appendChild(link);link.click();document.body.removeChild(link);showToast('📥 ID Card ডাউনলোড হচ্ছে!');}
+        },80);
+      }catch(e){
+        var cardDataUrl=canvas.toDataURL('image/jpeg',0.96); uploadIdCardToDrive({...reg,_driveKind:'idcard'},cardDataUrl);
+        if(shouldDownload){var link=document.createElement('a');link.download=(reg.uniqueId||'id_card')+'_card.jpg';link.href=cardDataUrl;document.body.appendChild(link);link.click();document.body.removeChild(link);showToast('📥 ID Card ডাউনলোড হচ্ছে!');}
+      }
+      return;
       if(shouldDownload){var link=document.createElement('a');link.download=(reg.uniqueId||'id_card')+'_card.jpg';link.href=cardDataUrl;document.body.appendChild(link);link.click();document.body.removeChild(link);showToast('📥 ID Card ডাউনলোড হচ্ছে!');}
     }
   }
@@ -4207,14 +4307,13 @@ function renderTable() {
     window._renderedCardRecords = data;
     cv.innerHTML = data.map((r,i) => `
       <div class="person-card photo-card-render" data-card-index="${i}">
-        <canvas class="person-card-canvas" id="photo-card-canvas-${i}"></canvas>
+        ${r.paymentVerificationStatus==='Verified' ? `<canvas class="person-card-canvas" id="photo-card-canvas-${i}"></canvas>` : `<div style="height:100%;min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(145deg,#f7faf7,#fffdf5);padding:28px;"><div style="width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff4d6;color:#9a6500;font-size:1.8rem;margin-bottom:14px;">💳</div><div style="font-weight:900;color:#0b3d2e;font-family:'Noto Serif Bengali',serif;font-size:1rem;">Waiting for Payment Verification</div><div style="margin-top:7px;font-size:.74rem;color:#68736c;">Payment verification complete হলে Photo Card ও ID Card সক্রিয় হবে।</div></div>`}
         <div class="person-card-downloads">
-          <button class="person-card-download-btn" title="Photo Card Download" onclick="event.stopPropagation();downloadPhotoCard(window._renderedCardRecords[${i}],true)">⬇</button>
-          <button class="person-card-download-btn" title="ID Card Download" onclick="event.stopPropagation();downloadIdCard(window._renderedCardRecords[${i}],true)">🪪</button>
-          <button class="qr-mini-btn" title="QR Code" onclick="event.stopPropagation();showParticipantQR(window._renderedCardRecords[${i}])">QR</button>
+          ${r.paymentVerificationStatus==='Verified' ? `<button class="person-card-download-btn" title="Photo Card Download" onclick="event.stopPropagation();downloadPhotoCard(window._renderedCardRecords[${i}],true)">⬇</button><button class="person-card-download-btn" title="ID Card Download" onclick="event.stopPropagation();downloadIdCard(window._renderedCardRecords[${i}],true)">🪪</button>` : `<span style="font-size:.65rem;color:#9a6500;background:#fff4d6;padding:5px 8px;border-radius:8px;font-weight:800;">Payment Pending</span>`}
         </div>
       </div>`).join('');
     data.forEach((r,i)=>{
+      if(r.paymentVerificationStatus!=='Verified') return;
       buildPhotoCardCanvas(r,function(canvas){
         const host=document.getElementById('photo-card-canvas-'+i);
         if(!host)return;
@@ -4310,10 +4409,11 @@ async function loadVolunteerAdminList() {
             <button class="vol-perm-btn ${p.tshirtCap?'on':'off'}" onclick="toggleVolunteerPermission('${escapeJs(v.username)}','tshirtCap',${!!p.tshirtCap})">👕 T-Shirt & Cap ${p.tshirtCap?'✓':'✕'}</button>
             <button class="vol-perm-btn ${p.breakfast?'on':'off'}" onclick="toggleVolunteerPermission('${escapeJs(v.username)}','breakfast',${!!p.breakfast})">🍳 Breakfast ${p.breakfast?'✓':'✕'}</button>
             <button class="vol-perm-btn ${p.lunch?'on':'off'}" onclick="toggleVolunteerPermission('${escapeJs(v.username)}','lunch',${!!p.lunch})">🍱 Lunch ${p.lunch?'✓':'✕'}</button>
+            <button class="vol-perm-btn ${p.paymentVerification?'on':'off'}" onclick="toggleVolunteerPermission('${escapeJs(v.username)}','paymentVerification',${!!p.paymentVerification})">💳 Payment Verification ${p.paymentVerification?'✓':'✕'}</button>
           </div>
           <div class="vol-perm-buttons">
             <button class="vol-perm-btn" onclick="toggleVolunteerAdmin('${escapeJs(v.username)}',${v.active})">${v.active?'⏸ Deactivate':'▶ Activate'}</button>
-            <button class="vol-perm-btn" onclick="editVolunteerAdmin('${escapeJs(v.username)}','${escapeJs(v.name)}',${!!p.tshirtCap},${!!p.breakfast},${!!p.lunch})">✏️ Edit</button>
+            <button class="vol-perm-btn" onclick="editVolunteerAdmin('${escapeJs(v.username)}','${escapeJs(v.name)}',${!!p.tshirtCap},${!!p.breakfast},${!!p.lunch},${!!p.paymentVerification})">✏️ Edit</button>
             <button class="vol-perm-btn" onclick="deleteVolunteerAdmin('${escapeJs(v.username)}')">🗑 Delete</button>
           </div>
         </td>
@@ -4330,7 +4430,7 @@ function escapeJs(s){
     .replace(/\r?\n/g, ' ');
 }
 
-function editVolunteerAdmin(username,name,tshirtCap=false,breakfast=false,lunch=false){
+function editVolunteerAdmin(username,name,tshirtCap=false,breakfast=false,lunch=false,paymentVerification=false){
   document.getElementById('va-username').value=username;
   document.getElementById('va-username').readOnly=true;
   document.getElementById('va-name').value=name;
@@ -4339,6 +4439,7 @@ function editVolunteerAdmin(username,name,tshirtCap=false,breakfast=false,lunch=
   document.getElementById('va-perm-tshirtcap').checked=!!tshirtCap;
   document.getElementById('va-perm-breakfast').checked=!!breakfast;
   document.getElementById('va-perm-lunch').checked=!!lunch;
+  document.getElementById('va-perm-payment').checked=!!paymentVerification;
   document.getElementById('va-save-btn').textContent='💾 আপডেট করুন';
   const n=document.getElementById('va-edit-note'); n.style.display='block'; n.textContent='Editing: '+username+' — permission ও নাম/password এখান থেকেও update করতে পারবেন।';
 }
@@ -4350,6 +4451,7 @@ function resetVolunteerAdminForm(){
   document.getElementById('va-perm-tshirtcap').checked=false;
   document.getElementById('va-perm-breakfast').checked=false;
   document.getElementById('va-perm-lunch').checked=false;
+  document.getElementById('va-perm-payment').checked=false;
   document.getElementById('va-save-btn').textContent='➕ যোগ করুন';
   document.getElementById('va-edit-note').style.display='none';
 }
@@ -4361,7 +4463,8 @@ async function saveVolunteerAdmin(){
   const permissions={
     tshirtCap:document.getElementById('va-perm-tshirtcap').checked,
     breakfast:document.getElementById('va-perm-breakfast').checked,
-    lunch:document.getElementById('va-perm-lunch').checked
+    lunch:document.getElementById('va-perm-lunch').checked,
+    paymentVerification:document.getElementById('va-perm-payment').checked
   };
   if(!username||!name||(document.getElementById('va-password').required&&!password)){showToast('সব প্রয়োজনীয় তথ্য দিন।','error');return;}
   const editing=document.getElementById('va-username').readOnly;
@@ -4529,6 +4632,7 @@ async function volunteerLogin() {
     sessionStorage.setItem('muhs_volunteer_permissions', JSON.stringify(volunteerPermissions));
 
     openVolunteerPanel();
+    if (volunteerPermissions && volunteerPermissions.paymentVerification) loadVolunteerPaymentQueue();
     showVolunteerMessage('');
   } catch (err) {
     showVolunteerMessage('Server-এর সাথে সংযোগ করা যাচ্ছে না।');
@@ -4656,6 +4760,8 @@ async function onVolunteerQrSuccess(decodedText) {
   await stopVolunteerScanner();
 
   let uniqueId = String(decodedText || '').trim();
+  if (uniqueId.indexOf('MUHS:') === 0) uniqueId = uniqueId.substring(5).trim();
+  try { const u=new URL(uniqueId); const q=u.searchParams.get('uid'); if(q) uniqueId=q; } catch(e) {}
   if (uniqueId.indexOf('MUHS:') === 0) uniqueId = uniqueId.substring(5).trim();
   if (!uniqueId) return;
 
@@ -4841,9 +4947,123 @@ async function confirmVolunteerDistribution() {
   }
 }
 
+
+// ═══════════════════════════════════════════════════
+// PAYMENT VERIFICATION QUEUE
+// ═══════════════════════════════════════════════════
+async function loadVolunteerPaymentQueue(){
+  const wrap=document.getElementById('volPaymentVerification');
+  const rows=document.getElementById('vol-payment-rows');
+  if(!wrap || !rows) return;
+  if(!volunteerToken || !(volunteerPermissions && volunteerPermissions.paymentVerification)) return;
+  wrap.style.display='block';
+  rows.innerHTML='<div style="padding:20px;text-align:center;color:#68736c;">⏳ Payment queue লোড হচ্ছে...</div>';
+  try{
+    const data=await volunteerPost({action:'volunteerPaymentList',token:volunteerToken});
+    if(!data.success) throw new Error(data.message||data.error||'লোড ব্যর্থ');
+    if(!data.rows.length){rows.innerHTML='<div style="padding:25px;text-align:center;color:#68736c;">✅ বর্তমানে কোনো Pending payment নেই।</div>';return;}
+    rows.innerHTML=data.rows.map(r=>{
+      const academic=r.type==='alumni'?('Batch '+(r.batch||'')):(r.type==='student'?((r.studentClass||'')+' '+(r.branch||'')):'—');
+      const proof=r.txnId?String(r.txnId):(r.paymentProofUrl?'<a class="pay-proof-link" href="'+escapeHtmlSafe(r.paymentProofUrl)+'" target="_blank">Screenshot</a>':'—');
+      return `<div class="payment-row">
+        <div class="pid">${escapeHtmlSafe(r.uniqueId||'')}</div>
+        <div class="pname">${escapeHtmlSafe(r.name||'')}</div>
+        <div>${escapeHtmlSafe(volunteerTypeMap[r.type]||r.type||'')}</div>
+        <div>${escapeHtmlSafe(academic)}</div>
+        <div><strong>৳ ${Number(r.totalFee||0).toLocaleString('en-US')}</strong></div>
+        <div class="ptxn">${proof}</div>
+        <div><button class="pay-verify-btn" onclick="verifyPaymentFromQueue('${escapeJs(r.uniqueId)}',this)">✓ Verify</button></div>
+      </div>`;
+    }).join('');
+  }catch(e){rows.innerHTML='<div style="padding:20px;text-align:center;color:#b42318;">❌ '+escapeHtmlSafe(e.message)+'</div>';}
+}
+
+async function verifyPaymentFromQueue(uid,btn){
+  if(!volunteerToken || !(volunteerPermissions && volunteerPermissions.paymentVerification)) return;
+  if(!confirm('এই payment-এর TxnID/Proof যাচাই করে Confirm করবেন?')) return;
+  btn.disabled=true; btn.textContent='⏳';
+  try{
+    const data=await volunteerPost({action:'volunteerPaymentVerify',token:volunteerToken,uniqueId:uid});
+    if(!data.success) throw new Error(data.message||data.error||'Verification ব্যর্থ');
+    showToast('✅ Payment verification complete — card generation started.','success');
+    await generateVerifiedCards(data.participant);
+    await loadVolunteerPaymentQueue();
+    // Refresh public/admin dataset after verification.
+    await loadFromCloud(false);
+  }catch(e){showToast('❌ '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='✓ Verify';}
+}
+
+async function generateVerifiedCards(participant){
+  if(!participant || !participant.uniqueId) return;
+  const local=registrations.find(r=>r.uniqueId===participant.uniqueId) || {};
+  const reg={...local,...participant,paymentVerificationStatus:'Verified'};
+  try{await downloadIdCard(reg,false);}catch(e){console.warn('ID card generation:',e);}
+  try{await downloadPhotoCard(reg,false);}catch(e){console.warn('Photo card generation:',e);}
+}
+
+// ═══════════════════════════════════════════════════
+// A4 APPLICATION PDF
+// ═══════════════════════════════════════════════════
+async function downloadApplicationPDF(reg, archiveToDrive=true){
+  if(!reg || !reg.uniqueId) return;
+  const root=document.getElementById('applicationPdfRender');
+  if(!root || !window.html2canvas || !window.jspdf) { showToast('PDF engine লোড হয়নি।','error'); return; }
+  try{
+    const photoSource=await resolveCardPhotoSource(reg);
+    const qrHolder=document.createElement('div');
+    qrHolder.style.cssText='width:110px;height:110px;background:#fff;display:flex;align-items:center;justify-content:center;';
+    root.innerHTML='';
+    const wrap=document.createElement('div'); wrap.className='pdf-a4';
+    const typeLabel=volunteerTypeMap[reg.type]||reg.type||'';
+    const academic=reg.type==='alumni'?('Batch: '+(reg.batch||'')):(reg.type==='student'?['শ্রেনী: '+(reg.studentClass||''),reg.branch?('শাখা: '+reg.branch):''].filter(Boolean).join(' • '):'');
+    const status=(reg.paymentVerificationStatus==='Verified')?'Verified':(String(reg.paymentMethod||'').includes('অফিস')?'Not paid':'Pending');
+    wrap.innerHTML=`<div class="pdf-head"><div class="school">মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয়, কেল্লাই</div><div class="event">৫০ বছর পূর্তি উৎসব ২০২৬ • ২৪ অক্টোবর ২০২৬</div></div>
+      <div class="pdf-title">নিবন্ধন আবেদনপত্র</div>
+      <div class="pdf-top"><div class="pdf-meta">
+        <div><span class="label">Registration ID</span><span class="value">${escapeHtmlSafe(reg.uniqueId)}</span></div>
+        <div><span class="label">Participant Type</span><span class="value">${escapeHtmlSafe(typeLabel)}</span></div>
+        <div><span class="label">Name</span><span class="value">${escapeHtmlSafe(reg.name||'')}</span></div>
+        <div><span class="label">Phone Number</span><span class="value">${escapeHtmlSafe(normalizeBDPhone(reg.phone||''))}</span></div>
+        <div><span class="label">Blood Group</span><span class="value">${escapeHtmlSafe(reg.bloodGroup||'')}</span></div>
+        <div><span class="label">T-Shirt Size</span><span class="value">${escapeHtmlSafe(reg.tshirtSize||'')}</span></div>
+        ${academic?`<div class="full"><span class="label">Batch / Class</span><span class="value">${escapeHtmlSafe(academic)}</span></div>`:''}
+        <div class="full"><span class="label">Email</span><span class="value">${escapeHtmlSafe(reg.email||'')}</span></div>
+      </div><img class="pdf-photo" id="pdf-photo-img" src="${photoSource||''}" onerror="this.style.display='none'"></div>
+      <div class="pdf-section-title">ঠিকানা</div>
+      <div class="pdf-address"><div class="pdf-address-box"><strong>বর্তমান ঠিকানা</strong><br>${escapeHtmlSafe([reg.currentVillage,reg.currentPost,reg.currentUpazila,reg.currentDistrict].filter(Boolean).join(', '))}</div><div class="pdf-address-box"><strong>স্থায়ী ঠিকানা</strong><br>${escapeHtmlSafe([reg.permanentVillage,reg.permanentPost,reg.permanentUpazila,reg.permanentDistrict].filter(Boolean).join(', '))}</div></div>
+      <div class="pdf-section-title">পেমেন্ট তথ্য</div>
+      <div class="pdf-payment"><div class="pdf-payment-box"><strong>Payment Method</strong><br>${escapeHtmlSafe(reg.paymentMethod||'')}</div><div class="pdf-payment-box"><strong>TxnID</strong><br>${escapeHtmlSafe(reg.txnId||'')}</div><div class="pdf-payment-box"><strong>Total Payment Amount</strong><br>৳ ${Number(reg.totalFee||0).toLocaleString('en-US')}</div></div>
+      <div class="pdf-payment-status">Payment Verification Status: ${escapeHtmlSafe(status)}${status==='Pending'?' — TxnID / Screenshot received; verification pending.':status==='Not paid'?' — Office payment selected; payment not yet verified.':' — Payment verified.'}</div>
+      <div class="pdf-footer">এই আবেদনপত্রটি অনলাইনে নিবন্ধনের পর তৈরি হয়েছে। Payment verification সম্পন্ন না হওয়া পর্যন্ত ID Card/Photo Card সক্রিয় হবে না। QR code scan করলে বর্তমান payment verification status দেখা যাবে।</div>
+      <div class="pdf-qr"><div class="pdf-qr-box" id="pdfQrBox"></div><small>Payment verification / ID Card access</small></div>`;
+    root.appendChild(wrap);
+    renderParticipantQR(wrap.querySelector('#pdfQrBox'),reg);
+    await new Promise(r=>setTimeout(r,350));
+    const canvas=await html2canvas(wrap,{scale:2,useCORS:true,backgroundColor:'#fff',logging:false});
+    const imgData=canvas.toDataURL('image/jpeg',.94);
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+    pdf.addImage(imgData,'JPEG',0,0,210,297,undefined,'FAST');
+    const pdfBase64=pdf.output('datauristring');
+    const fileName=(reg.uniqueId||'application')+'_Application.pdf';
+    if(archiveToDrive && USE_CLOUD){
+      try{
+        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'uploadApplicationPDF',uniqueId:reg.uniqueId,name:reg.name,imageData:pdfBase64})});
+        const result=await res.json();
+        if(result.success){reg.applicationPdfUrl=result.url; const idx=registrations.findIndex(x=>x.uniqueId===reg.uniqueId); if(idx>=0){registrations[idx].applicationPdfUrl=result.url;localStorage.setItem('muhs_registrations',JSON.stringify(registrations));}}
+      }catch(e){console.warn('Application PDF archive failed:',e);}
+    }
+    pdf.save(fileName);
+    return true;
+  }catch(e){console.error(e);showToast('❌ Application PDF তৈরি করা যায়নি।','error');return false;}
+  finally{root.innerHTML='';}
+}
+
 // ─── QR CODE GENERATION ───
 function qrPayloadFor(reg) {
-  return 'MUHS:' + String(reg && reg.uniqueId || '').trim();
+  const uid=String(reg && reg.uniqueId || '').trim();
+  return uid ? (GAS_URL + '?action=card&uid=' + encodeURIComponent(uid)) : '';
 }
 
 function renderParticipantQR(target, reg) {
