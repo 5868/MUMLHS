@@ -2469,22 +2469,21 @@ async function loadFromCloud(admin = false) {
 
     if (data.summary) cloudSummary = data.summary;
 
-    if (Array.isArray(data.registrations)) {
-      // Cloud is the source of truth for cards on every device. Keep local base64
-      // only as a fallback; the permanent Drive photo URL always travels with the record.
+    if (admin && Array.isArray(data.registrations)) {
+      // Merge: cloud is source of truth, but keep freshest local photo if newer than cloud's
       const localMap = {};
       registrations.forEach(r => { localMap[r.uniqueId] = r.photo || ''; });
       registrations = data.registrations.map(r => ({
         ...r,
-        photo: localMap[r.uniqueId] || r.photoUrl || r.photo || ''
+        photo: localMap[r.uniqueId] || r.photoUrl || r.photo || '' // prefer local cache, else permanent Drive URL from cloud
       }));
       localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
       updateBatchFilter();
-      if (admin) { renderTable(); showToast(`☁️ ${data.total}টি নিবন্ধন লোড হয়েছে`); }
+      renderTable();
+      showToast(`☁️ ${data.total}টি নিবন্ধন লোড হয়েছে`);
     }
 
     updateSummary();
-    if (!admin && Array.isArray(data.registrations)) { renderTable(); }
   } catch (err) {
     console.warn('Cloud load failed, using local data:', err.message);
   } finally {
@@ -3492,16 +3491,30 @@ function buildPhotoCardCanvas(reg, done) {
     done(canvas);
   }
 
-  // Use the permanent Google Drive photo URL on every device.
-  // Local base64 is preferred only when available; otherwise fall back to photoUrl.
-  const permanentPhoto = reg.photoUrl || reg.photo || '';
-  img.src = String(permanentPhoto).trim();
-  img.onerror = function(){
-    // If a Drive thumbnail cannot be loaded, keep the card rendering instead of breaking the canvas.
-    img.removeAttribute('src');
-    img.complete = true;
-    draw();
-  };
+  // Photo Card must work on every device. Use the permanent Google Drive photo URL
+  // when local/base64 photo data is unavailable. Convert common Drive view links
+  // to the thumbnail endpoint so the image can be rendered by the canvas.
+  function driveImageUrl(value){
+    const raw=String(value||'').trim();
+    if(!raw) return '';
+    if(raw.indexOf('data:image/')===0) return raw;
+    let m=raw.match(/\/file\/d\/([A-Za-z0-9_-]+)/);
+    if(!m) m=raw.match(/[?&]id=([A-Za-z0-9_-]+)/);
+    if(!m) m=raw.match(/\/d\/([A-Za-z0-9_-]+)/);
+    if(m) return 'https://drive.google.com/thumbnail?id='+encodeURIComponent(m[1])+'&sz=w1200';
+    return raw;
+  }
+
+  const localPhoto=(reg.photo&&String(reg.photo).indexOf('data:image/')===0) ? reg.photo : '';
+  const permanentPhoto=driveImageUrl(reg.photoUrl||reg.photo||'');
+  const photoSource=localPhoto||permanentPhoto;
+
+  // crossOrigin is required before src is assigned so canvas.toDataURL() can
+  // include a remotely hosted photo when the host permits CORS.
+  if(photoSource && photoSource.indexOf('data:image/')!==0){
+    img.crossOrigin='anonymous';
+  }
+  img.src=photoSource;
   seal.src='images/School/registered-seal.png';
   if(!img.src){ img.complete=true; }
   if(seal.complete) draw();
