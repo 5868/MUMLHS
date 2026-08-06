@@ -2082,11 +2082,15 @@
   }
   .pdf-qr{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:82px;width:92px;text-align:center;
+    bottom:114px;width:120px;text-align:center;
   }
   .pdf-qr-box{
-    width:82px;height:82px;margin:0 auto;background:#fff;
-    border:1px solid #111;padding:3px;box-sizing:border-box;
+    width:102px;height:102px;margin:0 auto;background:#fff;
+    border:1px solid #111;padding:4px;box-sizing:border-box;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+  }
+  .pdf-qr-box canvas, .pdf-qr-box img{
+    display:block;max-width:100%;max-height:100%;
   }
   .pdf-qr small{
     display:block;font-size:6.5px;color:#222;margin-top:3px;line-height:1.2;
@@ -3589,6 +3593,8 @@ async function submitRegistration() {
     paymentScreenshot: txnScreenshotData || '',
     message: document.getElementById('reg-message').value.trim(),
     photo: document.getElementById('reg-photo').value || '',
+    registeredAt: new Date().toISOString(),
+    registeredAtLabel: formatBanglaDateTime(new Date()),
     date: new Date().toLocaleDateString('bn-BD')
   };
 
@@ -3610,14 +3616,19 @@ async function submitRegistration() {
 
   // Google Drive-এ ছবি আপলোড (async — background এ চলবে)
   // Upload after the Sheet row exists, so the returned Drive URLs are saved to the correct row.
-  if (USE_CLOUD) {
-    await uploadPhotoToDrive(reg);
-    if (reg.paymentScreenshot) await uploadPaymentScreenshotToDrive(reg);
-    // ID/Photo Card are intentionally NOT generated before payment verification.
-    // Only the submitted application PDF is generated and archived here.
-  }
+  showRegistrationProgress('এপ্লিকেশন ফর্ম ডাউনলোড হচ্ছে অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন।');
+  try {
+    if (USE_CLOUD) {
+      await uploadPhotoToDrive(reg);
+      if (reg.paymentScreenshot) await uploadPaymentScreenshotToDrive(reg);
+      // ID/Photo Card are intentionally NOT generated before payment verification.
+      // Only the submitted application PDF is generated and archived here.
+    }
 
-  await downloadApplicationPDF(reg, true);
+    await downloadApplicationPDF(reg, true);
+  } finally {
+    hideRegistrationProgress();
+  }
   showToast(`✅ নিবন্ধন সফল! আপনার আইডি: ${uniqueId}`);
   // Show ID in a visible box too
   window._lastReg = reg;
@@ -3681,32 +3692,31 @@ function showRegSuccessModal(uid, name, reg) {
 
   const modal = document.createElement('div');
   modal.id = 'regSuccessModal';
-  modal.style.cssText = `position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:1rem;`;
+  modal.style.cssText = `position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:.75rem;`;
   modal.innerHTML = `
-    <div style="background:var(--cream);border-radius:20px;padding:2.5rem 2rem;max-width:380px;width:100%;text-align:center;border:2px solid rgba(200,150,12,0.4);box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      <div style="font-size:3rem;margin-bottom:1rem;">🎉</div>
-      <h3 style="font-family:'Noto Serif Bengali',serif;color:var(--deep-green);font-size:1.3rem;margin-bottom:0.5rem;">নিবন্ধন সম্পন্ন!</h3>
-      <p style="color:var(--text-light);font-size:0.9rem;margin-bottom:1.5rem;">${name} — আপনার নিবন্ধন সফলভাবে গ্রহণ করা হয়েছে।</p>
-      <div style="background:var(--deep-green);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
-        <div style="color:rgba(255,255,255,0.6);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">আপনার ইউনিক আইডি</div>
-        <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--gold-light);letter-spacing:3px;">${uid}</div>
-        <div style="color:rgba(255,255,255,0.5);font-size:0.72rem;margin-top:6px;">এই আইডিটি সংরক্ষণ করুন</div>
-        <div id="driveStatus" style="margin-top:8px;font-size:0.72rem;color:rgba(242,201,76,0.8);display:none;">📸 ছবি Drive-এ আপলোড হচ্ছে...</div>
+    <div style="background:var(--cream);border-radius:18px;padding:1.4rem 1.25rem;max-width:330px;width:100%;text-align:center;border:2px solid rgba(200,150,12,0.35);box-shadow:0 20px 60px rgba(0,0,0,0.28);">
+      <div style="font-size:2.6rem;line-height:1;margin-bottom:.55rem;">🎉</div>
+      <h3 style="font-family:'Noto Serif Bengali',serif;color:var(--deep-green);font-size:1.18rem;margin:0 0 .45rem;">নিবন্ধন সম্পন্ন!</h3>
+      <p style="color:var(--text-light);font-size:.88rem;line-height:1.55;margin:0 0 .9rem;">ভবিষ্যত অনুসন্ধানের জন্য আপনার ইভেন্ট ID নাম্বার ও QR কোডটি সংরক্ষন করে রাখুন।</p>
+      <div style="background:var(--deep-green);border-radius:12px;padding:1rem .9rem;margin-bottom:1rem;">
+        <div style="color:rgba(255,255,255,0.62);font-size:0.72rem;letter-spacing:1.6px;text-transform:uppercase;margin-bottom:4px;">ইভেন্ট ID</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.85rem;font-weight:700;color:var(--gold-light);letter-spacing:2px;line-height:1.1;">${uid}</div>
+        <div style="color:rgba(255,255,255,0.55);font-size:0.7rem;margin-top:5px;">সু-সংরক্ষণ করুন</div>
+        <div id="driveStatus" style="margin-top:7px;font-size:0.7rem;color:rgba(242,201,76,0.84);display:none;">📸 ছবি Drive-এ আপলোড হচ্ছে...</div>
       </div>
-      <div style="display:flex;justify-content:center;margin:0 0 14px;">
-        <div id="registrationQR" style="background:#fff;padding:10px;border-radius:12px;display:inline-flex;box-shadow:0 5px 18px rgba(0,0,0,.08);"></div>
+      <div style="display:flex;justify-content:center;margin:0 0 10px;">
+        <div id="registrationQR" style="background:#fff;padding:8px;border-radius:12px;display:inline-flex;box-shadow:0 5px 18px rgba(0,0,0,.08);"></div>
       </div>
-      <div style="font-size:.72rem;color:#777;margin:-4px 0 14px;">এই QR code সংরক্ষণ করুন — অনুষ্ঠানের দিন যাচাইয়ের জন্য প্রয়োজন হবে।</div>
-      <div style="display:flex;gap:10px;margin-top:0;">
-        
-        <button onclick="downloadApplicationPDF(window._lastReg)" style="flex:1;padding:12px;background:var(--gold);color:var(--deep-green);border:none;border-radius:10px;font-size:0.86rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">📄 Application PDF</button>
-        <button onclick="document.getElementById('regSuccessModal').remove()" style="flex:1;padding:12px;background:var(--deep-green);color:white;border:none;border-radius:10px;font-size:0.86rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">ঠিক আছে ✓</button>
+      <div style="font-size:.7rem;color:#777;line-height:1.45;margin:0 0 10px;${(reg && reg.registeredAtLabel) ? '' : 'display:none;'}">নিবন্ধনের তারিখ ও সময়: ${(reg && reg.registeredAtLabel) ? reg.registeredAtLabel : ''}</div>
+      <div style="display:flex;gap:8px;margin-top:0;">
+        <button onclick="downloadApplicationPDF(window._lastReg)" style="flex:1;padding:10px 8px;background:var(--gold);color:var(--deep-green);border:none;border-radius:10px;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">📄 PDF</button>
+        <button onclick="document.getElementById('regSuccessModal').remove()" style="flex:1;padding:10px 8px;background:var(--deep-green);color:white;border:none;border-radius:10px;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">ঠিক আছে ✓</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
   window._qrReg = reg;
-  setTimeout(() => renderParticipantQR(document.getElementById('registrationQR'), reg), 40);
+  setTimeout(() => renderParticipantQR(document.getElementById('registrationQR'), reg, 132), 40);
 }
 
 
@@ -3866,6 +3876,38 @@ function toBanglaDigits(value) {
   return String(value == null ? '' : value).replace(/[0-9]/g, function(d) {
     return '০১২৩৪৫৬৭৮৯'[Number(d)];
   });
+}
+
+function formatBanglaDateTime(value) {
+  const dt = value instanceof Date ? value : new Date(value);
+  if (!dt || Number.isNaN(dt.getTime())) return '';
+  const months = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগষ্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+  const hour = dt.getHours();
+  const part = hour < 5 ? 'রাত' : hour < 12 ? 'সকাল' : hour < 15 ? 'দুপুর' : hour < 18 ? 'বিকাল' : 'রাত';
+  const hour12 = hour % 12 || 12;
+  return `${toBanglaDigits(String(dt.getDate()).padStart(2, '0'))} ${months[dt.getMonth()]}, ${toBanglaDigits(String(dt.getFullYear()))} ${part} ${toBanglaDigits(String(hour12).padStart(2, '0'))}ঃ${toBanglaDigits(String(dt.getMinutes()).padStart(2, '0'))}ঃ${toBanglaDigits(String(dt.getSeconds()).padStart(2, '0'))}`;
+}
+
+function showRegistrationProgress(message) {
+  let el = document.getElementById('registrationProgressOverlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'registrationProgressOverlay';
+    el.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(8,24,18,.78);display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(3px);';
+    el.innerHTML = `
+      <div style="max-width:420px;width:100%;background:#fff;border-radius:20px;padding:1.2rem 1.1rem;box-shadow:0 18px 50px rgba(0,0,0,.28);text-align:center;border:1px solid rgba(20,90,62,.15);">
+        <div style="font-size:2rem;line-height:1;margin-bottom:.55rem;">⏳</div>
+        <div id="registrationProgressText" style="font-family:'Noto Sans Bengali',sans-serif;font-size:1rem;font-weight:800;color:var(--deep-green);line-height:1.55;"></div>
+      </div>`;
+    document.body.appendChild(el);
+  }
+  document.getElementById('registrationProgressText').textContent = message;
+  el.style.display = 'flex';
+}
+
+function hideRegistrationProgress() {
+  const el = document.getElementById('registrationProgressOverlay');
+  if (el) el.style.display = 'none';
 }
 
 function normalizeBDPhone(value) {
@@ -5172,6 +5214,20 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
         </tr>
       </table>
 
+      <div class="pdf-section-title">অংশগ্রহণের তথ্য</div>
+      <table class="pdf-payment-grid">
+        <tr>
+          <td class="pay-title">অতিথির সংখ্যা</td>
+          <td>${esc(toBanglaDigits(String(reg.guestCount || 0)))} জন</td>
+          <td class="pay-title">শিশুর সংখ্যা</td>
+          <td>${esc(toBanglaDigits(String(reg.childCount || 0)))} জন</td>
+        </tr>
+        <tr>
+          <td class="pay-title">নিবন্ধনের তারিখ ও সময়</td>
+          <td colspan="3">${esc(reg.registeredAtLabel || formatBanglaDateTime(reg.registeredAt || reg.timestamp || new Date()))}</td>
+        </tr>
+      </table>
+
       <div class="pdf-section-title">ঠিকানা</div>
       <table class="pdf-address-grid">
         <tr>
@@ -5229,7 +5285,7 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
     }
 
     // This is the ONLY QR that is presented for participant download/access.
-    renderParticipantQR(wrap.querySelector('#pdfQrBox'),reg);
+    renderParticipantQR(wrap.querySelector('#pdfQrBox'), reg, 96);
     await new Promise(r=>setTimeout(r,250));
 
     const canvas=await html2canvas(wrap,{
@@ -5313,13 +5369,13 @@ function renderAssetQR(target, reg, size=150) {
   });
 }
 
-function renderParticipantQR(target, reg) {
+function renderParticipantQR(target, reg, size=190) {
   if (!target || !reg || !reg.uniqueId || typeof QRCode === 'undefined') return;
   target.innerHTML = '';
   new QRCode(target, {
     text: qrPayloadFor(reg),
-    width: 190,
-    height: 190,
+    width: size,
+    height: size,
     colorDark: '#101510',
     colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.H
