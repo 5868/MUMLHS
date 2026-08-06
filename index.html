@@ -2700,7 +2700,8 @@ function registrationCompanionSummary(reg){
             <input id="vol-password" type="password" autocomplete="current-password" required placeholder="Password">
           </label>
         </div>
-        <button type="submit" class="vol-primary-btn" id="vol-login-btn">🔐 লগইন করুন</button>
+        <button type="submit onclick="showSubmissionWait();">
+ class="vol-primary-btn" id="vol-login-btn">🔐 লগইন করুন</button>
       </form>
       <div id="vol-login-msg" class="vol-message" aria-live="polite"></div>
     </div>
@@ -5127,7 +5128,6 @@ async function generateVerifiedCards(participant){
 // A4 APPLICATION PDF
 // ═══════════════════════════════════════════════════
 async function downloadApplicationPDF(reg, archiveToDrive=true){
-  showSubmissionWait();
   if(!reg.registrationDateTimeBn) reg.registrationDateTimeBn=banglaDateTimeNow();
   if(!reg || !reg.uniqueId) return;
   const root=document.getElementById('applicationPdfRender');
@@ -5324,7 +5324,6 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
     return false;
   }finally{
     root.innerHTML='';
-    hideSubmissionWait();
   }
 }
 
