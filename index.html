@@ -2143,7 +2143,7 @@
   }
   .person-card:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 16px 40px rgba(0,0,0,0.28); }
   /* Full-bleed image — background set inline per card */
-  .photo-card-render { aspect-ratio: 3/4; background:#111; }
+  .photo-card-render { aspect-ratio: 1/1; background:#fff; }
   .person-card-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
   .person-card-top {
     position: absolute; inset: 0;
@@ -4705,283 +4705,272 @@ async function downloadIdCard(reg, shouldDownload) {
 }
 
 function buildPhotoCardCanvas(reg, done) {
-  const W=600,H=800;
-  const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
-  const ctx=canvas.getContext('2d');
+  // Photo Card master template dimensions: Photo-CARD.png is 800x800.
+  // The template is loaded unchanged and all dynamic content is composited on top/under it.
+  const TEMPLATE_W = 800;
+  const TEMPLATE_H = 800;
+  const PHOTO_CX = 404;
+  const PHOTO_CY = 416;
+  const PHOTO_R = 198;
 
-  const typeColorsPhoto={
-    alumni:['#B9151C','#E51C23'],
-    student:['#355783','#6385B8'],
-    teacher:['#152943','#294C78'],
-    other:['#416F96','#709FC3']
-  };
-  const tc=typeColorsPhoto[reg.type]||typeColorsPhoto.other;
+  const canvas = document.createElement('canvas');
+  canvas.width = TEMPLATE_W;
+  canvas.height = TEMPLATE_H;
+  const ctx = canvas.getContext('2d');
 
-  const img=new Image();
-  const seal=new Image();
-
-  // Load every canvas image completely before drawing/exporting. This prevents
-  // the preview/download/Drive copy from being created before the seal arrives.
-  function loadImageElement(image, sources, optional){
-    sources=(Array.isArray(sources)?sources:[sources]).filter(Boolean);
-    return new Promise(function(resolve){
-      let index=0;
-      function tryNext(){
-        if(index>=sources.length){
+  function loadImageElement(image, sources, optional) {
+    sources = (Array.isArray(sources) ? sources : [sources]).filter(Boolean);
+    return new Promise(function(resolve) {
+      let index = 0;
+      function tryNext() {
+        if (index >= sources.length) {
           resolve(optional ? null : image);
           return;
         }
-        image.onload=function(){ resolve(image); };
-        image.onerror=function(){ index++; tryNext(); };
-        image.src=sources[index];
+        image.onload = function() { resolve(image); };
+        image.onerror = function() {
+          index++;
+          tryNext();
+        };
+        image.src = sources[index];
       }
-      if(!sources.length){ resolve(optional ? null : image); return; }
+      if (!sources.length) {
+        resolve(optional ? null : image);
+        return;
+      }
       tryNext();
     });
   }
 
-  function roundRectFill(x,y,w,h,r,fill){
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
-    ctx.fillStyle=fill;
-    ctx.fill();
-  }
+  function wrapText(text, maxWidth, font) {
+    ctx.font = font;
+    const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return [''];
 
-  function drawPhoneIcon(x,y){
-    ctx.save();
-    ctx.fillStyle='#18C7E8';
-    ctx.font='21px Arial,sans-serif';
-    ctx.textAlign='left';
-    ctx.fillText('▣',x,y);
-    ctx.restore();
-  }
-
-  function drawDropIcon(x,y){
-    ctx.save();
-    ctx.fillStyle='#E51C23';
-    ctx.beginPath();
-    ctx.moveTo(x+9,y-18);
-    ctx.bezierCurveTo(x+3,y-9,x,y-4,x,y+1);
-    ctx.arc(x+9,y+1,9,Math.PI,0);
-    ctx.bezierCurveTo(x+18,y-4,x+15,y-9,x+9,y-18);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawDotIcon(x,y,fill){
-    ctx.save();
-    ctx.fillStyle=fill;
-    ctx.beginPath(); ctx.arc(x+8,y-7,6,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-
-  // Larger name, wrapping naturally into up to 3 lines.
-  function wrapName(text,maxWidth,fontSize){
-    ctx.font='800 '+fontSize+'px Georgia, "Times New Roman", serif';
-    const words=String(text||'Full Name').trim().split(/\s+/);
-    const lines=[];
-    let line='';
-    words.forEach(word=>{
-      const test=line ? line+' '+word : word;
-      if(ctx.measureText(test).width<=maxWidth || !line){
-        line=test;
-      }else{
+    const lines = [];
+    let line = '';
+    words.forEach(function(word) {
+      const test = line ? line + ' ' + word : word;
+      if (!line || ctx.measureText(test).width <= maxWidth) {
+        line = test;
+      } else {
         lines.push(line);
-        line=word;
+        line = word;
       }
     });
-    if(line) lines.push(line);
-
-    // Keep the card balanced: max 3 lines.
-    if(lines.length>3){
-      const first=lines[0];
-      const second=lines.slice(1).join(' ');
-      lines.length=0;
-      lines.push(first);
-      let line2='';
-      second.split(/\s+/).forEach(word=>{
-        const test=line2 ? line2+' '+word : word;
-        if(ctx.measureText(test).width<=maxWidth || !line2) line2=test;
-        else { lines.push(line2); line2=word; }
-      });
-      if(line2) lines.push(line2);
-      if(lines.length>3) lines.splice(2,lines.length-2,lines.slice(2).join(' '));
-    }
-    return lines.slice(0,3);
+    if (line) lines.push(line);
+    return lines;
   }
 
-  let drawn=false;
-  function draw(){
-    if(drawn) return;
-    drawn=true;
-
-    ctx.clearRect(0,0,W,H);
-
-    // Full-bleed photo.
-    if(img.naturalWidth){
-      const ar=img.naturalWidth/img.naturalHeight;
-      let iw=W,ih=H,ix=0,iy=0;
-      if(ar>W/H){ iw=H*ar; ix=-(iw-W)/2; }
-      else { ih=W/ar; iy=-(ih-H)/2; }
-      ctx.drawImage(img,ix,iy,iw,ih);
-    } else {
-      ctx.fillStyle='#25352f'; ctx.fillRect(0,0,W,H);
-      ctx.fillStyle='#aaa'; ctx.font='80px Arial'; ctx.textAlign='center';
-      ctx.fillText('🧑',W/2,H/2);
+  function fitText(text, maxWidth, startSize, minSize, weight, family) {
+    let size = startSize;
+    const value = String(text || '');
+    while (size > minSize) {
+      ctx.font = weight + ' ' + size + 'px ' + family;
+      if (ctx.measureText(value).width <= maxWidth) {
+        return size;
+      }
+      size -= 1;
     }
+    return minSize;
+  }
 
-    // Dark lower overlay for the information block.
-    const grad=ctx.createLinearGradient(0,H*.22,0,H);
-    grad.addColorStop(0,'rgba(0,0,0,0)');
-    grad.addColorStop(.42,'rgba(0,0,0,.12)');
-    grad.addColorStop(.64,'rgba(0,0,0,.58)');
-    grad.addColorStop(1,'rgba(0,0,0,.92)');
-    ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+  function drawParticipantPhoto(img) {
+    if (!img || !img.naturalWidth || !img.naturalHeight) return;
 
-    // Registered seal: moved substantially lower, ending just above
-    // the GOLDEN JUBILEE branding. White background is already transparent.
-    if(seal.naturalWidth){
-      const sw=300, sh=303;
-      const sx=W-sw-16;
-      const sy=H-52-sh-72; // lift seal about two text lines above GOLDEN JUBILEE
-      ctx.globalAlpha=.92;
-      ctx.drawImage(seal,sx,sy,sw,sh);
-      ctx.globalAlpha=1;
-    }
+    // Center-crop / cover: preserve aspect ratio and fill the entire circular area.
+    // A slightly generous source crop is used so the photo never leaves gaps.
+    const diameter = PHOTO_R * 2;
+    const scale = Math.max(diameter / img.naturalWidth, diameter / img.naturalHeight);
+    const drawW = img.naturalWidth * scale;
+    const drawH = img.naturalHeight * scale;
+    const drawX = PHOTO_CX - drawW / 2;
+    const drawY = PHOTO_CY - drawH / 2;
 
-    // LEFT information block — same visual style, but larger and more readable.
     ctx.save();
-    ctx.textAlign='left';
-    ctx.shadowColor='rgba(0,0,0,.78)';
-    ctx.shadowBlur=5;
+    ctx.beginPath();
+    ctx.arc(PHOTO_CX, PHOTO_CY, PHOTO_R, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    ctx.restore();
+  }
 
-    const name=String(reg.name||'Full Name');
-    const nameSize=38;
-    const nameLines=wrapName(name,330,nameSize);
-    const nameLineHeight=36;
-    const nameY=468;
+  function drawName() {
+    const name = String(reg.name || '').trim();
+    if (!name) return;
 
-    ctx.font='800 '+nameSize+'px Georgia, "Times New Roman", serif';
-    ctx.fillStyle='#fff';
-    nameLines.forEach((line,i)=>{
-      ctx.fillText(line,24,nameY+i*nameLineHeight);
+    // Dedicated top-left safe zone, deliberately kept clear of the school logo.
+    const x = 26;
+    const maxWidth = 245;
+    const fontFamily = '"Noto Serif Bengali", "Noto Sans Bengali", Georgia, serif';
+    const size = fitText(name, maxWidth, 28, 18, 800, fontFamily);
+    const font = '800 ' + size + 'px ' + fontFamily;
+    const lines = wrapText(name, maxWidth, font).slice(0, 2);
+
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = font;
+    ctx.fillStyle = '#10264A';
+    ctx.shadowColor = 'rgba(255,255,255,.85)';
+    ctx.shadowBlur = 4;
+
+    const lineHeight = size + 6;
+    const startY = lines.length === 1 ? 108 : 98;
+    lines.forEach(function(line, i) {
+      ctx.fillText(line, x, startY + i * lineHeight);
     });
-
-    const idY=nameY+(nameLines.length*nameLineHeight)+5;
-    const idText='ID: '+toEnglishDigits(reg.uniqueId||'');
-    ctx.shadowBlur=0;
-    ctx.font='800 22px "Courier New",monospace';
-    const idW=Math.min(260,Math.max(185,ctx.measureText(idText).width+38));
-    roundRectFill(24,idY-30,idW,42,10,'rgba(0,0,0,.48)');
-    ctx.strokeStyle='rgba(190,155,35,.60)';
-    ctx.lineWidth=1;
-    ctx.stroke();
-    ctx.fillStyle='#D9B44A';
-    ctx.textAlign='center';
-    ctx.fillText(idText,24+idW/2,idY-1);
-
-    const phoneY=idY+43;
-    ctx.textAlign='left';
-    drawPhoneIcon(27,phoneY);
-    ctx.fillStyle='#fff';
-    ctx.font='600 21px Arial,sans-serif';
-    ctx.fillText(normalizeBDPhone(reg.phone||''),53,phoneY);
-
-    const bloodY=phoneY+33;
-    drawDropIcon(27,bloodY);
-    ctx.fillStyle='#fff';
-    ctx.font='600 21px Arial,sans-serif';
-    ctx.fillText(reg.bloodGroup||'',53,bloodY+1);
-
-    const academic=participantAcademicLabel(reg);
-    let nextY=bloodY+33;
-    if(academic){
-      drawDotIcon(27,nextY, '#F06A2D');
-      ctx.fillStyle='#fff';
-      ctx.font='600 21px Arial,sans-serif';
-      ctx.fillText(academic,53,nextY+1);
-      nextY+=33;
-    }
-
-    const genderLabel = (typeof genderMap !== 'undefined' && genderMap[reg.gender])
-      ? genderMap[reg.gender] : String(reg.gender||'');
-    if(genderLabel){
-      ctx.fillStyle='#fff';
-      ctx.font='600 21px Arial,sans-serif';
-      ctx.fillText(genderLabel,24,nextY+1);
-    }
     ctx.restore();
+  }
 
-    // Bottom-right branding.
+  function getPhotoCardTypeLines() {
+    const type = String(reg.type || '').toLowerCase();
+
+    if (type === 'alumni') {
+      const batch = String(reg.batch || '').trim();
+      return [
+        batch ? 'ব্যাচ-' + toEnglishDigits(batch) : 'অ্যালামনাই',
+        '(অ্যালামনাই)'
+      ];
+    }
+
+    if (type === 'student') {
+      const cls = String(reg.studentClass || '').trim();
+      return [
+        cls ? 'শ্রেণি-' + cls : 'বর্তমান শিক্ষার্থী',
+        '(বর্তমান শিক্ষার্থী)'
+      ];
+    }
+
+    if (type === 'teacher') {
+      return ['শিক্ষক'];
+    }
+
+    // Preserve the existing registration type terminology for other categories.
+    const labels = {
+      family: 'ফ্যামিলি',
+      guest: 'অতিথি',
+      child: 'শিশু',
+      other: 'অন্যান্য'
+    };
+    const label = labels[type] || String(reg.registrationType || reg.type || 'অন্যান্য');
+    return [label];
+  }
+
+  function drawParticipantType() {
+    const lines = getPhotoCardTypeLines();
+    const xRight = 774;
+    const maxWidth = 235;
+    const fontFamily = '"Noto Serif Bengali", "Noto Sans Bengali", Georgia, serif';
+
+    let size = 25;
+    const longest = lines.reduce(function(a, b) {
+      return Math.max(a, String(b).length);
+    }, 0);
+    if (longest > 20) size = 20;
+    else if (longest > 14) size = 22;
+
     ctx.save();
-    ctx.textAlign='right';
-    ctx.fillStyle='#FFD84D';
-    ctx.font='900 24px Arial,sans-serif';
-    ctx.fillText('GOLDEN JUBILEE',W-20,H-52);
-    ctx.fillStyle='#fff';
-    ctx.font='800 18px Arial,sans-serif';
-    ctx.fillText('Mansur Uddin ML High School',W-20,H-25);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.font = '800 ' + size + 'px ' + fontFamily;
+    ctx.fillStyle = '#10264A';
+    ctx.shadowColor = 'rgba(255,255,255,.85)';
+    ctx.shadowBlur = 4;
+
+    const lineHeight = size + 7;
+    const startY = lines.length === 1 ? 108 : 98;
+    lines.slice(0, 2).forEach(function(line, i) {
+      // If an unusually long registration type is supplied, reduce it further
+      // rather than allowing it to cross into the central logo/photo area.
+      let actual = line;
+      while (ctx.measureText(actual).width > maxWidth && size > 16) {
+        size -= 1;
+        ctx.font = '800 ' + size + 'px ' + fontFamily;
+      }
+      ctx.fillText(actual, xRight, startY + i * lineHeight);
+    });
     ctx.restore();
+  }
+
+  const participantPhoto = new Image();
+  const template = new Image();
+
+  Promise.all([
+    resolveCardPhotoSource(reg).then(function(photoSource) {
+      return loadImageElement(
+        participantPhoto,
+        photoSource ? [photoSource] : [],
+        true
+      );
+    }),
+    loadImageElement(template, [
+      'images/school/Photo-CARD.png',
+      './images/school/Photo-CARD.png',
+      'School/Photo-CARD.png',
+      './School/Photo-CARD.png',
+      'School/Photo-CARD.png.png',
+      './School/Photo-CARD.png.png'
+    ], false)
+  ]).then(function() {
+    ctx.clearRect(0, 0, TEMPLATE_W, TEMPLATE_H);
+
+    // 1. Participant photo goes UNDER the template, clipped to the exact
+    // circular transparent portrait opening in Photo-CARD.png.
+    drawParticipantPhoto(participantPhoto);
+
+    // 2. Draw the supplied PNG itself unchanged as the complete master design.
+    if (template && template.naturalWidth) {
+      ctx.drawImage(template, 0, 0, TEMPLATE_W, TEMPLATE_H);
+    } else {
+      throw new Error('Photo-CARD.png template could not be loaded.');
+    }
+
+    // 3. Only the requested dynamic text is added above the master template.
+    drawName();
+    drawParticipantType();
 
     done(canvas);
-  }
-
-  // Resolve the participant photo first, then preload BOTH the photo and seal.
-  // Drawing starts only after both requests have completed (or exhausted fallback).
-  resolveCardPhotoSource(reg)
-    .then(function(photoSource){
-      return Promise.all([
-        loadImageElement(img, photoSource ? [photoSource] : [], true),
-        loadImageElement(seal, [
-          'School/registered-seal.png',
-          './School/registered-seal.png',
-          'images/School/registered-seal.png',
-          './images/School/registered-seal.png'
-        ], true)
-      ]);
-    })
-    .catch(function(err){
-      console.warn('Photo Card image preload failed:',err);
-      return loadImageElement(seal, [
-        'School/registered-seal.png',
-        './School/registered-seal.png',
-        'images/School/registered-seal.png',
-        './images/School/registered-seal.png'
-      ], true);
-    })
-    .then(function(){ draw(); });
-
+  }).catch(function(err) {
+    console.error('Photo Card template rendering failed:', err);
+    done(null);
+  });
 }
 
-async function downloadPhotoCard(reg, shouldDownload) {
+function downloadPhotoCard(reg, shouldDownload) {
   if(!reg)return;
   shouldDownload=(shouldDownload!==false);
 
-  // Always render the card locally for the actual download. If a Drive archive
-  // already exists, uploadIdCardToDrive() will detect its saved URL and reuse it
-  // instead of creating a duplicate. This keeps the downloaded card current
-  // while preserving the one-file-per-participant archive rule.
+  // Render the current Photo-CARD.png template fresh for every download.
+  // Existing Drive duplicate handling remains unchanged.
   buildPhotoCardCanvas(reg, function(canvas){
+    if(!canvas){
+      showToast('❌ Photo Card তৈরি করা যায়নি।', 'error');
+      return;
+    }
+
     let data;
     try {
-      data=canvas.toDataURL('image/jpeg',.96);
+      // PNG preserves the supplied master template and keeps dynamic text sharp.
+      data=canvas.toDataURL('image/png');
     } catch(err) {
       console.error('Photo Card canvas export failed:',err);
       showToast('❌ Photo Card তৈরি করা যায়নি।', 'error');
       return;
     }
+
     uploadIdCardToDrive({...reg,_driveKind:'photoCard'},data);
+
     if(shouldDownload){
       const a=document.createElement('a');
-      a.download=(reg.uniqueId||'photo_card')+'_photo-card.jpg';
+      a.download=(reg.uniqueId||'photo_card')+'_photo-card.png';
       a.href=data;
-      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       showToast('📥 Photo Card ডাউনলোড হচ্ছে!');
     }
   });
@@ -5019,8 +5008,8 @@ function renderTable() {
       buildPhotoCardCanvas(r,function(canvas){
         const host=document.getElementById('photo-card-canvas-'+i);
         if(!host)return;
-        host.width=600;host.height=800;
-        const c=host.getContext('2d');c.clearRect(0,0,600,800);c.drawImage(canvas,0,0);
+        host.width=canvas.width;host.height=canvas.height;
+        const c=host.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);c.drawImage(canvas,0,0);
       });
     });
     return;
