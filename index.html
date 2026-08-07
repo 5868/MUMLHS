@@ -1593,6 +1593,255 @@
   .reg-warning-box .warn-block { margin-top: .85rem; padding: .9rem 1rem; border-radius: 14px; background: #f8fbf7; border:1px solid rgba(11,61,46,.08); }
   .reg-warning-box .warn-block strong { color: var(--deep-green); }
 
+  /* ─── REGISTRATION CONTACT CARDS ─── */
+  .registration-contact-cards {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px;
+    margin-top:1.1rem;
+  }
+  .registration-contact-card {
+    position:relative;
+    display:flex;
+    gap:15px;
+    padding:18px;
+    border-radius:18px;
+    background:#fff;
+    border:1px solid rgba(11,61,46,.10);
+    box-shadow:0 10px 28px rgba(11,61,46,.08);
+    overflow:hidden;
+  }
+  .registration-contact-card::before {
+    content:'';
+    position:absolute;
+    inset:0 auto 0 0;
+    width:4px;
+  }
+  .offline-card::before { background:linear-gradient(180deg,#C8960C,#F2C94C); }
+  .online-card::before { background:linear-gradient(180deg,#16733A,#2D9B62); }
+  .contact-card-icon {
+    width:48px;
+    height:48px;
+    flex:0 0 48px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:14px;
+    font-size:1.35rem;
+  }
+  .offline-card .contact-card-icon { background:#fff8e1; color:#9a6500; }
+  .online-card .contact-card-icon { background:#e9f8ee; color:#16733a; }
+  .contact-card-content { min-width:0; }
+  .contact-card-kicker {
+    font-size:.65rem;
+    font-weight:900;
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+    margin-bottom:4px;
+  }
+  .offline-card .contact-card-kicker { color:#9a6500; }
+  .online-card .contact-card-kicker { color:#16733a; }
+  .contact-card-content h3 {
+    margin:0 0 7px;
+    color:var(--deep-green);
+    font-family:'Noto Serif Bengali',serif;
+    font-size:1rem;
+    line-height:1.4;
+  }
+  .contact-card-content p {
+    margin:0 0 12px;
+    font-size:.78rem;
+    line-height:1.65;
+    color:#66736b;
+  }
+  .contact-person {
+    display:flex;
+    flex-direction:column;
+    gap:1px;
+    margin-bottom:8px;
+  }
+  .contact-person strong { font-size:.84rem; color:#1c3327; }
+  .contact-person span,.contact-designation { font-size:.72rem; color:#748078; }
+  .contact-designation { margin:-3px 0 8px; font-weight:700; }
+  .contact-links { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+  .contact-phone-link,.contact-whatsapp-link {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    text-decoration:none;
+    font-weight:800;
+    font-size:.78rem;
+    border-radius:9px;
+    padding:6px 9px;
+    transition:.2s ease;
+  }
+  .contact-phone-link { color:#0b3d2e; background:#f2f7f3; }
+  .contact-whatsapp-link { color:#16733a; background:#e9f8ee; }
+  .contact-phone-link:hover,.contact-whatsapp-link:hover { transform:translateY(-1px); filter:brightness(.98); }
+
+  /* ─── REGISTRATION VERIFICATION ─── */
+  .registration-verification-section {
+    position:relative;
+    background:linear-gradient(180deg,#f6f8f5,#eef3ef);
+    border-top:1px solid rgba(11,61,46,.07);
+  }
+  .registration-verification-section .section-title { color:var(--deep-green); }
+  .verification-panel {
+    max-width:880px;
+    margin:0 auto;
+    padding:28px;
+    background:rgba(255,255,255,.98);
+    border:1px solid rgba(11,61,46,.12);
+    border-radius:24px;
+    box-shadow:0 18px 55px rgba(11,61,46,.10);
+  }
+  .verification-panel-head {
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-bottom:22px;
+  }
+  .verification-panel-icon {
+    width:56px;height:56px;flex:0 0 56px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:16px;
+    background:linear-gradient(135deg,var(--deep-green),var(--mid-green));
+    color:#fff;
+    font-size:1.45rem;
+    box-shadow:0 8px 22px rgba(11,61,46,.18);
+  }
+  .verification-panel-head h3 {
+    margin:0 0 3px;
+    font-family:'Noto Serif Bengali',serif;
+    color:var(--deep-green);
+    font-size:1.25rem;
+  }
+  .verification-panel-head p { margin:0;color:#6a766e;font-size:.8rem; }
+  .verification-form-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .verification-field label {
+    display:block;
+    margin:0 0 7px;
+    color:#33483d;
+    font-size:.78rem;
+    font-weight:800;
+  }
+  .verification-field input {
+    width:100%;
+    padding:13px 14px;
+    border:1px solid #d8e0da;
+    border-radius:11px;
+    background:#fbfdfb;
+    color:#183326;
+    font:600 .92rem 'Noto Sans Bengali',sans-serif;
+    outline:none;
+    transition:.2s ease;
+  }
+  .verification-field input:focus {
+    border-color:#C8960C;
+    background:#fff;
+    box-shadow:0 0 0 3px rgba(200,150,12,.10);
+  }
+  .verification-search-btn {
+    width:100%;
+    margin-top:16px;
+    padding:13px 18px;
+    border:0;
+    border-radius:11px;
+    background:linear-gradient(135deg,var(--deep-green),var(--mid-green));
+    color:#fff;
+    font:800 .92rem 'Noto Sans Bengali',sans-serif;
+    cursor:pointer;
+    box-shadow:0 8px 22px rgba(11,61,46,.15);
+    transition:.2s ease;
+  }
+  .verification-search-btn:hover:not(:disabled) { transform:translateY(-1px); }
+  .verification-search-btn:disabled { opacity:.65;cursor:wait; }
+  .registration-lookup-result { margin-top:18px; }
+  .lookup-result-card {
+    border-radius:17px;
+    padding:18px;
+    border:1px solid #dfe7e1;
+    background:#fbfdfb;
+  }
+  .lookup-result-card.pending { border-color:#efd98a;background:#fffdf5; }
+  .lookup-result-card.verified { border-color:#b9dfc5;background:#f6fcf8; }
+  .lookup-result-card.error { border-color:#f0c4bf;background:#fff8f7;text-align:center;color:#9b3026; }
+  .lookup-status {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:.72rem;
+    font-weight:900;
+    margin-bottom:13px;
+  }
+  .lookup-result-card.pending .lookup-status { background:#fff1c9;color:#9a6500; }
+  .lookup-result-card.verified .lookup-status { background:#dff3e6;color:#16733a; }
+  .lookup-info-grid {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+  }
+  .lookup-info-item {
+    padding:10px 12px;
+    border-radius:11px;
+    background:#fff;
+    border:1px solid #e5ebe6;
+  }
+  .lookup-info-item span { display:block;font-size:.65rem;color:#7a857e;font-weight:700;margin-bottom:3px; }
+  .lookup-info-item strong { display:block;font-size:.83rem;color:#1d3528;word-break:break-word; }
+  .lookup-message {
+    margin:13px 0 0;
+    padding:12px 14px;
+    border-radius:11px;
+    background:#f5f7f5;
+    color:#596960;
+    font-size:.78rem;
+    line-height:1.65;
+  }
+  .lookup-downloads {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:14px;
+  }
+  .lookup-download-btn {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    padding:12px 14px;
+    border-radius:11px;
+    background:var(--deep-green);
+    color:#fff;
+    text-decoration:none;
+    font-size:.78rem;
+    font-weight:900;
+    transition:.2s ease;
+  }
+  .lookup-download-btn.secondary { background:#173f76; }
+  .lookup-download-btn:hover { transform:translateY(-1px);filter:brightness(1.06); }
+
+  @media (max-width: 820px) {
+    .registration-contact-cards { grid-template-columns:1fr; }
+    .verification-form-grid { grid-template-columns:1fr; }
+  }
+  @media (max-width: 560px) {
+    .registration-contact-card { padding:15px; }
+    .contact-card-icon { width:42px;height:42px;flex-basis:42px;font-size:1.15rem; }
+    .contact-card-content h3 { font-size:.94rem; }
+    .verification-panel { padding:19px 15px; border-radius:19px; }
+    .verification-panel-head h3 { font-size:1.08rem; }
+    .lookup-info-grid { grid-template-columns:1fr; }
+    .lookup-downloads { grid-template-columns:1fr; }
+    .verification-field input { padding:12px; }
+  }
+
   /* ─── CONTACT ─── */
   #contact { background: linear-gradient(135deg, #071a0e 0%, var(--deep-green) 60%, #0d4a35 100%); position: relative; }
   #contact::before {
@@ -2256,6 +2505,7 @@
     <li><a href="#history">ইতিহাস</a></li>
     <li><a href="#events">অনুষ্ঠানসূচি</a></li>
     <li><a href="#registration">নিবন্ধন</a></li>
+    <li><a href="#registration-verification">কার্ড যাচাই</a></li>
     <li><a href="#management">তথ্য ব্যবস্থাপনা</a></li>
     <li><a href="#volunteer" class="volunteer-nav-link">🛡️ ভলান্টিয়ার</a></li>
     <li><a href="#contact">যোগাযোগ</a></li>
@@ -2521,17 +2771,42 @@
           <ul class="warn-list">
             <li>বিকাশ / নগদ: 01747-877180</li>
             <li>ব্যাংক ট্রান্সফার: Bank Name: Jamuna Bank PLC, Account Name: Mohammad Kabir Uddin/Maksudur Rahman/Mohammad Mohidur Rahman Molla, Account Number: 1101008937712, Routing Number: 130560610, SWIFT: JAMUBDDHTFP</li>
-            <li>অথবা শারীরিকভাবে/নির্দিষ্ট প্রতিনিধির মাধ্যমে জমা দেওয়া যাবে।</li>
+            <li>অথবা অফিসে সশরীরে/নির্দিষ্ট প্রতিনিধির মাধ্যমে জমা দেওয়া যাবে।</li>
             <li>উল্লেখিত মাধ্যম ছাড়া অন্য কোনো মাধ্যমে বা নাম্বারে আর্থিক লেনদেন করবেন না। প্রতারক চক্র থেকে সতর্ক থাকুন; এ জন্য কর্তৃপক্ষ দায়ী থাকবেনা।</li>
           </ul>
         </div>
-        <div class="warn-block">
-          <strong>অতিরিক্ত তথ্য</strong>
-          <ul class="warn-list">
-            <li>নাস্তা ও খাবারের ব্যবস্থা রয়েছে।</li>
-            <li>শিশুদের জন্য আলাদা ব্যবস্থা থাকবে।</li>
-            <li>যেকোনো সমস্যার জন্য যোগাযোগ করুন: ওয়েব এডমিন হৃদয় মোল্লা (ব্যাচ-২০১৩), মোবাইল: ০১৫৭১৩১৫৪৩২, WhatsApp: ০১৮৩১৭০৫৮৬৮</li>
-          </ul>
+        <div class="registration-contact-cards" aria-label="নিবন্ধন সহায়তা যোগাযোগ">
+          <article class="registration-contact-card offline-card">
+            <div class="contact-card-icon">🏫</div>
+            <div class="contact-card-content">
+              <div class="contact-card-kicker">অফলাইন সহায়তা</div>
+              <h3>অফিসে ফি জমা / অফলাইন রেজিস্ট্রেশন</h3>
+              <p>অফিসে ফি জমা দেওয়া অথবা অফলাইন রেজিস্ট্রেশনের জন্য নিচের নাম্বারে যোগাযোগ করুন।</p>
+              <div class="contact-person">
+                <strong>মোহাম্মদ কবির উদ্দিন</strong>
+                <span>(প্রধান শিক্ষক)</span>
+              </div>
+              <a class="contact-phone-link" href="tel:+8801747877180">📞 +880 1747-877180</a>
+            </div>
+          </article>
+
+          <article class="registration-contact-card online-card">
+            <div class="contact-card-icon">💻</div>
+            <div class="contact-card-content">
+              <div class="contact-card-kicker">ডিজিটাল সহায়তা</div>
+              <h3>অনলাইন রেজিস্ট্রেশন সহায়তা</h3>
+              <p>অনলাইন রেজিস্ট্রেশন সংক্রান্ত যেকোন সমস্যার জন্য নিচের নাম্বারে যোগাযোগ করুন।</p>
+              <div class="contact-person">
+                <strong>হৃদয় মোল্লা</strong>
+                <span>(ব্যাচ-২০১৩)</span>
+              </div>
+              <div class="contact-designation">ওয়েব এডমিন</div>
+              <div class="contact-links">
+                <a class="contact-phone-link" href="tel:01571315432">📞 01571315432</a>
+                <a class="contact-whatsapp-link" href="https://wa.me/8801831705868" target="_blank" rel="noopener">💬 WhatsApp&nbsp; 01831705868</a>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
       <div class="form-box">
@@ -2780,6 +3055,43 @@
   </div>
 </section>
 
+
+<!-- REGISTRATION VERIFICATION / CARD DOWNLOAD -->
+<section id="registration-verification" class="registration-verification-section">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-tag">কার্ড যাচাই</div>
+      <h2 class="section-title">নিবন্ধন যাচাই ও কার্ড ডাউনলোড</h2>
+      <div class="divider"></div>
+      <p class="section-sub">Event ID এবং নিবন্ধিত মোবাইল নম্বরের শেষ ৪টি সংখ্যা দিয়ে আপনার নিবন্ধন যাচাই করুন।</p>
+    </div>
+
+    <div class="verification-panel">
+      <div class="verification-panel-head">
+        <div class="verification-panel-icon">🔐</div>
+        <div>
+          <h3>আপনার নিবন্ধন খুঁজুন</h3>
+          <p>নিরাপত্তার জন্য উভয় তথ্য সঠিকভাবে দিতে হবে।</p>
+        </div>
+      </div>
+
+      <div class="verification-form-grid">
+        <div class="verification-field">
+          <label for="lookup-event-id">Event ID</label>
+          <input id="lookup-event-id" type="text" autocomplete="off" placeholder="আপনার Event ID লিখুন" maxlength="40">
+        </div>
+        <div class="verification-field">
+          <label for="lookup-mobile-last4">Last 4 digits of Registered Mobile Number</label>
+          <input id="lookup-mobile-last4" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="শেষ ৪টি সংখ্যা">
+        </div>
+      </div>
+
+      <button id="registration-lookup-btn" class="verification-search-btn" type="button" onclick="lookupRegistrationForDownload()">🔎 অনুসন্ধান করুন</button>
+
+      <div id="registration-lookup-result" class="registration-lookup-result" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
 
 <!-- VOLUNTEER PANEL -->
 <section id="volunteer" class="volunteer-section">
@@ -3237,7 +3549,7 @@ window.addEventListener('scroll', () => {
   const nav = document.getElementById('navbar');
   nav.style.boxShadow = window.scrollY > 10 ? '0 4px 30px rgba(0,0,0,0.3)' : 'none';
   // Active link highlight
-  const sections = ['about','history','events','registration','management','contact'];
+  const sections = ['about','history','events','registration','registration-verification','management','contact'];
   let active = '';
   sections.forEach(id => {
     const el = document.getElementById(id);
@@ -3864,6 +4176,126 @@ function showRegSuccessModal(uid, name, reg) {
   setTimeout(() => renderParticipantQR(document.getElementById('registrationQR'), reg, 124), 40);
 }
 
+
+
+// ─── REGISTRATION LOOKUP / SECURE CARD DOWNLOAD ───
+let registrationLookupBusy = false;
+
+/**
+ * Verifies Event ID + registered mobile last four digits and reveals card
+ * download links only after the backend confirms a verified payment.
+ */
+async function lookupRegistrationForDownload(retryAttempt = 0) {
+  if (registrationLookupBusy && retryAttempt === 0) return;
+
+  const uidEl = document.getElementById('lookup-event-id');
+  const last4El = document.getElementById('lookup-mobile-last4');
+  const resultEl = document.getElementById('registration-lookup-result');
+  const btn = document.getElementById('registration-lookup-btn');
+  if (!uidEl || !last4El || !resultEl || !btn) return;
+
+  const uniqueId = String(uidEl.value || '').trim().toUpperCase();
+  const mobileLast4 = String(last4El.value || '').replace(/\D/g, '').slice(-4);
+
+  if (retryAttempt === 0) {
+    if (!uniqueId) {
+      resultEl.innerHTML = '<div class="lookup-result-card error">⚠️ Event ID দিন।</div>';
+      uidEl.focus();
+      return;
+    }
+    if (mobileLast4.length !== 4) {
+      resultEl.innerHTML = '<div class="lookup-result-card error">⚠️ নিবন্ধিত মোবাইল নম্বরের শেষ ৪টি সংখ্যা দিন।</div>';
+      last4El.focus();
+      return;
+    }
+    registrationLookupBusy = true;
+    btn.disabled = true;
+    btn.textContent = '⏳ অনুসন্ধান হচ্ছে...';
+  }
+
+  try {
+    const response = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({
+        action: 'lookupRegistrationForDownload',
+        uniqueId,
+        mobileLast4
+      })
+    });
+    const data = await response.json();
+
+    if (!data.success) {
+      resultEl.innerHTML = '<div class="lookup-result-card error"><strong>কোন নিবন্ধন পাওয়া যায়নি।</strong></div>';
+      return;
+    }
+
+    const p = data.participant || {};
+    const type = escapeHtmlSafe(p.type || '');
+    const name = escapeHtmlSafe(p.name || '');
+    const eventId = escapeHtmlSafe(p.uniqueId || uniqueId);
+
+    if (String(p.paymentVerificationStatus || '') !== 'Verified') {
+      resultEl.innerHTML = `
+        <div class="lookup-result-card pending">
+          <div class="lookup-status">🟡 Verification Pending</div>
+          <div class="lookup-info-grid">
+            <div class="lookup-info-item"><span>নাম</span><strong>${name}</strong></div>
+            <div class="lookup-info-item"><span>Event ID</span><strong>${eventId}</strong></div>
+            <div class="lookup-info-item"><span>Registration Type</span><strong>${type}</strong></div>
+          </div>
+          <div class="lookup-message">
+            আপনার পেমেন্ট যাচাই সম্পন্ন হলে SMS ও Email-এর মাধ্যমে জানানো হবে।<br>
+            এরপর Event ID Card ও Photo Card ডাউনলোড করা যাবে।
+          </div>
+        </div>`;
+      return;
+    }
+
+    const idUrl = String(p.idCardDownloadUrl || '').trim();
+    const photoUrl = String(p.photoCardDownloadUrl || '').trim();
+
+    // Verification is complete but the automatic card archive may still be
+    // finishing in the admin browser. Retry briefly without requiring admin action.
+    if ((!idUrl || !photoUrl) && retryAttempt < 3) {
+      resultEl.innerHTML = `
+        <div class="lookup-result-card verified">
+          <div class="lookup-status">✅ Payment Verified</div>
+          <div class="lookup-info-grid">
+            <div class="lookup-info-item"><span>নাম</span><strong>${name}</strong></div>
+            <div class="lookup-info-item"><span>Event ID</span><strong>${eventId}</strong></div>
+            <div class="lookup-info-item"><span>Registration Type</span><strong>${type}</strong></div>
+          </div>
+          <div class="lookup-message">আপনার কার্ড প্রস্তুত হচ্ছে। স্বয়ংক্রিয়ভাবে আবার চেষ্টা করা হচ্ছে...</div>
+        </div>`;
+      setTimeout(() => lookupRegistrationForDownload(retryAttempt + 1), 2200);
+      return;
+    }
+
+    resultEl.innerHTML = `
+      <div class="lookup-result-card verified">
+        <div class="lookup-status">✅ Payment Verified</div>
+        <div class="lookup-info-grid">
+          <div class="lookup-info-item"><span>নাম</span><strong>${name}</strong></div>
+          <div class="lookup-info-item"><span>Event ID</span><strong>${eventId}</strong></div>
+          <div class="lookup-info-item"><span>Registration Type</span><strong>${type}</strong></div>
+        </div>
+        ${idUrl && photoUrl ? `
+          <div class="lookup-downloads">
+            <a class="lookup-download-btn" href="${escapeHtmlSafe(idUrl)}" target="_blank" rel="noopener">🪪 Download Event ID Card</a>
+            <a class="lookup-download-btn secondary" href="${escapeHtmlSafe(photoUrl)}" target="_blank" rel="noopener">📸 Download Photo Card</a>
+          </div>` :
+          `<div class="lookup-message">Payment Verified হয়েছে। কার্ড ফাইল প্রস্তুত হতে কিছুটা সময় লাগতে পারে। অনুগ্রহ করে কিছুক্ষণ পরে আবার অনুসন্ধান করুন।</div>`}
+      </div>`;
+  } catch (err) {
+    console.error('Registration lookup failed:', err);
+    resultEl.innerHTML = '<div class="lookup-result-card error">❌ সার্ভারের সাথে সংযোগ করা যাচ্ছে না। কিছুক্ষণ পরে আবার চেষ্টা করুন।</div>';
+  } finally {
+    registrationLookupBusy = false;
+    btn.disabled = false;
+    btn.textContent = '🔎 অনুসন্ধান করুন';
+  }
+}
 
 // ─── SAVE TO GOOGLE SHEETS ───
 async function saveToCloud(reg) {
@@ -5604,6 +6036,14 @@ function escapeHtmlSafe(v) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const lookupEventId = document.getElementById('lookup-event-id');
+  const lookupLast4 = document.getElementById('lookup-mobile-last4');
+  [lookupEventId, lookupLast4].forEach(el => {
+    if (el) el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') lookupRegistrationForDownload();
+    });
+  });
+
   const dobInput = document.getElementById('reg-dob');
   if (dobInput && !dobInput.max) {
     dobInput.max = new Date().toISOString().split('T')[0];
