@@ -107,7 +107,7 @@
     border-bottom: 1px solid rgba(200,150,12,0.3);
     padding: 0 2rem;
     display: flex; align-items: center; justify-content: space-between;
-    height: 64px;
+    height: 58px;
     transition: all 0.3s;
   }
   nav .brand {
@@ -141,8 +141,8 @@
   .nav-links a {
     color: rgba(255,255,255,0.78);
     text-decoration: none;
-    font-size: 0.875rem;
-    padding: 7px 16px;
+    font-size: 0.82rem;
+    padding: 6px 10px;
     border-radius: 8px;
     transition: all 0.2s;
     white-space: nowrap;
@@ -163,6 +163,14 @@
     border-radius: 8px !important;
   }
   .nav-btn:hover { background: var(--gold-light) !important; transform: translateY(-1px); }
+  .card-download-nav { background: linear-gradient(135deg,#c89a18,#e1bb4b) !important; color:#102a1c !important; font-weight:800 !important; box-shadow:0 4px 14px rgba(200,150,12,.22); }
+  .card-download-nav:hover { background:linear-gradient(135deg,#e1bb4b,#f0d071) !important; }
+  .nav-more { position:relative; }
+  .nav-more > button { border:0; font:inherit; cursor:pointer; color:rgba(255,255,255,.78); background:transparent; padding:6px 10px; border-radius:8px; white-space:nowrap; }
+  .nav-more > button:hover { color:#fff; background:rgba(255,255,255,.12); }
+  .nav-dropdown { position:absolute; top:calc(100% + 8px); right:0; min-width:190px; padding:6px; background:rgba(7,24,13,.98); border:1px solid rgba(255,255,255,.12); border-radius:12px; box-shadow:0 16px 40px rgba(0,0,0,.28); opacity:0; transform:translateY(-6px); pointer-events:none; transition:opacity .18s ease,transform .18s ease; }
+  .nav-more:hover .nav-dropdown, .nav-more:focus-within .nav-dropdown, .nav-more.open .nav-dropdown { opacity:1; transform:translateY(0); pointer-events:auto; }
+  .nav-dropdown a { display:block; width:100%; box-sizing:border-box; }
   .hamburger {
     display: none; flex-direction: column; gap: 5px;
     cursor: pointer; padding: 4px;
@@ -1554,30 +1562,46 @@
 
   .founder-card {
     grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: 120px 1fr;
-    gap: 1rem;
-    align-items: center;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    gap:.55rem;
+    padding:1.5rem;
   }
   .founder-card .founder-photo {
-    width: 120px; height: 150px; border-radius: 18px; object-fit: cover; background: #f1f1f1; border: 1px solid rgba(11,61,46,.12);
+    width: 138px; height: 172px; border-radius: 18px; object-fit: cover; background: #f1f1f1; border: 1px solid rgba(11,61,46,.12); box-shadow:0 10px 24px rgba(11,61,46,.08);
   }
+  .founder-name { margin:.1rem 0 .2rem; color:var(--deep-green); font-family:'Noto Serif Bengali',serif; font-size:1.12rem; font-weight:900; }
+  .founder-card .founder-copy { max-width:780px; }
+  .founder-card .founder-copy h3 { margin:.05rem 0 .4rem; color:var(--deep-green); }
   .founder-card .founder-copy p { margin-bottom: .55rem; }
   .history-founder {
-    display: grid;
-    grid-template-columns: 130px 1fr;
-    gap: 1rem;
-    align-items: center;
-    padding: 1rem;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    padding:1.35rem;
     border: 1px solid rgba(11,61,46,.12);
     border-radius: 18px;
     background: #fff;
     margin-bottom: 1.25rem;
     box-shadow: 0 8px 22px rgba(11,61,46,0.04);
   }
-  .history-founder img { width: 130px; height: 160px; object-fit: cover; border-radius: 16px; border: 1px solid rgba(11,61,46,.12); }
-  .history-founder .hf-title { font-weight: 900; color: var(--deep-green); font-size: 1rem; margin-bottom: .35rem; }
-  .history-founder .hf-copy { color: var(--text-light); line-height: 1.7; font-size: .92rem; }
+  .history-founder img { width: 138px; height: 172px; object-fit: cover; border-radius: 18px; border: 1px solid rgba(11,61,46,.12); box-shadow:0 10px 24px rgba(11,61,46,.08); }
+  .history-founder .hf-title { font-weight: 900; color: var(--deep-green); font-size: 1.08rem; margin:.2rem 0 .4rem; font-family:'Noto Serif Bengali',serif; }
+  .history-founder .hf-copy { color: var(--text-light); line-height: 1.7; font-size: .92rem; max-width:800px; }
+
+  /* ─── WEB TEAM ─── */
+  .web-team-section { background:linear-gradient(180deg,#fffdf7,#f6f4eb); }
+  .web-team-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1.15rem; }
+  .web-team-card { background:#fff; border:1px solid rgba(11,61,46,.12); border-radius:18px; padding:1rem; text-align:center; box-shadow:0 8px 24px rgba(11,61,46,.06); transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease; }
+  .web-team-card:hover { transform:translateY(-4px); box-shadow:0 16px 32px rgba(11,61,46,.11); border-color:rgba(200,150,12,.38); }
+  .web-team-photo { width:96px; height:118px; margin:0 auto .8rem; object-fit:cover; border-radius:14px; display:block; border:1px solid rgba(11,61,46,.14); box-shadow:0 5px 14px rgba(11,61,46,.08); }
+  .web-team-name { color:var(--deep-green); font-family:'Noto Serif Bengali',serif; font-weight:900; font-size:.98rem; line-height:1.45; min-height:2.8em; display:flex; align-items:center; justify-content:center; }
+  .web-team-batch { color:#6d766f; font-size:.78rem; margin:.25rem 0 .75rem; }
+  .web-team-wa { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; min-height:34px; padding:.42rem .8rem; border-radius:9px; background:#edf7f0; color:#176b3b; text-decoration:none; font-size:.78rem; font-weight:800; border:1px solid rgba(23,107,59,.15); transition:background .18s ease,transform .18s ease; }
+  .web-team-wa:hover { background:#dff0e4; transform:translateY(-1px); }
 
   .reg-warning-box {
     background: linear-gradient(180deg, #fff, #fffaf1);
@@ -2235,6 +2259,10 @@
   .row-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .td-name-wrap { display: flex; align-items: center; gap: 10px; }
 
+  @media (max-width: 1100px) and (min-width: 769px) {
+    .web-team-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  }
+
   /* ─── MOBILE ─── */
   @media (max-width: 768px) {
     .hamburger { display: flex; }
@@ -2260,6 +2288,11 @@
       transform: translateY(0); opacity: 1; pointer-events: all;
     }
     .nav-links li { width: 100%; }
+    .nav-more { width:100%; }
+    .nav-more > button { width:100%; min-height:46px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.045); }
+    .nav-dropdown { position:static; min-width:0; margin-top:6px; display:none; opacity:1; transform:none; pointer-events:auto; box-shadow:none; background:rgba(255,255,255,.035); }
+    .nav-more.open .nav-dropdown { display:block; }
+    .nav-dropdown a { min-height:42px !important; }
     .nav-links a {
       display: flex;
       align-items: center;
@@ -2291,6 +2324,10 @@
       border-radius: 9px;
       background: rgba(255,255,255,0.06);
     }
+    .web-team-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; }
+    .web-team-card { padding:.8rem .6rem; }
+    .web-team-photo { width:82px; height:100px; }
+    .founder-card, .history-founder { padding:1rem; }
     .reg-container { grid-template-columns: 1fr; gap: 2rem; }
     .form-row { grid-template-columns: 1fr; }
     .hero-side { position: static; width: 100%; flex-direction: row; margin: 0 auto 1.75rem; max-width: 420px; }
@@ -2488,27 +2525,24 @@
 <!-- NAV -->
 <nav id="navbar">
   <a href="#hero" class="brand">
-<img src="images/School/logo50.jpg" alt="লোগো"
-  style="width:46px;height:46px;border-radius:50%;
-  object-fit:cover;flex-shrink:0;
-  box-shadow:0 0 0 2px rgba(200,150,12,0.5);">
-    <div class="brand-text">
-      <span>৫০ বছর পূর্তি উৎসব ২০২৬</span>
-      <span>মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয়</span>
-    </div>
+    <img src="images/School/logo50.jpg" alt="লোগো" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;box-shadow:0 0 0 2px rgba(200,150,12,0.5);">
+    <div class="brand-text"><span>৫০ বছর পূর্তি উৎসব ২০২৬</span><span>মনসূর উদ্দিন বহুমূখী উচ্চ বিদ্যালয়</span></div>
   </a>
-  <div class="hamburger" id="hamburger" onclick="toggleMenu()">
-    <span></span><span></span><span></span>
-  </div>
+  <div class="hamburger" id="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></div>
   <ul class="nav-links" id="navLinks">
     <li><a href="#about">পরিচিতি</a></li>
-    <li><a href="#history">ইতিহাস</a></li>
     <li><a href="#events">অনুষ্ঠানসূচি</a></li>
     <li><a href="#registration">নিবন্ধন</a></li>
-    <li><a href="#registration-verification">কার্ড যাচাই</a></li>
-    <li><a href="#management">তথ্য ব্যবস্থাপনা</a></li>
-    <li><a href="#volunteer" class="volunteer-nav-link">🛡️ ভলান্টিয়ার</a></li>
-    <li><a href="#contact">যোগাযোগ</a></li>
+    <li><a href="#registration-verification" class="card-download-nav">কার্ড ডাউনলোড</a></li>
+    <li class="nav-more" id="navMore">
+      <button type="button" onclick="toggleMoreMenu(event)">আরও ▾</button>
+      <div class="nav-dropdown">
+        <a href="#web-team">ওয়েব টিম</a>
+        <a href="#management">তথ্য ব্যবস্থাপনা</a>
+        <a href="#volunteer" class="volunteer-nav-link">🛡️ ভলান্টিয়ার</a>
+        <a href="#contact">যোগাযোগ</a>
+      </div>
+    </li>
     <li><a href="#registration" class="nav-btn">এখনই নিবন্ধন করুন</a></li>
   </ul>
 </nav>
@@ -2591,7 +2625,8 @@
     </div>
     <div class="about-grid">
       <div class="about-card founder-card">
-        <img class="founder-photo" src="images/School/Founder1.jpg" alt="প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয়" onerror="this.style.display='none';this.nextElementSibling.style.gridColumn='1 / -1';">
+        <img class="founder-photo" src="images/School/Founder1.jpg" alt="প্রতিষ্ঠাতা মোঃ আবুল কাশেম মহোদয়" onerror="this.style.display='none';">
+        <div class="founder-name">প্রতিষ্ঠাতা মোঃ আবুল কাশেম মহোদয়</div>
         <div class="founder-copy">
           <h3>প্রতিষ্ঠাতার প্রতি শ্রদ্ধাঞ্জলি</h3>
           <p>প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয় তার সম্মানিত পিতা জনাব মোঃ মনসুর উদ্দিন মহোদয় নামে ১৯৭৫ সালে বিদ্যালয়টি স্থাপন করেন। বিদ্যালয় কর্তৃপক্ষ অত্যন্ত শ্রদ্ধার সাথে তাদের প্রতি চিরকৃতজ্ঞ।</p>
@@ -2661,7 +2696,8 @@
       <p class="section-sub">১৯৭৫ থেকে ২০২৬ — পাঁচ দশকের উল্লেখযোগ্য মাইলফলকসমূহ</p>
     </div>
     <div class="history-founder">
-        <img src="images/School/Founder2.jpg" alt="প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয়" onerror="this.style.display='none'">
+        <img src="images/School/Founder2.jpg" alt="প্রতিষ্ঠাতা মোঃ আবুল কাশেম মহোদয়" onerror="this.style.display='none'">
+        <div class="founder-name">প্রতিষ্ঠাতা মোঃ আবুল কাশেম মহোদয়</div>
         <div>
           <div class="hf-title">বিদ্যালয় প্রতিষ্ঠার গৌরবময় স্মৃতি</div>
           <div class="hf-copy">প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয় তার সম্মানিত পিতা জনাব মোঃ মনসুর উদ্দিন মহোদয় নামে ১৯৭৫ সালে বিদ্যালয়টি স্থাপন করেন। বিদ্যালয় কর্তৃপক্ষ অত্যন্ত শ্রদ্ধার সাথে তাদের প্রতি চিরকৃতজ্ঞ।</div>
@@ -2673,7 +2709,7 @@
         <div class="tl-year">১৯৭৫</div>
         <div class="tl-content">
           <h4>বিদ্যালয় প্রতিষ্ঠা</h4>
-          <p>প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয় তার সম্মানিত পিতা জনাব মোঃ মনসুর উদ্দিন সাহেবের নামে ১৯৭৫ সালে বিদ্যালয়টি স্থাপন করেন। বিদ্যালয় কর্তৃপক্ষ অত্যন্ত শ্রদ্ধার সাথে তাদের প্রতি চিরকৃতজ্ঞ। পরবর্তী সময়ে এই প্রতিষ্ঠান সরকারি স্বীকৃতি প্রাপ্ত একটি এমপিওভুক্ত বিদ্যাপীঠ হিসেবে অগ্রযাত্রা শুরু করে।</p>
+          <p>প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম তার সম্মানিত পিতা জনাব মোঃ মনসুর উদ্দিন সাহেবের নামে ১৯৭৫ সালে বিদ্যালয়টি স্থাপন করেন। বিদ্যালয় কর্তৃপক্ষ অত্যন্ত শ্রদ্ধার সাথে তাদের প্রতি চিরকৃতজ্ঞ। পরবর্তী সময়ে এই প্রতিষ্ঠান সরকারি স্বীকৃতি প্রাপ্ত একটি এমপিওভুক্ত বিদ্যাপীঠ হিসেবে অগ্রযাত্রা শুরু করে।</p>
         </div>
       </div>
       <div class="tl-item">
@@ -3004,9 +3040,9 @@
         </div>
 
         <div class="payment-summary" id="payment-summary">
-          <div class="payment-summary-title">💳 পেমেন্টের আগে আপনার মোট ফি</div>
-          <div class="payment-summary-amount" id="payment-total">পরিচয় নির্বাচন করলে মোট ফি দেখাবে</div>
-          <div class="payment-summary-note" id="payment-summary-note">নিচের পরিচয় অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।</div>
+          <div class="payment-summary-title">💳 পেমেন্টের আগে আপনার মোট ফি দেখে নিন</div>
+          <div class="payment-summary-amount" id="payment-total">পরিচয় নির্বাচন ও অতিথি সংখ্যা জানালে মোট ফি দেখাবে</div>
+          <div class="payment-summary-note" id="payment-summary-note">আপনার পরিচয় ও অতিথি সংখ্যা অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।</div>
         </div>
 
         <div class="payment-info-box payment-method-details" id="payment-method-details" style="display:none;margin:10px 0 14px;padding:14px 16px;border:1px solid rgba(192,57,43,.18);border-radius:14px;background:#fffafa;line-height:1.7;font-size:.86rem;">
@@ -3099,6 +3135,32 @@
       <button id="registration-lookup-btn" class="verification-search-btn" type="button" onclick="lookupRegistrationForDownload()">🔎 অনুসন্ধান করুন</button>
 
       <div id="registration-lookup-result" class="registration-lookup-result" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- WEB TEAM -->
+<section id="web-team" class="web-team-section">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-tag">Web Team</div>
+      <h2 class="section-title">ওয়েব টিম</h2>
+      <div class="divider"></div>
+      <p class="section-sub">ওয়েবসাইট, অনলাইন রেজিস্ট্রেশন ও প্রযুক্তিগত সহায়তায় দায়িত্বপ্রাপ্ত টিম</p>
+    </div>
+    <div class="web-team-grid">
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web1.jpg" alt="নাজমুল হক নয়ন"><div class="web-team-name">নাজমুল হক নয়ন</div><div class="web-team-batch">ব্যাচ-২০০৪</div><a class="web-team-wa" href="https://wa.me/8801717060752" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web2.jpg" alt="মশিউর রহমান রবি"><div class="web-team-name">মশিউর রহমান রবি</div><div class="web-team-batch">ব্যাচ-২০০৯</div><a class="web-team-wa" href="https://wa.me/8801763280101" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web3.jpg" alt="মোঃ রবিন খান"><div class="web-team-name">মোঃ রবিন খান</div><div class="web-team-batch">ব্যাচ-২০১১</div><a class="web-team-wa" href="https://wa.me/8801722720764" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web4.jpg" alt="মোঃ রনি মৃধা"><div class="web-team-name">মোঃ রনি মৃধা</div><div class="web-team-batch">ব্যাচ-২০১১</div><a class="web-team-wa" href="https://wa.me/8801780017821" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web5.jpg" alt="হৃদয় মোল্লা"><div class="web-team-name">হৃদয় মোল্লা</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801831705868" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web6.jpg" alt="মোঃ সজীবুর রহমান"><div class="web-team-name">মোঃ সজীবুর রহমান</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801728270628" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web7.jpg" alt="মোঃ রাহাত খান"><div class="web-team-name">মোঃ রাহাত খান</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801775702972" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web8.jpg" alt="মোঃ ইয়াসিন মিয়া"><div class="web-team-name">মোঃ ইয়াসিন মিয়া</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801723868878" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web9.jpg" alt="মোঃ শাহীদুর রহমান শোভন"><div class="web-team-name">মোঃ শাহীদুর রহমান শোভন</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801715212650" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web10.jpg" alt="মোঃ রানা মিয়া"><div class="web-team-name">মোঃ রানা মিয়া</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801787581725" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web11.jpg" alt="মোঃ সাব্বির রহমান"><div class="web-team-name">মোঃ সাব্বির রহমান</div><div class="web-team-batch">ব্যাচ-২০১৪</div><a class="web-team-wa" href="https://wa.me/8801673747193" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+      <article class="web-team-card"><img class="web-team-photo" src="images/web/web12.jpg" alt="মোঃ সাঈমুর রহমান সাঈম"><div class="web-team-name">মোঃ সাঈমুর রহমান সাঈম</div><div class="web-team-batch">ব্যাচ-২০১৬</div><a class="web-team-wa" href="https://wa.me/8801721586767" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
     </div>
   </div>
 </section>
@@ -3550,16 +3612,26 @@ setTimeout(hidePreloader, 1500);
 function toggleMenu() {
   document.getElementById('navLinks').classList.toggle('open');
 }
+function toggleMoreMenu(event) {
+  if (event) event.stopPropagation();
+  const more = document.getElementById('navMore');
+  if (more) more.classList.toggle('open');
+}
 document.querySelectorAll('.nav-links a').forEach(a => {
   a.addEventListener('click', () => {
     document.getElementById('navLinks').classList.remove('open');
+    const more = document.getElementById('navMore'); if (more) more.classList.remove('open');
   });
+});
+document.addEventListener('click', function(e){
+  const more=document.getElementById('navMore');
+  if(more && !more.contains(e.target)) more.classList.remove('open');
 });
 window.addEventListener('scroll', () => {
   const nav = document.getElementById('navbar');
   nav.style.boxShadow = window.scrollY > 10 ? '0 4px 30px rgba(0,0,0,0.3)' : 'none';
   // Active link highlight
-  const sections = ['about','history','events','registration','registration-verification','management','contact'];
+  const sections = ['about','events','registration','registration-verification','web-team','management','volunteer','contact'];
   let active = '';
   sections.forEach(id => {
     const el = document.getElementById(id);
@@ -3838,7 +3910,7 @@ function syncPermanentAddress() {
     document.getElementById(`reg-permanent-${k}`).value = document.getElementById(`reg-current-${k}`).value;
   });
 }
-const registrationFees = { alumni:700, student:300, teacher:700, other:700 };
+const registrationFees = { alumni:700, student:300, teacher:700, other:500 };
 const guestFee = 500;
 const feeLabels = { alumni:'প্রাক্তন শিক্ষার্থী (Ex-Student)', student:'বর্তমান শিক্ষার্থী', teacher:'শিক্ষক/কর্মকর্তা', other:'অন্যান্য' };
 function formatBDT(n) { return `${Number(n).toLocaleString('en-US')} টাকা`; }
