@@ -4705,58 +4705,56 @@ async function downloadIdCard(reg, shouldDownload) {
 }
 
 function buildPhotoCardCanvas(reg, done) {
-  // Photo Card master template dimensions: Photo-CARD.png is 800x800.
-  // The template is loaded unchanged and all dynamic content is composited on top/under it.
+  // Photo Card only: use the supplied PNG as the unchanged master template.
   const TEMPLATE_W = 800;
   const TEMPLATE_H = 800;
+  // Coordinates measured from the supplied 800x800 Photo-CARD.png.
   const PHOTO_CX = 404;
   const PHOTO_CY = 416;
-  const PHOTO_R = 198;
+  const PHOTO_R = 187;
 
   const canvas = document.createElement('canvas');
   canvas.width = TEMPLATE_W;
   canvas.height = TEMPLATE_H;
   const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
   function loadImageElement(image, sources, optional) {
     sources = (Array.isArray(sources) ? sources : [sources]).filter(Boolean);
     return new Promise(function(resolve) {
-      let index = 0;
-      function tryNext() {
-        if (index >= sources.length) {
-          resolve(optional ? null : image);
-          return;
-        }
+      let i = 0;
+      function next() {
+        if (i >= sources.length) { resolve(optional ? null : null); return; }
+        const src = sources[i++];
         image.onload = function() { resolve(image); };
-        image.onerror = function() {
-          index++;
-          tryNext();
-        };
-        image.src = sources[index];
+        image.onerror = next;
+        image.crossOrigin = 'anonymous';
+        image.src = src;
       }
-      if (!sources.length) {
-        resolve(optional ? null : image);
-        return;
-      }
-      tryNext();
+      next();
     });
+  }
+
+  function getTemplateSources() {
+    const list = [];
+    try { list.push(new URL('images/school/Photo-CARD.png', document.baseURI).href); } catch (e) {}
+    list.push('images/school/Photo-CARD.png');
+    list.push('./images/school/Photo-CARD.png');
+    return Array.from(new Set(list));
   }
 
   function wrapText(text, maxWidth, font) {
     ctx.font = font;
-    const words = String(text || '').trim().split(/\s+/).filter(Boolean);
-    if (!words.length) return [''];
-
+    const value = String(text || '').trim();
+    if (!value) return [''];
+    const words = value.split(/\s+/).filter(Boolean);
     const lines = [];
     let line = '';
     words.forEach(function(word) {
       const test = line ? line + ' ' + word : word;
-      if (!line || ctx.measureText(test).width <= maxWidth) {
-        line = test;
-      } else {
-        lines.push(line);
-        line = word;
-      }
+      if (!line || ctx.measureText(test).width <= maxWidth) line = test;
+      else { lines.push(line); line = word; }
     });
     if (line) lines.push(line);
     return lines;
@@ -4764,134 +4762,74 @@ function buildPhotoCardCanvas(reg, done) {
 
   function fitText(text, maxWidth, startSize, minSize, weight, family) {
     let size = startSize;
-    const value = String(text || '');
     while (size > minSize) {
       ctx.font = weight + ' ' + size + 'px ' + family;
-      if (ctx.measureText(value).width <= maxWidth) {
-        return size;
-      }
-      size -= 1;
+      if (ctx.measureText(String(text || '')).width <= maxWidth) return size;
+      size--;
     }
     return minSize;
   }
 
   function drawParticipantPhoto(img) {
     if (!img || !img.naturalWidth || !img.naturalHeight) return;
-
-    // Center-crop / cover: preserve aspect ratio and fill the entire circular area.
-    // A slightly generous source crop is used so the photo never leaves gaps.
     const diameter = PHOTO_R * 2;
     const scale = Math.max(diameter / img.naturalWidth, diameter / img.naturalHeight);
     const drawW = img.naturalWidth * scale;
     const drawH = img.naturalHeight * scale;
-    const drawX = PHOTO_CX - drawW / 2;
-    const drawY = PHOTO_CY - drawH / 2;
-
     ctx.save();
     ctx.beginPath();
     ctx.arc(PHOTO_CX, PHOTO_CY, PHOTO_R, 0, Math.PI * 2);
-    ctx.closePath();
     ctx.clip();
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    ctx.drawImage(img, PHOTO_CX - drawW / 2, PHOTO_CY - drawH / 2, drawW, drawH);
     ctx.restore();
   }
 
   function drawName() {
     const name = String(reg.name || '').trim();
     if (!name) return;
-
-    // Dedicated top-left safe zone, deliberately kept clear of the school logo.
-    const x = 26;
-    const maxWidth = 245;
-    const fontFamily = '"Noto Serif Bengali", "Noto Sans Bengali", Georgia, serif';
-    const size = fitText(name, maxWidth, 28, 18, 800, fontFamily);
-    const font = '800 ' + size + 'px ' + fontFamily;
-    const lines = wrapText(name, maxWidth, font).slice(0, 2);
-
+    const family = '"Noto Serif Bengali", "Noto Sans Bengali", Georgia, serif';
+    const size = fitText(name, 245, 28, 17, 800, family);
+    const font = '800 ' + size + 'px ' + family;
+    const lines = wrapText(name, 245, font).slice(0, 2);
     ctx.save();
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.font = font;
-    ctx.fillStyle = '#10264A';
-    ctx.shadowColor = 'rgba(255,255,255,.85)';
-    ctx.shadowBlur = 4;
-
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = font;
+    ctx.fillStyle = '#10264A'; ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 4;
     const lineHeight = size + 6;
-    const startY = lines.length === 1 ? 108 : 98;
-    lines.forEach(function(line, i) {
-      ctx.fillText(line, x, startY + i * lineHeight);
-    });
+    const y = lines.length === 1 ? 108 : 98;
+    lines.forEach(function(line, i) { ctx.fillText(line, 26, y + i * lineHeight); });
     ctx.restore();
   }
 
   function getPhotoCardTypeLines() {
     const type = String(reg.type || '').toLowerCase();
-
     if (type === 'alumni') {
       const batch = String(reg.batch || '').trim();
-      return [
-        batch ? 'ব্যাচ-' + toEnglishDigits(batch) : 'অ্যালামনাই',
-        '(অ্যালামনাই)'
-      ];
+      return [batch ? 'ব্যাচ-' + toEnglishDigits(batch) : 'অ্যালামনাই', '(অ্যালামনাই)'];
     }
-
     if (type === 'student') {
       const cls = String(reg.studentClass || '').trim();
-      return [
-        cls ? 'শ্রেণি-' + cls : 'বর্তমান শিক্ষার্থী',
-        '(বর্তমান শিক্ষার্থী)'
-      ];
+      return [cls ? 'শ্রেণি-' + cls : 'বর্তমান শিক্ষার্থী', '(বর্তমান শিক্ষার্থী)'];
     }
-
-    if (type === 'teacher') {
-      return ['শিক্ষক'];
-    }
-
-    // Preserve the existing registration type terminology for other categories.
-    const labels = {
-      family: 'ফ্যামিলি',
-      guest: 'অতিথি',
-      child: 'শিশু',
-      other: 'অন্যান্য'
-    };
-    const label = labels[type] || String(reg.registrationType || reg.type || 'অন্যান্য');
-    return [label];
+    if (type === 'teacher') return ['শিক্ষক'];
+    const labels = { family:'ফ্যামিলি', guest:'অতিথি', child:'শিশু', other:'অন্যান্য' };
+    return [labels[type] || String(reg.registrationType || reg.type || 'অন্যান্য')];
   }
 
   function drawParticipantType() {
     const lines = getPhotoCardTypeLines();
-    const xRight = 774;
-    const maxWidth = 235;
-    const fontFamily = '"Noto Serif Bengali", "Noto Sans Bengali", Georgia, serif';
-
+    const family = '"Noto Serif Bengali", "Noto Sans Bengali", Georgia, serif';
     let size = 25;
-    const longest = lines.reduce(function(a, b) {
-      return Math.max(a, String(b).length);
-    }, 0);
-    if (longest > 20) size = 20;
-    else if (longest > 14) size = 22;
-
     ctx.save();
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.font = '800 ' + size + 'px ' + fontFamily;
-    ctx.fillStyle = '#10264A';
-    ctx.shadowColor = 'rgba(255,255,255,.85)';
-    ctx.shadowBlur = 4;
-
-    const lineHeight = size + 7;
-    const startY = lines.length === 1 ? 108 : 98;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#10264A'; ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 4;
     lines.slice(0, 2).forEach(function(line, i) {
-      // If an unusually long registration type is supplied, reduce it further
-      // rather than allowing it to cross into the central logo/photo area.
-      let actual = line;
-      while (ctx.measureText(actual).width > maxWidth && size > 16) {
-        size -= 1;
-        ctx.font = '800 ' + size + 'px ' + fontFamily;
+      while (size > 16) {
+        ctx.font = '800 ' + size + 'px ' + family;
+        if (ctx.measureText(line).width <= 235) break;
+        size--;
       }
-      ctx.fillText(actual, xRight, startY + i * lineHeight);
+      ctx.font = '800 ' + size + 'px ' + family;
+      ctx.fillText(line, 774, (lines.length === 1 ? 108 : 98) + i * (size + 7));
     });
     ctx.restore();
   }
@@ -4900,39 +4838,22 @@ function buildPhotoCardCanvas(reg, done) {
   const template = new Image();
 
   Promise.all([
-    resolveCardPhotoSource(reg).then(function(photoSource) {
-      return loadImageElement(
-        participantPhoto,
-        photoSource ? [photoSource] : [],
-        true
-      );
+    resolveCardPhotoSource(reg).then(function(src) {
+      return src ? loadImageElement(participantPhoto, [src], true) : null;
     }),
-    loadImageElement(template, [
-      'images/school/Photo-CARD.png',
-      './images/school/Photo-CARD.png',
-      'School/Photo-CARD.png',
-      './School/Photo-CARD.png',
-      'School/Photo-CARD.png.png',
-      './School/Photo-CARD.png.png'
-    ], false)
-  ]).then(function() {
+    loadImageElement(template, getTemplateSources(), false)
+  ]).then(function(result) {
+    const tpl = result[1];
+    if (!tpl || !tpl.naturalWidth) throw new Error('Photo-CARD.png not found at images/school/Photo-CARD.png');
+
     ctx.clearRect(0, 0, TEMPLATE_W, TEMPLATE_H);
-
-    // 1. Participant photo goes UNDER the template, clipped to the exact
-    // circular transparent portrait opening in Photo-CARD.png.
+    // Photo goes underneath the transparent portrait opening.
     drawParticipantPhoto(participantPhoto);
-
-    // 2. Draw the supplied PNG itself unchanged as the complete master design.
-    if (template && template.naturalWidth) {
-      ctx.drawImage(template, 0, 0, TEMPLATE_W, TEMPLATE_H);
-    } else {
-      throw new Error('Photo-CARD.png template could not be loaded.');
-    }
-
-    // 3. Only the requested dynamic text is added above the master template.
+    // Master PNG is drawn unchanged over the photo.
+    ctx.drawImage(tpl, 0, 0, TEMPLATE_W, TEMPLATE_H);
+    // Only requested dynamic fields are added.
     drawName();
     drawParticipantType();
-
     done(canvas);
   }).catch(function(err) {
     console.error('Photo Card template rendering failed:', err);
@@ -4941,36 +4862,26 @@ function buildPhotoCardCanvas(reg, done) {
 }
 
 function downloadPhotoCard(reg, shouldDownload) {
-  if(!reg)return;
-  shouldDownload=(shouldDownload!==false);
-
-  // Render the current Photo-CARD.png template fresh for every download.
-  // Existing Drive duplicate handling remains unchanged.
-  buildPhotoCardCanvas(reg, function(canvas){
-    if(!canvas){
-      showToast('❌ Photo Card তৈরি করা যায়নি।', 'error');
+  if (!reg) return;
+  shouldDownload = (shouldDownload !== false);
+  buildPhotoCardCanvas(reg, function(canvas) {
+    if (!canvas) {
+      showToast('❌ Photo Card তৈরি করা যায়নি। images/school/Photo-CARD.png চেক করুন।', 'error');
       return;
     }
-
     let data;
-    try {
-      // PNG preserves the supplied master template and keeps dynamic text sharp.
-      data=canvas.toDataURL('image/png');
-    } catch(err) {
-      console.error('Photo Card canvas export failed:',err);
-      showToast('❌ Photo Card তৈরি করা যায়নি।', 'error');
+    try { data = canvas.toDataURL('image/png'); }
+    catch (err) {
+      console.error('Photo Card canvas export failed:', err);
+      showToast('❌ Photo Card export করা যায়নি।', 'error');
       return;
     }
-
-    uploadIdCardToDrive({...reg,_driveKind:'photoCard'},data);
-
-    if(shouldDownload){
-      const a=document.createElement('a');
-      a.download=(reg.uniqueId||'photo_card')+'_photo-card.png';
-      a.href=data;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+    uploadIdCardToDrive({...reg, _driveKind:'photoCard'}, data);
+    if (shouldDownload) {
+      const a = document.createElement('a');
+      a.download = (reg.uniqueId || 'photo_card') + '_photo-card.png';
+      a.href = data;
+      document.body.appendChild(a); a.click(); a.remove();
       showToast('📥 Photo Card ডাউনলোড হচ্ছে!');
     }
   });
