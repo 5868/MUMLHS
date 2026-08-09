@@ -1544,6 +1544,17 @@
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: .85rem;
   }
+  .mgmt-stat-pending { display:block; margin-top:5px; font-size:.68rem; color:#9a6500; font-weight:800; }
+  .mgmt-payment-summary { margin:1rem 0 1.15rem; padding:1rem; border:1px solid rgba(11,61,46,.1); border-radius:18px; background:linear-gradient(180deg,#fff,#fbfcf8); box-shadow:0 8px 24px rgba(11,61,46,.05); }
+  .mgmt-payment-summary-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:.8rem; }
+  .mgmt-payment-summary-head h3 { margin:0; color:var(--deep-green); font-size:1rem; }
+  .mgmt-payment-total { font-size:1.55rem; font-weight:900; color:var(--deep-green); }
+  .mgmt-payment-cats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.7rem; }
+  .mgmt-payment-cat { padding:.75rem .85rem; border:1px solid var(--border); border-radius:13px; background:#fff; }
+  .mgmt-payment-cat .cat-name { font-size:.72rem; color:var(--text-light); font-weight:800; }
+  .mgmt-payment-cat .cat-value { margin-top:3px; font-size:1.05rem; font-weight:900; color:#173f76; }
+  .mgmt-scroll-list { max-height:330px; overflow-y:auto; padding-right:5px; scrollbar-width:thin; }
+  .mgmt-scroll-list .stats-list { padding-bottom:2px; }
   .mgmt-stat-tile {
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -1595,12 +1606,14 @@
   /* ─── WEB TEAM ─── */
   .web-team-section { background:linear-gradient(180deg,#fffdf7,#f6f4eb); }
   /* Web team: show 6 members at a time (2 rows x 3 columns) and scroll for additional members. */
-  .web-team-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1.15rem; max-height:720px; overflow-y:auto; overflow-x:hidden; padding:3px 8px 6px 3px; scroll-behavior:smooth; scrollbar-width:thin; }
+  .web-team-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-auto-rows:auto; gap:.9rem; max-height:620px; overflow-y:auto; overflow-x:hidden; padding:3px 8px 6px 3px; scroll-behavior:smooth; scrollbar-width:thin; }
   .web-team-card { background:#fff; border:1px solid rgba(11,61,46,.12); border-radius:18px; padding:1rem; text-align:center; box-shadow:0 8px 24px rgba(11,61,46,.06); transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease; }
   .web-team-card:hover { transform:translateY(-4px); box-shadow:0 16px 32px rgba(11,61,46,.11); border-color:rgba(200,150,12,.38); }
-  .web-team-photo { width:96px; height:118px; margin:0 auto .8rem; object-fit:cover; border-radius:14px; display:block; border:1px solid rgba(11,61,46,.14); box-shadow:0 5px 14px rgba(11,61,46,.08); }
+  .web-team-photo { width:78px; height:96px; margin:0 auto .65rem; object-fit:cover; border-radius:13px; display:block; border:1px solid rgba(11,61,46,.14); box-shadow:0 5px 14px rgba(11,61,46,.08); }
   .web-team-name { color:var(--deep-green); font-family:'Noto Serif Bengali',serif; font-weight:900; font-size:.98rem; line-height:1.45; min-height:2.8em; display:flex; align-items:center; justify-content:center; }
-  .web-team-batch { color:#6d766f; font-size:.78rem; margin:.25rem 0 .75rem; }
+  .web-team-batch { color:#6d766f; font-size:.74rem; margin:.2rem 0 .4rem; }
+  .web-team-role { min-height:1.2em; color:#9a6500; font-size:.72rem; font-weight:900; margin:.05rem 0 .3rem; }
+  .web-team-phone { display:block; color:#4d5b53; font-size:.72rem; font-weight:800; text-decoration:none; margin:.1rem 0 .5rem; }
   .web-team-wa { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; min-height:34px; padding:.42rem .8rem; border-radius:9px; background:#edf7f0; color:#176b3b; text-decoration:none; font-size:.78rem; font-weight:800; border:1px solid rgba(23,107,59,.15); transition:background .18s ease,transform .18s ease; }
   .web-team-wa:hover { background:#dff0e4; transform:translateY(-1px); }
 
@@ -2153,9 +2166,17 @@
   .vt-btn.active { background: var(--deep-green); color: white; border-color: var(--deep-green); }
 
   .card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
+    display:grid;
+    grid-template-rows:repeat(2,minmax(0,1fr));
+    grid-auto-flow:column;
+    grid-auto-columns:minmax(220px,260px);
+    gap:1rem;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:3px 4px 10px;
+    scroll-behavior:smooth;
+    scrollbar-width:thin;
+    align-items:stretch;
   }
   .person-card {
     border-radius: 16px;
@@ -2325,8 +2346,13 @@
       border-radius: 9px;
       background: rgba(255,255,255,0.06);
     }
-    .web-team-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; max-height:760px; }
-    .web-team-card { padding:.8rem .6rem; }
+    /* Mobile: 2 members per row, maximum 2 rows visible; remaining members scroll vertically. */
+    .web-team-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; max-height:620px; overflow-y:auto; overflow-x:hidden; }
+    .web-team-card { padding:.7rem .45rem; }
+    .web-team-photo { width:68px; height:82px; }
+    .web-team-name { font-size:.82rem; }
+    .web-team-phone { font-size:.65rem; }
+    .web-team-wa { font-size:.68rem; padding:.36rem .55rem; }
     .web-team-photo { width:82px; height:100px; }
     .founder-card, .history-founder { padding:1rem; }
     .reg-container { grid-template-columns: 1fr; gap: 2rem; }
@@ -2568,7 +2594,7 @@
     </div>
     <div class="glass-card total-reg-card reveal-r" style="--d:.42s">
       <div class="total-reg-number" id="hero-total-count">০ জন</div>
-      <div class="total-reg-label">মোট রেজিস্ট্রেশন সংখ্যা</div>
+      <div class="total-reg-label">মোট নিবন্ধন (Verified)</div>
     </div>
   </aside>
 
@@ -3139,25 +3165,109 @@
   <div class="section-container">
     <div class="section-header">
       <div class="section-tag">Web Team</div>
-      <h2 class="section-title">ওয়েব টিম</h2>
+      <h2 class="section-title">ওয়েব সাপোর্ট টিম</h2>
       <div class="divider"></div>
       <p class="section-sub">ওয়েবসাইট, অনলাইন রেজিস্ট্রেশন ও প্রযুক্তিগত সহায়তায় দায়িত্বপ্রাপ্ত টিম</p>
     </div>
     <div class="web-team-grid">
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web1.jpg" alt="নাজমুল হক নয়ন"><div class="web-team-name">নাজমুল হক নয়ন</div><div class="web-team-batch">ব্যাচ-২০০৪</div><a class="web-team-wa" href="https://wa.me/8801717060752" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web2.jpg" alt="মশিউর রহমান রবি"><div class="web-team-name">মশিউর রহমান রবি</div><div class="web-team-batch">ব্যাচ-২০০৯</div><a class="web-team-wa" href="https://wa.me/8801763280101" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web3.jpg" alt="মোঃ রবিন খান"><div class="web-team-name">মোঃ রবিন খান</div><div class="web-team-batch">ব্যাচ-২০১১</div><a class="web-team-wa" href="https://wa.me/8801722720764" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web4.jpg" alt="মোঃ রনি মৃধা"><div class="web-team-name">মোঃ রনি মৃধা</div><div class="web-team-batch">ব্যাচ-২০১১</div><a class="web-team-wa" href="https://wa.me/8801780017821" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web5.jpg" alt="হৃদয় মোল্লা"><div class="web-team-name">হৃদয় মোল্লা</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801831705868" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web6.jpg" alt="মোঃ সজীবুর রহমান"><div class="web-team-name">মোঃ সজীবুর রহমান</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801728270628" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web7.jpg" alt="মোঃ রাহাত খান"><div class="web-team-name">মোঃ রাহাত খান</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801775702972" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web8.jpg" alt="মোঃ ইয়াসিন মিয়া"><div class="web-team-name">মোঃ ইয়াসিন মিয়া</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801723868878" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web9.jpg" alt="মোঃ শাহীদুর রহমান শোভন"><div class="web-team-name">মোঃ শাহীদুর রহমান শোভন</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801715212650" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web10.jpg" alt="মোঃ রানা মিয়া"><div class="web-team-name">মোঃ রানা মিয়া</div><div class="web-team-batch">ব্যাচ-২০১৩</div><a class="web-team-wa" href="https://wa.me/8801787581725" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web11.jpg" alt="মোঃ সাব্বির রহমান"><div class="web-team-name">মোঃ সাব্বির রহমান</div><div class="web-team-batch">ব্যাচ-২০১৪</div><a class="web-team-wa" href="https://wa.me/8801673747193" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
-      <article class="web-team-card"><img class="web-team-photo" src="images/web/web12.jpg" alt="মোঃ সাঈমুর রহমান সাঈম"><div class="web-team-name">মোঃ সাঈমুর রহমান সাঈম</div><div class="web-team-batch">ব্যাচ-২০১৬</div><a class="web-team-wa" href="https://wa.me/8801721586767" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a></article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web1.jpg" alt="নাজমুল হক নয়ন" loading="lazy">
+          <div class="web-team-name">নাজমুল হক নয়ন</div>
+          <div class="web-team-batch">ব্যাচ- 2004</div>
+          <div class="web-team-role">আহবায়ক</div>
+          <a class="web-team-phone" href="tel:+881717060752">☎ 01717060752</a>
+          <a class="web-team-wa" href="https://wa.me/8801717060752" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web2.jpg" alt="মশিউর রহমান রবি" loading="lazy">
+          <div class="web-team-name">মশিউর রহমান রবি</div>
+          <div class="web-team-batch">ব্যাচ- 2009</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881763280101">☎ 01763280101</a>
+          <a class="web-team-wa" href="https://wa.me/8801763280101" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web3.jpg" alt="মোঃ রবিন খান" loading="lazy">
+          <div class="web-team-name">মোঃ রবিন খান</div>
+          <div class="web-team-batch">ব্যাচ- 2011</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881722720764">☎ 01722720764</a>
+          <a class="web-team-wa" href="https://wa.me/8801722720764" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web4.jpg" alt="মোঃ রনি মৃধা" loading="lazy">
+          <div class="web-team-name">মোঃ রনি মৃধা</div>
+          <div class="web-team-batch">ব্যাচ- 2011</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881780017821">☎ 01780017821</a>
+          <a class="web-team-wa" href="https://wa.me/8801780017821" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web5.jpg" alt="হৃদয় মোল্লা" loading="lazy">
+          <div class="web-team-name">হৃদয় মোল্লা</div>
+          <div class="web-team-batch">ব্যাচ- 2013</div>
+          <div class="web-team-role">WEB ADMIN</div>
+          <a class="web-team-phone" href="tel:+881831705868">☎ 01831705868</a>
+          <a class="web-team-wa" href="https://wa.me/8801831705868" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web6.jpg" alt="মোঃ সজীবুর রহমান" loading="lazy">
+          <div class="web-team-name">মোঃ সজীবুর রহমান</div>
+          <div class="web-team-batch">ব্যাচ- 2013</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881728270628">☎ 01728270628</a>
+          <a class="web-team-wa" href="https://wa.me/8801728270628" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web7.jpg" alt="মোঃ রাহাত খান" loading="lazy">
+          <div class="web-team-name">মোঃ রাহাত খান</div>
+          <div class="web-team-batch">ব্যাচ- 2013</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881775702972">☎ 01775702972</a>
+          <a class="web-team-wa" href="https://wa.me/8801775702972" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web8.jpg" alt="মোঃ ইয়াসিন মিয়া" loading="lazy">
+          <div class="web-team-name">মোঃ ইয়াসিন মিয়া</div>
+          <div class="web-team-batch">ব্যাচ- 2013</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881723868878">☎ 01723868878</a>
+          <a class="web-team-wa" href="https://wa.me/8801723868878" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web9.jpg" alt="মোঃ শাহীদুর রহমান শোভন" loading="lazy">
+          <div class="web-team-name">মোঃ শাহীদুর রহমান শোভন</div>
+          <div class="web-team-batch">ব্যাচ- 2013</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881715212650">☎ 01715212650</a>
+          <a class="web-team-wa" href="https://wa.me/8801715212650" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web10.jpg" alt="মোঃ রানা মিয়া" loading="lazy">
+          <div class="web-team-name">মোঃ রানা মিয়া</div>
+          <div class="web-team-batch">ব্যাচ- 2013</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881787581725">☎ 01787581725</a>
+          <a class="web-team-wa" href="https://wa.me/8801787581725" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web11.jpg" alt="মোঃ সাব্বির রহমান" loading="lazy">
+          <div class="web-team-name">মোঃ সাব্বির রহমান</div>
+          <div class="web-team-batch">ব্যাচ- 2014</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881673747193">☎ 01673747193</a>
+          <a class="web-team-wa" href="https://wa.me/8801673747193" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+        <article class="web-team-card">
+          <img class="web-team-photo" src="images/web/web12.jpg" alt="মোঃ সাঈমুর রহমান সাঈম" loading="lazy">
+          <div class="web-team-name">মোঃ সাঈমুর রহমান সাঈম</div>
+          <div class="web-team-batch">ব্যাচ- 2016</div>
+          <div class="web-team-role"></div>
+          <a class="web-team-phone" href="tel:+881721586767">☎ 01721586767</a>
+          <a class="web-team-wa" href="https://wa.me/8801721586767" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </article>
+      </div>
     </div>
-  </div>
 </section>
 
 <!-- VOLUNTEER PANEL -->
@@ -3293,26 +3403,31 @@
 
     <!-- Summary -->
     <div class="summary-cards" id="summary-cards">
-      <div class="summary-card"><div class="summary-icon">👥</div><div><div class="summary-num" id="total-count">0</div><div class="summary-lbl">মোট নিবন্ধন</div></div></div>
-      <div class="summary-card"><div class="summary-icon">🎓</div><div><div class="summary-num" id="alumni-count">0</div><div class="summary-lbl">প্রাক্তন শিক্ষার্থী</div></div></div>
-      <div class="summary-card"><div class="summary-icon">👨‍🏫</div><div><div class="summary-num" id="teacher-count">0</div><div class="summary-lbl">শিক্ষক/কর্মকর্তা</div></div></div>
-      <div class="summary-card"><div class="summary-icon">🌍</div><div><div class="summary-num" id="guest-count">0</div><div class="summary-lbl">অতিথি/অন্যান্য</div></div></div>
+      <div class="summary-card"><div class="summary-icon">👥</div><div><div class="summary-num" id="total-count">0</div><div class="summary-lbl">মোট নিবন্ধন <small id="total-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
+      <div class="summary-card"><div class="summary-icon">🎓</div><div><div class="summary-num" id="alumni-count">0</div><div class="summary-lbl">প্রাক্তন শিক্ষার্থী <small id="alumni-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
+      <div class="summary-card"><div class="summary-icon">🎒</div><div><div class="summary-num" id="student-count">0</div><div class="summary-lbl">বর্তমান শিক্ষার্থী <small id="student-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
+      <div class="summary-card"><div class="summary-icon">👨‍🏫</div><div><div class="summary-num" id="teacher-count">0</div><div class="summary-lbl">শিক্ষক/কর্মকর্তা <small id="teacher-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
+      <div class="summary-card"><div class="summary-icon">🌍</div><div><div class="summary-num" id="guest-count">0</div><div class="summary-lbl">অতিথি/অন্যান্য <small id="guest-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
+    </div>
+
+    <div class="mgmt-payment-summary">
+      <div class="mgmt-payment-summary-head">
+        <h3>💰 Total Payment Received</h3>
+        <div class="mgmt-payment-total" id="mgmt-payment-total">৳ ০</div>
+      </div>
+      <div class="mgmt-payment-cats" id="mgmt-payment-cats"></div>
     </div>
 
     <div class="mgmt-stats-wrap">
       <div class="mgmt-stats-tabs">
-        <button class="mgmt-stat-tab active" id="mgmtStatBtnTotal" onclick="switchManagementStatsTab('total', this)">মোট নিবন্ধন</button>
-        <button class="mgmt-stat-tab" id="mgmtStatBtnBatch" onclick="switchManagementStatsTab('batch', this)">ব্যাচ ভিত্তিক নিবন্ধন</button>
+        <button class="mgmt-stat-tab active" id="mgmtStatBtnBatch" onclick="switchManagementStatsTab('batch', this)">ব্যাচ ভিত্তিক নিবন্ধন</button>
         <button class="mgmt-stat-tab" id="mgmtStatBtnClass" onclick="switchManagementStatsTab('class', this)">শ্রেণিভিত্তিক নিবন্ধন</button>
       </div>
-      <div class="mgmt-stat-panel active" id="mgmtStatPanelTotal">
-        <div class="mgmt-stat-cards" id="mgmt-total-type-cards"></div>
-      </div>
-      <div class="mgmt-stat-panel" id="mgmtStatPanelBatch">
-        <div id="mgmt-batch-list" class="stats-list"></div>
+      <div class="mgmt-stat-panel active" id="mgmtStatPanelBatch">
+        <div class="mgmt-scroll-list"><div id="mgmt-batch-list" class="stats-list"></div></div>
       </div>
       <div class="mgmt-stat-panel" id="mgmtStatPanelClass">
-        <div id="mgmt-class-list" class="stats-list"></div>
+        <div class="mgmt-scroll-list"><div id="mgmt-class-list" class="stats-list"></div></div>
       </div>
     </div>
 
@@ -4180,19 +4295,27 @@ async function submitRegistration() {
 
 // ─── SUMMARY ───
 function updateSummary() {
-  if (cloudSummary) {
-    document.getElementById('total-count').textContent = cloudSummary.total;
-    const heroTotal = document.getElementById('hero-total-count'); if (heroTotal) heroTotal.textContent = toBanglaDigits(cloudSummary.total) + ' জন';
-    document.getElementById('alumni-count').textContent = cloudSummary.alumni || 0;
-    document.getElementById('teacher-count').textContent = cloudSummary.teacher || 0;
-    document.getElementById('guest-count').textContent = (cloudSummary.guest || 0) + (cloudSummary.other || 0) + (cloudSummary.student || 0);
-    return;
-  }
-  document.getElementById('total-count').textContent = registrations.length;
-  const heroTotal = document.getElementById('hero-total-count'); if (heroTotal) heroTotal.textContent = toBanglaDigits(registrations.length) + ' জন';
-  document.getElementById('alumni-count').textContent = registrations.filter(r => r.type === 'alumni').length;
-  document.getElementById('teacher-count').textContent = registrations.filter(r => r.type === 'teacher').length;
-  document.getElementById('guest-count').textContent = registrations.filter(r => r.type === 'guest' || r.type === 'other' || r.type === 'student').length;
+  const rows = Array.isArray(registrations) ? registrations : [];
+  const isVerified = r => String(r.paymentVerificationStatus || '') === 'Verified';
+  const verified = rows.filter(isVerified);
+  const pending = rows.filter(r => !isVerified(r));
+  const counts = type => verified.filter(r => r.type === type).length;
+  const pendCounts = type => pending.filter(r => r.type === type).length;
+  const otherVerified = verified.filter(r => r.type === 'guest' || r.type === 'other').length;
+  const otherPending = pending.filter(r => r.type === 'guest' || r.type === 'other').length;
+  const set = (id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('total-count', verified.length);
+  set('alumni-count', counts('alumni'));
+  set('student-count', counts('student'));
+  set('teacher-count', counts('teacher'));
+  set('guest-count', otherVerified);
+  set('total-pending', pending.length ? `(Pending ${toBanglaDigits(pending.length)} জন)` : '');
+  set('alumni-pending', pendCounts('alumni') ? `(Pending ${toBanglaDigits(pendCounts('alumni'))})` : '');
+  set('student-pending', pendCounts('student') ? `(Pending ${toBanglaDigits(pendCounts('student'))})` : '');
+  set('teacher-pending', pendCounts('teacher') ? `(Pending ${toBanglaDigits(pendCounts('teacher'))})` : '');
+  set('guest-pending', otherPending ? `(Pending ${toBanglaDigits(otherPending)})` : '');
+  const heroTotal=document.getElementById('hero-total-count');
+  if(heroTotal) heroTotal.innerHTML = `${toBanglaDigits(verified.length)} জন <small style="display:block;font-family:'Noto Sans Bengali',sans-serif;font-size:.68rem;font-weight:700;opacity:.78;margin-top:5px;">${pending.length ? `(Pending ${toBanglaDigits(pending.length)} জন)` : ''}</small>`;
 }
 
 // ─── TABLE ───
@@ -4986,7 +5109,7 @@ function renderTable() {
     window._renderedCardRecords = data;
     cv.innerHTML = data.map((r,i) => `
       <div class="person-card photo-card-render" data-card-index="${i}">
-        ${r.paymentVerificationStatus==='Verified' ? `<canvas class="person-card-canvas" id="photo-card-canvas-${i}"></canvas>` : `<div style="height:100%;min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(145deg,#f7faf7,#fffdf5);padding:28px;"><div style="width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff4d6;color:#9a6500;font-size:1.8rem;margin-bottom:14px;">💳</div><div style="font-weight:900;color:#0b3d2e;font-family:'Noto Serif Bengali',serif;font-size:1rem;">Waiting for Payment Verification</div><div style="margin-top:7px;font-size:.74rem;color:#68736c;">Payment verification complete হলে Photo Card ও ID Card সক্রিয় হবে।</div></div>`}
+        ${r.paymentVerificationStatus==='Verified' ? `<canvas class="person-card-canvas" id="photo-card-canvas-${i}"></canvas>` : `<div style="height:100%;min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(145deg,#f7faf7,#fffdf5);padding:24px;"><div style="width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff4d6;color:#9a6500;font-size:1.6rem;margin-bottom:12px;">💳</div><div style="font-weight:900;color:#0b3d2e;font-family:'Noto Serif Bengali',serif;font-size:1rem;">Waiting for Payment Verification</div><div style="margin-top:14px;display:grid;gap:6px;width:100%;font-size:.78rem;text-align:left;"><div><strong>ID:</strong> ${r.uniqueId||'—'}</div><div><strong>Name:</strong> ${r.name||'—'}</div><div><strong>Phone:</strong> ${r.phone||'—'}</div><div style="color:#9a6500;font-weight:900;"><strong>Pending Amount:</strong> ৳ ${Math.max(0,Number(r.totalFee||0)-Number(r.receivedAmount||0)).toLocaleString('en-US')}</div></div></div>`}
         <div class="person-card-downloads">
           ${r.paymentVerificationStatus==='Verified' ? `<button class="person-card-download-btn" title="Photo Card Download" onclick="event.stopPropagation();downloadPhotoCard(window._renderedCardRecords[${i}],true)">⬇</button><button class="person-card-download-btn" title="ID Card Download" onclick="event.stopPropagation();downloadIdCard(window._renderedCardRecords[${i}],true)">🪪</button>` : `<span style="font-size:.65rem;color:#9a6500;background:#fff4d6;padding:5px 8px;border-radius:8px;font-weight:800;">Payment Pending</span>`}
         </div>
@@ -5075,53 +5198,69 @@ function updateFilterControls() {
   classSel.style.display = currentFilter === 'student' ? '' : 'none';
 }
 
-let managementStatsTab = 'total';
+let managementStatsTab = 'batch';
 function switchManagementStatsTab(tab, btn) {
   managementStatsTab = tab;
   document.querySelectorAll('.mgmt-stat-tab').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  document.getElementById('mgmtStatPanelTotal').classList.toggle('active', tab === 'total');
-  document.getElementById('mgmtStatPanelBatch').classList.toggle('active', tab === 'batch');
-  document.getElementById('mgmtStatPanelClass').classList.toggle('active', tab === 'class');
+  const batchPanel=document.getElementById('mgmtStatPanelBatch');
+  const classPanel=document.getElementById('mgmtStatPanelClass');
+  if(batchPanel) batchPanel.classList.toggle('active', tab === 'batch');
+  if(classPanel) classPanel.classList.toggle('active', tab === 'class');
   renderManagementStats();
 }
 
 function renderManagementStats() {
   const regs = Array.isArray(registrations) ? registrations : [];
-  const totalTypeCards = document.getElementById('mgmt-total-type-cards');
   const batchList = document.getElementById('mgmt-batch-list');
   const classList = document.getElementById('mgmt-class-list');
-  if (!totalTypeCards || !batchList || !classList) return;
+  const paymentTotalEl = document.getElementById('mgmt-payment-total');
+  const paymentCatsEl = document.getElementById('mgmt-payment-cats');
+  if (!batchList || !classList) return;
 
-  const typeCounts = {
-    alumni: regs.filter(r => r.type === 'alumni').length,
-    student: regs.filter(r => r.type === 'student').length,
-    teacher: regs.filter(r => r.type === 'teacher').length,
-    guest: regs.filter(r => r.type === 'guest').length,
-    other: regs.filter(r => r.type === 'other').length
-  };
-  totalTypeCards.innerHTML = `
-    <div class="mgmt-stat-tile"><div class="tile-label">মোট নিবন্ধন</div><div class="tile-num">${regs.length}</div></div>
-    <div class="mgmt-stat-tile"><div class="tile-label">প্রাক্তন শিক্ষার্থী</div><div class="tile-num">${typeCounts.alumni}</div></div>
-    <div class="mgmt-stat-tile"><div class="tile-label">বর্তমান শিক্ষার্থী</div><div class="tile-num">${typeCounts.student}</div></div>
-    <div class="mgmt-stat-tile"><div class="tile-label">শিক্ষক/কর্মকর্তা</div><div class="tile-num">${typeCounts.teacher}</div></div>
-    <div class="mgmt-stat-tile"><div class="tile-label">অতিথি/অন্যান্য</div><div class="tile-num">${typeCounts.guest + typeCounts.other}</div></div>
-  `;
+  const verified = regs.filter(r => String(r.paymentVerificationStatus || '') === 'Verified');
+  const pending = regs.filter(r => String(r.paymentVerificationStatus || '') !== 'Verified');
+  const money = v => Number(v || 0);
+  const fmt = n => '৳ ' + Math.max(0, money(n)).toLocaleString('en-US');
+  const pendingText = n => n > 0 ? `<span class="mgmt-stat-pending">(Pending ${fmt(n)})</span>` : '';
 
-  const batchCounts = {};
-  regs.filter(r => r.type === 'alumni' && r.batch).forEach(r => { batchCounts[String(r.batch)] = (batchCounts[String(r.batch)] || 0) + 1; });
-  const sortedBatches = Object.entries(batchCounts).sort((a, b) => parseInt(String(b[0]).replace(/[০১২৩৪৫৬৭৮৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d))) - parseInt(String(a[0]).replace(/[০১২৩৪৫৬৭৮৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d))));
-  batchList.innerHTML = sortedBatches.length
-    ? sortedBatches.map(([batch, count]) => `<div class="stats-row"><div class="name">ব্যাচ ${batch}</div><div class="count">${count} জন</div></div>`).join('')
-    : '<div class="stats-row"><div class="name">কোনো ব্যাচ ডেটা নেই</div><div class="count">0</div></div>';
+  const publicReceived = cloudSummary && Number(cloudSummary.receivedTotal || 0) > 0 ? Number(cloudSummary.receivedTotal || 0) : 0;
+  const receivedTotal = verified.some(r => Number(r.receivedAmount || 0) > 0) ? verified.reduce((sum,r)=>sum + money(r.receivedAmount),0) : publicReceived;
+  if(paymentTotalEl) paymentTotalEl.textContent = fmt(receivedTotal);
+  if(paymentCatsEl){
+    const cats=[
+      ['প্রাক্তন শিক্ষার্থী','alumni'],['বর্তমান শিক্ষার্থী','student'],['শিক্ষক/কর্মকর্তা','teacher'],['অতিথি/অন্যান্য','other']
+    ];
+    paymentCatsEl.innerHTML=cats.map(([label,key])=>{
+      let amount=0;
+      if(verified.some(r => Number(r.receivedAmount || 0) > 0)){
+        const rows=key==='other' ? verified.filter(r=>['guest','other'].includes(r.type)) : verified.filter(r=>r.type===key);
+        amount=rows.reduce((a,r)=>a+money(r.receivedAmount),0);
+      } else if(cloudSummary && cloudSummary.receivedByType){
+        amount=key==='other' ? Number(cloudSummary.receivedByType.guest||0)+Number(cloudSummary.receivedByType.other||0) : Number(cloudSummary.receivedByType[key]||0);
+      }
+      return `<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${fmt(amount)}</div></div>`;
+    }).join('');
+  }
 
-  const classCounts = {};
-  regs.filter(r => r.type === 'student' && r.studentClass).forEach(r => { classCounts[String(r.studentClass)] = (classCounts[String(r.studentClass)] || 0) + 1; });
-  const classLabels = { '6':'৬ষ্ঠ', '7':'৭ম', '8':'৮ম', '9':'৯ম', '10':'১০ম' };
-  const classEntries = Object.keys(classLabels).map(k => [k, classCounts[k] || 0]);
-  classList.innerHTML = classEntries.map(([cls, count]) => `<div class="stats-row"><div class="name">${classLabels[cls]}</div><div class="count">${count} জন</div></div>`).join('');
+  const batchMap={};
+  regs.filter(r=>r.type==='alumni' && r.batch).forEach(r=>{
+    const b=String(r.batch); if(!batchMap[b]) batchMap[b]={count:0,received:0,pending:0};
+    if(String(r.paymentVerificationStatus||'')==='Verified'){batchMap[b].count++; batchMap[b].received+=money(r.receivedAmount);}
+    else batchMap[b].pending += Math.max(0,money(r.totalFee)-money(r.receivedAmount));
+  });
+  const sortedBatches=Object.entries(batchMap).sort((a,b)=>parseInt(b[0])-parseInt(a[0]));
+  batchList.innerHTML=sortedBatches.length ? sortedBatches.map(([batch,v])=>`<div class="stats-row"><div class="name">ব্যাচ ${batch}</div><div class="count">${v.count} জন <span class="mgmt-stat-pending">${fmt(v.received)} ${v.pending>0?' · Pending '+fmt(v.pending):''}</span></div></div>`).join('') : '<div class="stats-row"><div class="name">কোনো ব্যাচ ডেটা নেই</div><div class="count">0</div></div>';
+
+  const classLabels={'6':'৬ষ্ঠ','7':'৭ম','8':'৮ম','9':'৯ম','10':'১০ম'};
+  classList.innerHTML=Object.entries(classLabels).map(([cls,label])=>{
+    const rows=regs.filter(r=>r.type==='student' && String(r.studentClass)===cls);
+    const count=rows.filter(r=>String(r.paymentVerificationStatus||'')==='Verified').length;
+    const received=rows.filter(r=>String(r.paymentVerificationStatus||'')==='Verified').reduce((a,r)=>a+money(r.receivedAmount),0);
+    const pend=rows.filter(r=>String(r.paymentVerificationStatus||'')!=='Verified').reduce((a,r)=>a+Math.max(0,money(r.totalFee)-money(r.receivedAmount)),0);
+    return `<div class="stats-row"><div class="name">${label}</div><div class="count">${count} জন <span class="mgmt-stat-pending">${fmt(received)} ${pend>0?' · Pending '+fmt(pend):''}</span></div></div>`;
+  }).join('');
 }
-
 async function volunteerAdminPost(payload) {
   const key = sessionStorage.getItem('muhs_admin_key') || '';
   if (!key) throw new Error('Admin login required');
