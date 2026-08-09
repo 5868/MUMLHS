@@ -5952,9 +5952,14 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
             registrations[idx].applicationPdfUrl=result.url;
             localStorage.setItem('muhs_registrations',JSON.stringify(registrations));
           }
+          console.info('Application PDF archived:', result.url, 'folder:', result.folderId || '');
+        }else{
+          console.error('Application PDF archive rejected:', result);
+          showToast('⚠️ PDF তৈরি হয়েছে, কিন্তু Google Drive-এ সংরক্ষণ করা যায়নি।','error');
         }
       }catch(e){
-        console.warn('Application PDF archive failed:',e);
+        console.error('Application PDF archive failed:',e);
+        showToast('⚠️ PDF তৈরি হয়েছে, কিন্তু Google Drive-এ সংরক্ষণ করা যায়নি।','error');
       }
     }
 
