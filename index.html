@@ -1458,6 +1458,13 @@
     gap: 1rem;
     margin-bottom: 1.5rem;
   }
+  .summary-total-card { background:linear-gradient(135deg,#fdfbf2,#fff); border:1px solid var(--border); border-radius:16px; padding:1.15rem 1.4rem; margin-bottom:1rem; display:flex; align-items:center; gap:16px; box-shadow:0 7px 20px rgba(11,61,46,.06); }
+  .summary-total-card .summary-icon { width:52px; height:52px; background:#E8F5E9; font-size:1.5rem; }
+  .summary-total-card .summary-num { font-size:2.15rem; }
+  .summary-total-content { min-width:0; }
+  .summary-total-card .summary-lbl { font-size:.92rem; font-weight:900; color:var(--deep-green); margin-top:3px; }
+  .summary-companions { margin-top:5px; font-size:.86rem; font-weight:800; color:#68736c; line-height:1.5; }
+  .summary-companions .summary-pending { color:#9a6500; margin-left:6px; }
   .summary-card {
     background: white;
     border: 1px solid var(--border);
@@ -1545,6 +1552,9 @@
     gap: .85rem;
   }
   .mgmt-stat-pending { display:block; margin-top:5px; font-size:.68rem; color:#9a6500; font-weight:800; }
+  .mgmt-stat-pending-inline { color:#9a6500; font-size:.72rem; font-weight:800; }
+  .mgmt-stat-money { margin-top:4px; font-size:.78rem; font-weight:900; color:#173f76; }
+  .mgmt-stat-pending-amount { color:#9a6500; font-size:.68rem; font-weight:800; }
   .mgmt-payment-summary { margin:1rem 0 1.15rem; padding:1rem; border:1px solid rgba(11,61,46,.1); border-radius:18px; background:linear-gradient(180deg,#fff,#fbfcf8); box-shadow:0 8px 24px rgba(11,61,46,.05); }
   .mgmt-payment-summary-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:.8rem; }
   .mgmt-payment-summary-head h3 { margin:0; color:var(--deep-green); font-size:1rem; }
@@ -2285,6 +2295,23 @@
     .web-team-grid { grid-template-columns:repeat(3,minmax(0,1fr)); max-height:720px; }
   }
 
+  /* ─── COMPACT NAV / TABLET ─── */
+  @media (max-width: 1061px) {
+    nav { padding: 0 1rem; }
+    .brand-text span:last-child { font-size: .86rem; }
+    .brand-text span:first-child { font-size: .68rem; }
+    .nav-links { display:none; }
+    .hamburger { display:flex; }
+    .nav-links { position:fixed; top:70px; left:12px; right:12px; background:rgba(7,24,13,.97); flex-direction:column; padding:12px; gap:9px; border:1px solid rgba(255,255,255,.14); border-radius:16px; box-shadow:0 18px 45px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); transform:translateY(-20px); opacity:0; transition:transform .25s ease,opacity .25s ease; pointer-events:none; z-index:1001; }
+    .nav-links.open { display:flex; transform:translateY(0); opacity:1; pointer-events:auto; }
+    .nav-links li { width:100%; }
+    .nav-links a { display:flex; align-items:center; justify-content:center; min-height:44px; width:100%; box-sizing:border-box; padding:10px 14px; border:1px solid rgba(255,255,255,.16); border-radius:10px; background:rgba(255,255,255,.045); }
+    .nav-more { width:100%; }
+    .nav-more > button { width:100%; min-height:44px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.045); }
+    .nav-dropdown { position:static; min-width:0; margin-top:6px; display:none; opacity:1; transform:none; pointer-events:auto; box-shadow:none; background:rgba(255,255,255,.035); }
+    .nav-more.open .nav-dropdown { display:block; }
+  }
+
   /* ─── MOBILE ─── */
   @media (max-width: 768px) {
     .hamburger { display: flex; }
@@ -2490,10 +2517,10 @@
   }
   .pdf-qr{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:200px;width:132px;text-align:center;
+    bottom:170px;width:252px;text-align:center;
   }
   .pdf-qr-box{
-    width:118px;height:118px;margin:0 auto;background:#fff;
+    width:236px;height:236px;margin:0 auto;background:#fff;
     border:1px solid #111;padding:4px;box-sizing:border-box;
     display:flex;align-items:center;justify-content:center;overflow:hidden;
   }
@@ -2826,7 +2853,7 @@
         <div class="warn-block">
           <strong>নিবন্ধন ফি জমা দেওয়ার মাধ্যম</strong>
           <ul class="warn-list">
-            <li>বিকাশ / নগদ: 01747-877180</li>
+            <li>বিকাশ / নগদ: 01747-877180 (Send Money)</li>
             <li>ব্যাংক ট্রান্সফার: Bank Name: Jamuna Bank PLC, Account Name: Mohammad Kabir Uddin/Maksudur Rahman/Mohammad Mohidur Rahman Molla, Account Number: 1101008937712, Routing Number: 130560610, SWIFT: JAMUBDDHTFP</li>
             <li>অথবা অফিসে সশরীরে/নির্দিষ্ট প্রতিনিধির মাধ্যমে জমা দেওয়া যাবে।</li>
             <li>উল্লেখিত মাধ্যম ছাড়া অন্য কোনো মাধ্যমে বা নাম্বারে আর্থিক লেনদেন করবেন না। প্রতারক চক্র থেকে সতর্ক থাকুন; এ জন্য কর্তৃপক্ষ দায়ী থাকবেনা।</li>
@@ -3063,7 +3090,7 @@
         <div class="payment-summary" id="payment-summary">
           <div class="payment-summary-title">💳 পেমেন্টের আগে আপনার মোট ফি দেখে নিন</div>
           <div class="payment-summary-amount" id="payment-total">পরিচয় নির্বাচন ও অতিথি সংখ্যা জানালে মোট ফি দেখাবে</div>
-          <div class="payment-summary-note" id="payment-summary-note">আপনার পরিচয় ও অতিথি সংখ্যা অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।</div>
+          <div class="payment-summary-note" id="payment-summary-note">পরিচয় ও অতিথি অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।</div>
         </div>
 
         <div class="payment-info-box payment-method-details" id="payment-method-details" style="display:none;margin:10px 0 14px;padding:14px 16px;border:1px solid rgba(192,57,43,.18);border-radius:14px;background:#fffafa;line-height:1.7;font-size:.86rem;">
@@ -3404,8 +3431,15 @@
     </div>
 
     <!-- Summary -->
+    <div class="summary-total-card" id="summary-total-card">
+      <div class="summary-icon">👥</div>
+      <div class="summary-total-content">
+        <div class="summary-num" id="total-count">0</div>
+        <div class="summary-lbl">মোট নিবন্ধন</div>
+        <div class="summary-companions" id="total-pending"></div>
+      </div>
+    </div>
     <div class="summary-cards" id="summary-cards">
-      <div class="summary-card"><div class="summary-icon">👥</div><div><div class="summary-num" id="total-count">0</div><div class="summary-lbl">মোট নিবন্ধন <small id="total-pending" style="color:#68736c;font-weight:700;display:block;margin-top:4px;"></small></div></div></div>
       <div class="summary-card"><div class="summary-icon">🎓</div><div><div class="summary-num" id="alumni-count">0</div><div class="summary-lbl">প্রাক্তন শিক্ষার্থী <small id="alumni-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
       <div class="summary-card"><div class="summary-icon">🎒</div><div><div class="summary-num" id="student-count">0</div><div class="summary-lbl">বর্তমান শিক্ষার্থী <small id="student-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
       <div class="summary-card"><div class="summary-icon">👨‍🏫</div><div><div class="summary-num" id="teacher-count">0</div><div class="summary-lbl">শিক্ষক/কর্মকর্তা <small id="teacher-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
@@ -4031,7 +4065,7 @@ function syncPermanentAddress() {
     document.getElementById(`reg-permanent-${k}`).value = document.getElementById(`reg-current-${k}`).value;
   });
 }
-const registrationFees = { alumni:700, student:300, teacher:700, other:500 };
+const registrationFees = { alumni:700, student:300, teacher:500, other:500 };
 const guestFee = 500;
 const feeLabels = { alumni:'প্রাক্তন শিক্ষার্থী (Ex-Student)', student:'বর্তমান শিক্ষার্থী', teacher:'শিক্ষক/কর্মকর্তা', other:'অন্যান্য' };
 function formatBDT(n) { return `${Number(n).toLocaleString('en-US')} টাকা`; }
@@ -4060,7 +4094,7 @@ function updateRegistrationFee() {
   branch.disabled = !isStudent; branch.required = false;
   if (!isStudent) { cls.value=''; branch.value=''; }
   companionGroup.style.display = type ? '' : 'none';
-  if (!type) { total.textContent='পরিচয় নির্বাচন করলে মোট ফি দেখাবে'; note.textContent='নিচের পরিচয় অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।'; return; }
+  if (!type) { total.textContent='পরিচয় নির্বাচন করলে মোট ফি দেখাবে'; note.textContent='পরিচয় ও অতিথি অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।'; return; }
   const baseFee = registrationFees[type] || 0;
   const { guests, children } = getCompanionCounts();
   const guestTotal = guests * guestFee;
@@ -4097,10 +4131,10 @@ function updatePaymentProofRequirement() {
       detailsContent.innerHTML = '';
     } else if (selected.value === 'bkash') {
       details.style.display = 'block';
-      detailsContent.innerHTML = '<div class="detail-title">📱 বিকাশ (bKash)</div><div><strong>নম্বর:</strong> 01747-877180</div>';
+      detailsContent.innerHTML = '<div class="detail-title">📱 বিকাশ (bKash)</div><div><strong>নম্বর:</strong> 01747-877180 <span style="font-weight:800;color:#9a6500;">(Send Money)</span></div>';
     } else if (selected.value === 'nagad') {
       details.style.display = 'block';
-      detailsContent.innerHTML = '<div class="detail-title">📲 নগদ (Nagad)</div><div><strong>নম্বর:</strong> 01747-877180</div>';
+      detailsContent.innerHTML = '<div class="detail-title">📲 নগদ (Nagad)</div><div><strong>নম্বর:</strong> 01747-877180 <span style="font-weight:800;color:#9a6500;">(Send Money)</span></div>';
     } else if (selected.value === 'bank') {
       details.style.display = 'block';
       detailsContent.innerHTML = '<div class="detail-title">🏦 ব্যাংক ট্রান্সফার</div>' +
@@ -4328,7 +4362,7 @@ function updateSummary() {
   const adultCompanions = rows.reduce((sum,r)=>sum + Math.max(0, Number(r.guestCount||0)), 0);
   const childCompanions = rows.reduce((sum,r)=>sum + Math.max(0, Number(r.childCount||0)), 0);
   const totalCompanionText = `(সাথে আসবেন প্রাপ্ত বয়স্ক ${toBanglaDigits(adultCompanions)} জন, শিশু ${toBanglaDigits(childCompanions)} জন)`;
-  set('total-pending', totalCompanionText + (pending.length ? ` · Pending ${toBanglaDigits(pending.length)} জন` : ''));
+  const totalPendingEl=document.getElementById('total-pending'); if(totalPendingEl) totalPendingEl.innerHTML = totalCompanionText + (pending.length ? ` <span class="summary-pending">· ${toBanglaDigits(pending.length)} জন Pending</span>` : '');
   set('alumni-count', counts('alumni'));
   set('student-count', counts('student'));
   set('teacher-count', counts('teacher'));
@@ -5164,7 +5198,7 @@ function renderManagementStats() {
   if(paymentTotalEl) paymentTotalEl.innerHTML = `${fmt(receivedTotal || publicReceived)} <small style="font-size:.68rem;color:#9a6500;font-weight:800;">(Pending ${fmt(pendingAmount)})</small>`;
   if(paymentCatsEl){
     const cats=[
-      ['প্রাক্তন শিক্ষার্থী','alumni'],['বর্তমান শিক্ষার্থী','student'],['শিক্ষক/কর্মকর্তা','teacher'],['অতিথি/অন্যান্য','other']
+      ['প্রাক্তন শিক্ষার্থী (অতিথীসহ)','alumni'],['বর্তমান শিক্ষার্থী (অতিথীসহ)','student'],['শিক্ষক/কর্মকর্তা','teacher'],['অতিথি/অন্যান্য','other']
     ];
     paymentCatsEl.innerHTML=cats.map(([label,key])=>{
       let amount=0;
@@ -5205,7 +5239,7 @@ function renderManagementStats() {
     else { batchMap[b].pending += Math.max(0,money(r.autoCalculatedFee || r.totalFee || r.calculatedFee)-money(r.receivedAmount)); batchMap[b].pendingCount++; }
   });
   const sortedBatches=Object.entries(batchMap).sort((a,b)=>parseInt(b[0])-parseInt(a[0]));
-  batchList.innerHTML=sortedBatches.length ? sortedBatches.map(([batch,v])=>`<div class="stats-row"><div class="name">ব্যাচ ${batch}</div><div class="count">${v.count} জন <span class="mgmt-stat-pending">${v.pendingCount||0} জন Pending · ${fmt(v.received)} <span style="color:#9a6500;font-size:.68rem;">(Pending ${fmt(v.pending)})</span></span></div></div>`).join('') : '<div class="stats-row"><div class="name">কোনো ব্যাচ ডেটা নেই</div><div class="count">0</div></div>';
+  batchList.innerHTML=sortedBatches.length ? sortedBatches.map(([batch,v])=>`<div class="stats-row"><div class="name">ব্যাচ ${batch}</div><div class="count"><span>${toBanglaDigits(v.count)} জন</span> <span class="mgmt-stat-pending-inline">(${toBanglaDigits(v.pendingCount||0)} জন Pending)</span><div class="mgmt-stat-money">${fmt(v.received)} <span class="mgmt-stat-pending-amount">(Pending ${fmt(v.pending)})</span></div></div></div>`).join('') : '<div class="stats-row"><div class="name">কোনো ব্যাচ ডেটা নেই</div><div class="count">0</div></div>';
 
   const classLabels={'6':'৬ষ্ঠ','7':'৭ম','8':'৮ম','9':'৯ম','10':'১০ম'};
   classList.innerHTML=Object.entries(classLabels).map(([cls,label])=>{
@@ -5214,7 +5248,7 @@ function renderManagementStats() {
     const received=rows.filter(r=>String(r.paymentVerificationStatus||'')==='Verified').reduce((a,r)=>a+money(r.autoCalculatedFee || r.totalFee),0);
     const pendingRows=rows.filter(r=>String(r.paymentVerificationStatus||'')!=='Verified');
     const pend=pendingRows.reduce((a,r)=>a+Math.max(0,money(r.autoCalculatedFee || r.totalFee || r.calculatedFee)-money(r.receivedAmount)),0);
-    return `<div class="stats-row"><div class="name">${label}</div><div class="count">${count} জন <span class="mgmt-stat-pending">${pendingRows.length} জন Pending · ${fmt(received)} <span style="color:#9a6500;font-size:.68rem;">(Pending ${fmt(pend)})</span></span></div></div>`;
+    return `<div class="stats-row"><div class="name">${label}</div><div class="count"><span>${toBanglaDigits(count)} জন</span> <span class="mgmt-stat-pending-inline">(${toBanglaDigits(pendingRows.length)} জন Pending)</span><div class="mgmt-stat-money">${fmt(received)} <span class="mgmt-stat-pending-amount">(Pending ${fmt(pend)})</span></div></div></div>`;
   }).join('');
 }
 async function volunteerAdminPost(payload) {
@@ -6019,11 +6053,11 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
     }
 
     // This is the ONLY QR that is presented for participant download/access.
-    renderParticipantQR(wrap.querySelector('#pdfQrBox'), reg, 192);
+    renderParticipantQR(wrap.querySelector('#pdfQrBox'), reg, 384);
     await new Promise(r=>setTimeout(r,250));
 
     const canvas=await html2canvas(wrap,{
-      scale:4,
+      scale:6,
       useCORS:true,
       backgroundColor:'#fff',
       logging:false
