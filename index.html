@@ -3353,6 +3353,8 @@
               <div class="result-info-row"><span>Phone Number</span><strong id="vol-result-phone"></strong></div>
               <div class="result-info-row"><span>Participant Type</span><strong id="vol-result-type"></strong></div>
               <div class="result-info-row"><span>T-Shirt Size</span><strong id="vol-result-size"></strong></div>
+              <div class="result-info-row"><span>সাথে প্রাপ্তবয়স্ক</span><strong id="vol-result-guests"></strong></div>
+              <div class="result-info-row"><span>শিশু</span><strong id="vol-result-children"></strong></div>
             </div>
 
             <div class="distribution-box">
@@ -3403,7 +3405,7 @@
 
     <!-- Summary -->
     <div class="summary-cards" id="summary-cards">
-      <div class="summary-card"><div class="summary-icon">👥</div><div><div class="summary-num" id="total-count">0</div><div class="summary-lbl">মোট নিবন্ধন <small id="total-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
+      <div class="summary-card"><div class="summary-icon">👥</div><div><div class="summary-num" id="total-count">0</div><div class="summary-lbl">মোট নিবন্ধন <small id="total-pending" style="color:#68736c;font-weight:700;display:block;margin-top:4px;"></small></div></div></div>
       <div class="summary-card"><div class="summary-icon">🎓</div><div><div class="summary-num" id="alumni-count">0</div><div class="summary-lbl">প্রাক্তন শিক্ষার্থী <small id="alumni-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
       <div class="summary-card"><div class="summary-icon">🎒</div><div><div class="summary-num" id="student-count">0</div><div class="summary-lbl">বর্তমান শিক্ষার্থী <small id="student-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
       <div class="summary-card"><div class="summary-icon">👨‍🏫</div><div><div class="summary-num" id="teacher-count">0</div><div class="summary-lbl">শিক্ষক/কর্মকর্তা <small id="teacher-pending" style="color:#9a6500;font-weight:800;"></small></div></div></div>
@@ -3416,6 +3418,14 @@
         <div class="mgmt-payment-total" id="mgmt-payment-total">৳ ০</div>
       </div>
       <div class="mgmt-payment-cats" id="mgmt-payment-cats"></div>
+    </div>
+
+    <div class="mgmt-payment-summary" style="margin-top:18px;">
+      <div class="mgmt-payment-summary-head">
+        <h3>🍽️ Foods and Logistics</h3>
+        <div class="mgmt-payment-total" style="font-size:.82rem;color:#68736c;">Distribution Summary</div>
+      </div>
+      <div id="mgmt-foods-logistics" class="mgmt-payment-cats"></div>
     </div>
 
     <div class="mgmt-stats-wrap">
@@ -3813,6 +3823,7 @@ async function loadFromCloud(admin = false) {
     }
 
     if (data.summary) cloudSummary = data.summary;
+    window._distributionSummary = (data.summary && data.summary.distribution) || {};
 
     // Public mode also receives the card-safe registration dataset from GAS.
     // Use it as the cloud source of truth so Photo/ID cards work on every device,
@@ -4208,6 +4219,10 @@ async function submitRegistration() {
 
   const duplicate = registrations.find(r => r.phone === phoneClean);
   if (duplicate) { showToast('এই মোবাইল নম্বরে ইতিমধ্যে নিবন্ধন হয়েছে!', 'error'); return; }
+  if (txnIdValue) {
+    const duplicateTxn = registrations.find(r => String(r.txnId || '').trim().toUpperCase() === txnIdValue.toUpperCase());
+    if (duplicateTxn) { showToast('এই TxnID ব্যবহার করে পূর্বে একবার পেমেন্ট করা হয়েছে।', 'error'); return; }
+  }
 
   const batchForId = document.getElementById('reg-batch').value;
   const uniqueId = generateUniqueId(batchForId, type);
@@ -4254,8 +4269,13 @@ async function submitRegistration() {
   registrations.push(reg);
   localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
 
-  // ☁️ Cloud এ save
-  if (USE_CLOUD) await saveToCloud(reg);
+  // ☁️ Cloud এ save — server is authoritative for duplicate TxnID/phone checks.
+  if (USE_CLOUD) {
+    const cloudResult = await saveToCloud(reg);
+    if (!cloudResult || cloudResult.success !== true) {
+      return;
+    }
+  }
 
   // Reset
   ['reg-name','reg-phone','reg-email','reg-message','reg-current-village','reg-current-post','reg-current-upazila','reg-current-district','reg-permanent-village','reg-permanent-post','reg-permanent-upazila','reg-permanent-district'].forEach(id => document.getElementById(id).value = '');
@@ -4305,11 +4325,14 @@ function updateSummary() {
   const otherPending = pending.filter(r => r.type === 'guest' || r.type === 'other').length;
   const set = (id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('total-count', verified.length);
+  const adultCompanions = rows.reduce((sum,r)=>sum + Math.max(0, Number(r.guestCount||0)), 0);
+  const childCompanions = rows.reduce((sum,r)=>sum + Math.max(0, Number(r.childCount||0)), 0);
+  const totalCompanionText = `(সাথে আসবেন প্রাপ্ত বয়স্ক ${toBanglaDigits(adultCompanions)} জন, শিশু ${toBanglaDigits(childCompanions)} জন)`;
+  set('total-pending', totalCompanionText + (pending.length ? ` · Pending ${toBanglaDigits(pending.length)} জন` : ''));
   set('alumni-count', counts('alumni'));
   set('student-count', counts('student'));
   set('teacher-count', counts('teacher'));
   set('guest-count', otherVerified);
-  set('total-pending', pending.length ? `(Pending ${toBanglaDigits(pending.length)} জন)` : '');
   set('alumni-pending', pendCounts('alumni') ? `(Pending ${toBanglaDigits(pendCounts('alumni'))})` : '');
   set('student-pending', pendCounts('student') ? `(Pending ${toBanglaDigits(pendCounts('student'))})` : '');
   set('teacher-pending', pendCounts('teacher') ? `(Pending ${toBanglaDigits(pendCounts('teacher'))})` : '');
@@ -4509,7 +4532,18 @@ async function saveToCloud(reg) {
       headers: { 'Content-Type': 'text/plain' },
       body   : JSON.stringify(payload)
     });
-    return await response.json();
+    const result = await response.json();
+    if (!result.success) {
+      if (result.error === 'duplicate_txnid') {
+        registrations = registrations.filter(r => r.uniqueId !== reg.uniqueId);
+        localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+        showToast('এই TxnID ব্যবহার করে পূর্বে একবার পেমেন্ট করা হয়েছে।', 'error');
+      } else {
+        showToast('❌ Registration save হয়নি: ' + (result.message || result.error || 'server error'), 'error');
+      }
+      return result;
+    }
+    return result;
   } catch (err) {
     console.warn('Cloud save failed (data safe in localStorage):', err.message);
   }
@@ -4905,162 +4939,60 @@ async function downloadIdCard(reg, shouldDownload) {
 }
 
 function buildPhotoCardCanvas(reg, done) {
-  // Photo Card only: use the supplied PNG as the unchanged master template.
-  const TEMPLATE_W = 800;
-  const TEMPLATE_H = 800;
-  // Coordinates measured from the supplied 800x800 Photo-CARD.png.
-  const PHOTO_CX = 404;
-  const PHOTO_CY = 416;
-  const PHOTO_R = 187;
-
+  // Master PNG is rendered at its native resolution. The portrait window is
+  // fixed by the supplied frame: (270,161) -> width 810px, height 783px.
+  const PHOTO_X = 270, PHOTO_Y = 161, PHOTO_W = 810, PHOTO_H = 783;
   const canvas = document.createElement('canvas');
-  canvas.width = TEMPLATE_W;
-  canvas.height = TEMPLATE_H;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
-  function loadImageElement(image, sources, optional) {
-    sources = (Array.isArray(sources) ? sources : [sources]).filter(Boolean);
-    return new Promise(function(resolve) {
-      let i = 0;
-      function next() {
-        if (i >= sources.length) { resolve(optional ? null : null); return; }
-        const src = sources[i++];
-        image.onload = function() { resolve(image); };
-        image.onerror = next;
-        image.crossOrigin = 'anonymous';
-        image.src = src;
-      }
-      next();
-    });
+  function loadImage(src){
+    return new Promise(resolve=>{ const img=new Image(); img.crossOrigin='anonymous'; img.onload=()=>resolve(img); img.onerror=()=>resolve(null); img.src=src; });
   }
-
-  function getTemplateSources() {
-    const list = [];
-    try { list.push(new URL('images/school/Photo-CARD.png', document.baseURI).href); } catch (e) {}
-    list.push('images/school/Photo-CARD.png');
-    list.push('./images/school/Photo-CARD.png');
-    return Array.from(new Set(list));
+  function getTemplateSources(){
+    return ['images/school/Photo-CARD.png','./images/school/Photo-CARD.png'];
   }
-
-  function wrapText(text, maxWidth, font) {
-    ctx.font = font;
-    const value = String(text || '').trim();
-    if (!value) return [''];
-    const words = value.split(/\s+/).filter(Boolean);
-    const lines = [];
-    let line = '';
-    words.forEach(function(word) {
-      const test = line ? line + ' ' + word : word;
-      if (!line || ctx.measureText(test).width <= maxWidth) line = test;
-      else { lines.push(line); line = word; }
-    });
-    if (line) lines.push(line);
-    return lines;
+  function fitText(text,maxWidth,startSize,minSize,weight,family){
+    let size=startSize; while(size>minSize){ctx.font=`${weight} ${size}px ${family}`; if(ctx.measureText(String(text||'')).width<=maxWidth)return size; size--;} return minSize;
   }
-
-  function fitText(text, maxWidth, startSize, minSize, weight, family) {
-    let size = startSize;
-    while (size > minSize) {
-      ctx.font = weight + ' ' + size + 'px ' + family;
-      if (ctx.measureText(String(text || '')).width <= maxWidth) return size;
-      size--;
+  function drawName(){
+    const name=String(reg.name||'').trim(); if(!name)return;
+    const family='"Noto Serif Bengali","Noto Sans Bengali",Georgia,serif'; const size=fitText(name,245,28,17,800,family);
+    ctx.save(); ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font=`800 ${size}px ${family}`; ctx.fillStyle='#10264A'; ctx.shadowColor='rgba(255,255,255,.9)'; ctx.shadowBlur=4; ctx.fillText(name,26,108); ctx.restore();
+  }
+  function drawParticipantType(){
+    const type=String(reg.type||'').toLowerCase(); let line='';
+    if(type==='alumni') line=reg.batch?'ব্যাচ-'+toEnglishDigits(reg.batch):'অ্যালামনাই';
+    else if(type==='student') line=reg.studentClass?'শ্রেণি-'+reg.studentClass:'বর্তমান শিক্ষার্থী';
+    else if(type==='teacher') line='শিক্ষক'; else line={guest:'অতিথি',other:'অন্যান্য'}[type]||'অংশগ্রহণকারী';
+    const family='"Noto Serif Bengali","Noto Sans Bengali",Georgia,serif'; const size=fitText(line,235,25,16,800,family);
+    ctx.save();ctx.textAlign='right';ctx.textBaseline='middle';ctx.font=`800 ${size}px ${family}`;ctx.fillStyle='#10264A';ctx.shadowColor='rgba(255,255,255,.9)';ctx.shadowBlur=4;ctx.fillText(line,774,108);ctx.restore();
+  }
+  Promise.all([loadImage(getTemplateSources()[0]), resolveCardPhotoSource(reg).then(src=>src?loadImage(src):null)]).then(([tpl,photo])=>{
+    if(!tpl || !tpl.naturalWidth) throw new Error('Photo-CARD.png not found');
+    canvas.width=tpl.naturalWidth; canvas.height=tpl.naturalHeight;
+    ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+    // Backward-compatible fallback for the currently bundled 800x800 frame.
+    // Once the new supplied PNG is replaced, the requested 810x783 portrait
+    // window at (270,161) is used automatically.
+    const boxX = tpl.naturalWidth >= 1000 ? PHOTO_X : 218;
+    const boxY = tpl.naturalWidth >= 1000 ? PHOTO_Y : 229;
+    const boxW = tpl.naturalWidth >= 1000 ? PHOTO_W : 372;
+    const boxH = tpl.naturalWidth >= 1000 ? PHOTO_H : 374;
+    // 1–4: scale photo by box width only, preserve aspect ratio, place at the
+    // exact top-left of the portrait box, and clip only the bottom overflow.
+    if(photo && photo.naturalWidth && photo.naturalHeight){
+      const scale=boxW/photo.naturalWidth; const drawW=boxW; const drawH=photo.naturalHeight*scale;
+      ctx.save(); ctx.beginPath(); ctx.rect(boxX,boxY,boxW,boxH); ctx.clip();
+      ctx.drawImage(photo,boxX,boxY,drawW,drawH); ctx.restore();
     }
-    return minSize;
-  }
-
-  function drawParticipantPhoto(img) {
-    if (!img || !img.naturalWidth || !img.naturalHeight) return;
-    const diameter = PHOTO_R * 2;
-    const scale = Math.max(diameter / img.naturalWidth, diameter / img.naturalHeight);
-    const drawW = img.naturalWidth * scale;
-    const drawH = img.naturalHeight * scale;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(PHOTO_CX, PHOTO_CY, PHOTO_R, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(img, PHOTO_CX - drawW / 2, PHOTO_CY - drawH / 2, drawW, drawH);
-    ctx.restore();
-  }
-
-  function drawName() {
-    const name = String(reg.name || '').trim();
-    if (!name) return;
-    const family = '"Noto Serif Bengali", "Noto Sans Bengali", Georgia, serif';
-    const size = fitText(name, 245, 28, 17, 800, family);
-    const font = '800 ' + size + 'px ' + family;
-    const lines = wrapText(name, 245, font).slice(0, 2);
-    ctx.save();
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = font;
-    ctx.fillStyle = '#10264A'; ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 4;
-    const lineHeight = size + 6;
-    const y = lines.length === 1 ? 108 : 98;
-    lines.forEach(function(line, i) { ctx.fillText(line, 26, y + i * lineHeight); });
-    ctx.restore();
-  }
-
-  function getPhotoCardTypeLines() {
-    const type = String(reg.type || '').toLowerCase();
-    if (type === 'alumni') {
-      const batch = String(reg.batch || '').trim();
-      return [batch ? 'ব্যাচ-' + toEnglishDigits(batch) : 'অ্যালামনাই', '(অ্যালামনাই)'];
-    }
-    if (type === 'student') {
-      const cls = String(reg.studentClass || '').trim();
-      return [cls ? 'শ্রেণি-' + cls : 'বর্তমান শিক্ষার্থী', '(বর্তমান শিক্ষার্থী)'];
-    }
-    if (type === 'teacher') return ['শিক্ষক'];
-    const labels = { family:'ফ্যামিলি', guest:'অতিথি', child:'শিশু', other:'অন্যান্য' };
-    return [labels[type] || String(reg.registrationType || reg.type || 'অন্যান্য')];
-  }
-
-  function drawParticipantType() {
-    const lines = getPhotoCardTypeLines();
-    const family = '"Noto Serif Bengali", "Noto Sans Bengali", Georgia, serif';
-    let size = 25;
-    ctx.save();
-    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#10264A'; ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 4;
-    lines.slice(0, 2).forEach(function(line, i) {
-      while (size > 16) {
-        ctx.font = '800 ' + size + 'px ' + family;
-        if (ctx.measureText(line).width <= 235) break;
-        size--;
-      }
-      ctx.font = '800 ' + size + 'px ' + family;
-      ctx.fillText(line, 774, (lines.length === 1 ? 108 : 98) + i * (size + 7));
-    });
-    ctx.restore();
-  }
-
-  const participantPhoto = new Image();
-  const template = new Image();
-
-  Promise.all([
-    resolveCardPhotoSource(reg).then(function(src) {
-      return src ? loadImageElement(participantPhoto, [src], true) : null;
-    }),
-    loadImageElement(template, getTemplateSources(), false)
-  ]).then(function(result) {
-    const tpl = result[1];
-    if (!tpl || !tpl.naturalWidth) throw new Error('Photo-CARD.png not found at images/school/Photo-CARD.png');
-
-    ctx.clearRect(0, 0, TEMPLATE_W, TEMPLATE_H);
-    // Photo goes underneath the transparent portrait opening.
-    drawParticipantPhoto(participantPhoto);
-    // Master PNG is drawn unchanged over the photo.
-    ctx.drawImage(tpl, 0, 0, TEMPLATE_W, TEMPLATE_H);
-    // Only requested dynamic fields are added.
-    drawName();
-    drawParticipantType();
-    done(canvas);
-  }).catch(function(err) {
-    console.error('Photo Card template rendering failed:', err);
-    done(null);
-  });
+    // 5: frame PNG is always drawn last so its transparent circular opening
+    // reveals the photo while the rest of the frame remains on top.
+    ctx.drawImage(tpl,0,0,canvas.width,canvas.height);
+    drawName(); drawParticipantType(); done(canvas);
+  }).catch(err=>{console.error('Photo Card template rendering failed:',err);done(null);});
 }
-
 function downloadPhotoCard(reg, shouldDownload) {
   if (!reg) return;
   shouldDownload = (shouldDownload !== false);
@@ -5109,7 +5041,7 @@ function renderTable() {
     window._renderedCardRecords = data;
     cv.innerHTML = data.map((r,i) => `
       <div class="person-card photo-card-render" data-card-index="${i}">
-        ${r.paymentVerificationStatus==='Verified' ? `<canvas class="person-card-canvas" id="photo-card-canvas-${i}"></canvas>` : `<div style="height:100%;min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(145deg,#f7faf7,#fffdf5);padding:24px;"><div style="width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff4d6;color:#9a6500;font-size:1.6rem;margin-bottom:12px;">💳</div><div style="font-weight:900;color:#0b3d2e;font-family:'Noto Serif Bengali',serif;font-size:1rem;">Waiting for Payment Verification</div><div style="margin-top:14px;display:grid;gap:6px;width:100%;font-size:.78rem;text-align:left;"><div><strong>ID:</strong> ${r.uniqueId||'—'}</div><div><strong>Name:</strong> ${r.name||'—'}</div><div><strong>Phone:</strong> ${r.phone||'—'}</div><div style="color:#9a6500;font-weight:900;"><strong>Pending Amount:</strong> ৳ ${Math.max(0,Number(r.totalFee||0)-Number(r.receivedAmount||0)).toLocaleString('en-US')}</div></div></div>`}
+        ${r.paymentVerificationStatus==='Verified' ? `<canvas class="person-card-canvas" id="photo-card-canvas-${i}"></canvas>` : `<div style="height:100%;min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(145deg,#f7faf7,#fffdf5);padding:24px;"><div style="width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff4d6;color:#9a6500;font-size:1.6rem;margin-bottom:12px;">💳</div><div style="font-weight:900;color:#0b3d2e;font-family:'Noto Serif Bengali',serif;font-size:1rem;">Waiting for Payment Verification</div><div style="margin-top:14px;display:grid;gap:6px;width:100%;font-size:.78rem;text-align:left;"><div><strong>ID:</strong> ${r.uniqueId||'—'}</div><div><strong>Name:</strong> ${r.name||'—'}</div><div><strong>Phone:</strong> ${r.phone||'—'}</div><div style="color:#9a6500;font-weight:900;"><strong>Pending Amount:</strong> ৳ ${Math.max(0,Number(r.autoCalculatedFee || r.totalFee || 0)-Number(r.receivedAmount||0)).toLocaleString('en-US')}</div></div></div>`}
         <div class="person-card-downloads">
           ${r.paymentVerificationStatus==='Verified' ? `<button class="person-card-download-btn" title="Photo Card Download" onclick="event.stopPropagation();downloadPhotoCard(window._renderedCardRecords[${i}],true)">⬇</button><button class="person-card-download-btn" title="ID Card Download" onclick="event.stopPropagation();downloadIdCard(window._renderedCardRecords[${i}],true)">🪪</button>` : `<span style="font-size:.65rem;color:#9a6500;background:#fff4d6;padding:5px 8px;border-radius:8px;font-weight:800;">Payment Pending</span>`}
         </div>
@@ -5224,41 +5156,65 @@ function renderManagementStats() {
   const fmt = n => '৳ ' + Math.max(0, money(n)).toLocaleString('en-US');
   const pendingText = n => n > 0 ? `<span class="mgmt-stat-pending">(Pending ${fmt(n)})</span>` : '';
 
-  const publicReceived = cloudSummary && Number(cloudSummary.receivedTotal || 0) > 0 ? Number(cloudSummary.receivedTotal || 0) : 0;
-  const receivedTotal = verified.some(r => Number(r.receivedAmount || 0) > 0) ? verified.reduce((sum,r)=>sum + money(r.receivedAmount),0) : publicReceived;
-  if(paymentTotalEl) paymentTotalEl.textContent = fmt(receivedTotal);
+  // Payment dashboard uses the authoritative auto-calculated fee of verified registrations.
+  // This prevents a zero/blank Received_Money import from making verified revenue appear as ৳ 0.
+  const publicReceived = cloudSummary && Number(cloudSummary.receivedTotal || 0) >= 0 ? Number(cloudSummary.receivedTotal || 0) : 0;
+  const receivedTotal = verified.reduce((sum,r)=>sum + money(r.autoCalculatedFee || r.totalFee || r.calculatedFee),0);
+  const pendingAmount = pending.reduce((sum,r)=>Math.max(0,sum + Math.max(0,money(r.autoCalculatedFee || r.totalFee || r.calculatedFee)-money(r.receivedAmount))),0);
+  if(paymentTotalEl) paymentTotalEl.innerHTML = `${fmt(receivedTotal || publicReceived)} <small style="font-size:.68rem;color:#9a6500;font-weight:800;">(Pending ${fmt(pendingAmount)})</small>`;
   if(paymentCatsEl){
     const cats=[
       ['প্রাক্তন শিক্ষার্থী','alumni'],['বর্তমান শিক্ষার্থী','student'],['শিক্ষক/কর্মকর্তা','teacher'],['অতিথি/অন্যান্য','other']
     ];
     paymentCatsEl.innerHTML=cats.map(([label,key])=>{
       let amount=0;
-      if(verified.some(r => Number(r.receivedAmount || 0) > 0)){
-        const rows=key==='other' ? verified.filter(r=>['guest','other'].includes(r.type)) : verified.filter(r=>r.type===key);
-        amount=rows.reduce((a,r)=>a+money(r.receivedAmount),0);
-      } else if(cloudSummary && cloudSummary.receivedByType){
+      const rows=key==='other' ? verified.filter(r=>['guest','other'].includes(r.type)) : verified.filter(r=>r.type===key);
+      const pendingRows=key==='other' ? pending.filter(r=>['guest','other'].includes(r.type)) : pending.filter(r=>r.type===key);
+      const pendingCat=pendingRows.reduce((a,r)=>a+Math.max(0,money(r.autoCalculatedFee || r.totalFee || r.calculatedFee)-money(r.receivedAmount)),0);
+      amount=rows.reduce((a,r)=>a+money(r.autoCalculatedFee || r.totalFee || r.calculatedFee),0);
+      if(!amount && cloudSummary && cloudSummary.receivedByType){
         amount=key==='other' ? Number(cloudSummary.receivedByType.guest||0)+Number(cloudSummary.receivedByType.other||0) : Number(cloudSummary.receivedByType[key]||0);
       }
-      return `<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${fmt(amount)}</div></div>`;
+      return `<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${fmt(amount)} <small style="display:block;color:#9a6500;font-size:.65rem;">(Pending ${fmt(pendingCat)})</small></div></div>`;
     }).join('');
+  }
+
+  // Foods & Logistics: entitlement is based on participant type plus companions.
+  const foodEl=document.getElementById('mgmt-foods-logistics');
+  if(foodEl){
+    const eligibleMain = regs.filter(r=>['alumni','student'].includes(String(r.type||''))).length;
+    const breakfastTotal = regs.reduce((n,r)=>n + 1 + Math.max(0,Number(r.guestCount||0)) + Math.max(0,Number(r.childCount||0)),0);
+    const lunchTotal = breakfastTotal;
+    const delivered = item => regs.reduce((n,r)=>n,0);
+    const distributionLog = window._distributionSummary || {};
+    const tshirtDelivered = Number(distributionLog['T-Shirt']||0);
+    const capDelivered = Number(distributionLog['Cap']||0);
+    const breakfastDelivered = Number(distributionLog['Breakfast']||0);
+    const lunchDelivered = Number(distributionLog['Lunch']||0);
+    foodEl.innerHTML = [
+      ['👕 T-Shirt & 🧢 Cap', eligibleMain, Math.min(tshirtDelivered,capDelivered)],
+      ['🍳 Breakfast', breakfastTotal, breakfastDelivered],
+      ['🍱 Lunch', lunchTotal, lunchDelivered]
+    ].map(([label,total,del])=>`<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${toBanglaDigits(total)} piece <span style="color:#16733a;font-size:.72rem;font-weight:800;">(Delivered ${toBanglaDigits(del)} piece)</span></div></div>`).join('');
   }
 
   const batchMap={};
   regs.filter(r=>r.type==='alumni' && r.batch).forEach(r=>{
-    const b=String(r.batch); if(!batchMap[b]) batchMap[b]={count:0,received:0,pending:0};
-    if(String(r.paymentVerificationStatus||'')==='Verified'){batchMap[b].count++; batchMap[b].received+=money(r.receivedAmount);}
-    else batchMap[b].pending += Math.max(0,money(r.totalFee)-money(r.receivedAmount));
+    const b=String(r.batch); if(!batchMap[b]) batchMap[b]={count:0,received:0,pending:0,pendingCount:0};
+    if(String(r.paymentVerificationStatus||'')==='Verified'){batchMap[b].count++; batchMap[b].received+=money(r.autoCalculatedFee || r.totalFee);}
+    else { batchMap[b].pending += Math.max(0,money(r.autoCalculatedFee || r.totalFee || r.calculatedFee)-money(r.receivedAmount)); batchMap[b].pendingCount++; }
   });
   const sortedBatches=Object.entries(batchMap).sort((a,b)=>parseInt(b[0])-parseInt(a[0]));
-  batchList.innerHTML=sortedBatches.length ? sortedBatches.map(([batch,v])=>`<div class="stats-row"><div class="name">ব্যাচ ${batch}</div><div class="count">${v.count} জন <span class="mgmt-stat-pending">${fmt(v.received)} ${v.pending>0?' · Pending '+fmt(v.pending):''}</span></div></div>`).join('') : '<div class="stats-row"><div class="name">কোনো ব্যাচ ডেটা নেই</div><div class="count">0</div></div>';
+  batchList.innerHTML=sortedBatches.length ? sortedBatches.map(([batch,v])=>`<div class="stats-row"><div class="name">ব্যাচ ${batch}</div><div class="count">${v.count} জন <span class="mgmt-stat-pending">${v.pendingCount||0} জন Pending · ${fmt(v.received)} <span style="color:#9a6500;font-size:.68rem;">(Pending ${fmt(v.pending)})</span></span></div></div>`).join('') : '<div class="stats-row"><div class="name">কোনো ব্যাচ ডেটা নেই</div><div class="count">0</div></div>';
 
   const classLabels={'6':'৬ষ্ঠ','7':'৭ম','8':'৮ম','9':'৯ম','10':'১০ম'};
   classList.innerHTML=Object.entries(classLabels).map(([cls,label])=>{
     const rows=regs.filter(r=>r.type==='student' && String(r.studentClass)===cls);
     const count=rows.filter(r=>String(r.paymentVerificationStatus||'')==='Verified').length;
-    const received=rows.filter(r=>String(r.paymentVerificationStatus||'')==='Verified').reduce((a,r)=>a+money(r.receivedAmount),0);
-    const pend=rows.filter(r=>String(r.paymentVerificationStatus||'')!=='Verified').reduce((a,r)=>a+Math.max(0,money(r.totalFee)-money(r.receivedAmount)),0);
-    return `<div class="stats-row"><div class="name">${label}</div><div class="count">${count} জন <span class="mgmt-stat-pending">${fmt(received)} ${pend>0?' · Pending '+fmt(pend):''}</span></div></div>`;
+    const received=rows.filter(r=>String(r.paymentVerificationStatus||'')==='Verified').reduce((a,r)=>a+money(r.autoCalculatedFee || r.totalFee),0);
+    const pendingRows=rows.filter(r=>String(r.paymentVerificationStatus||'')!=='Verified');
+    const pend=pendingRows.reduce((a,r)=>a+Math.max(0,money(r.autoCalculatedFee || r.totalFee || r.calculatedFee)-money(r.receivedAmount)),0);
+    return `<div class="stats-row"><div class="name">${label}</div><div class="count">${count} জন <span class="mgmt-stat-pending">${pendingRows.length} জন Pending · ${fmt(received)} <span style="color:#9a6500;font-size:.68rem;">(Pending ${fmt(pend)})</span></span></div></div>`;
   }).join('');
 }
 async function volunteerAdminPost(payload) {
@@ -5689,6 +5645,8 @@ async function renderVolunteerParticipant(p) {
   document.getElementById('vol-result-phone').textContent = p.phone || '';
   document.getElementById('vol-result-type').textContent = volunteerTypeMap[p.type] || p.type || '';
   document.getElementById('vol-result-size').textContent = p.tshirtSize || '—';
+  document.getElementById('vol-result-guests').textContent = (Number(p.guestCount||0) || 0) + ' জন';
+  document.getElementById('vol-result-children').textContent = (Number(p.childCount||0) || 0) + ' জন';
 
   const img = document.getElementById('vol-result-photo');
   const fallback = document.getElementById('vol-result-photo-fallback');
@@ -5868,12 +5826,25 @@ async function loadVolunteerPaymentQueue(){
   }catch(e){rows.innerHTML='<div style="padding:20px;text-align:center;color:#b42318;">❌ '+escapeHtmlSafe(e.message)+'</div>';}
 }
 
+function choosePaymentVerificationMethod(){
+  return new Promise(resolve=>{
+    const old=document.getElementById('paymentVerifyMethodModal'); if(old) old.remove();
+    const wrap=document.createElement('div'); wrap.id='paymentVerifyMethodModal'; wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10050;display:flex;align-items:center;justify-content:center;padding:20px;';
+    wrap.innerHTML=`<div style="width:min(420px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;"><h3 style="margin:0 0 8px;color:#0b3d2e;">Payment Verification</h3><p style="margin:0 0 18px;color:#68736c;">পেমেন্ট কোন মাধ্যমে জমা হয়েছে?</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><button id="pvBank" style="padding:14px;border:1px solid #d7e3da;border-radius:12px;background:#f6faf7;font-weight:800;cursor:pointer;">🏦 Bank Payment</button><button id="pvOffice" style="padding:14px;border:1px solid #d7e3da;border-radius:12px;background:#fff8e8;font-weight:800;cursor:pointer;">🏢 Office Payment</button></div><button id="pvCancel" style="margin-top:14px;border:0;background:none;color:#777;cursor:pointer;">Cancel</button></div>`;
+    document.body.appendChild(wrap);
+    wrap.querySelector('#pvBank').onclick=()=>{wrap.remove();resolve('Bank Payment');};
+    wrap.querySelector('#pvOffice').onclick=()=>{wrap.remove();resolve('Office Payment');};
+    wrap.querySelector('#pvCancel').onclick=()=>{wrap.remove();resolve(null);};
+  });
+}
+
 async function verifyPaymentFromQueue(uid,btn){
   if(!volunteerToken || !(volunteerPermissions && volunteerPermissions.paymentVerification)) return;
-  if(!confirm('এই payment-এর TxnID/Proof যাচাই করে Confirm করবেন?')) return;
+  const method = await choosePaymentVerificationMethod();
+  if(!method) return;
   btn.disabled=true; btn.textContent='⏳';
   try{
-    const data=await volunteerPost({action:'volunteerPaymentVerify',token:volunteerToken,uniqueId:uid});
+    const data=await volunteerPost({action:'volunteerPaymentVerify',token:volunteerToken,uniqueId:uid,verificationMethod:method});
     if(!data.success) throw new Error(data.message||data.error||'Verification ব্যর্থ');
     showToast('✅ Payment verification complete — card generation started.','success');
     await generateVerifiedCards(data.participant);
@@ -6048,17 +6019,17 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
     }
 
     // This is the ONLY QR that is presented for participant download/access.
-    renderParticipantQR(wrap.querySelector('#pdfQrBox'), reg, 96);
+    renderParticipantQR(wrap.querySelector('#pdfQrBox'), reg, 192);
     await new Promise(r=>setTimeout(r,250));
 
     const canvas=await html2canvas(wrap,{
-      scale:2,
+      scale:4,
       useCORS:true,
       backgroundColor:'#fff',
       logging:false
     });
 
-    const imgData=canvas.toDataURL('image/jpeg',.96);
+    const imgData=canvas.toDataURL('image/png');
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({
       orientation:'portrait',
@@ -6066,7 +6037,7 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
       format:'a4',
       compress:true
     });
-    pdf.addImage(imgData,'JPEG',0,0,210,297,undefined,'FAST');
+    pdf.addImage(imgData,'PNG',0,0,210,297,undefined,'FAST');
 
     const pdfBase64=pdf.output('datauristring');
     const fileName=(reg.uniqueId||'application')+'_Application.pdf';
