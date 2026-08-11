@@ -3386,6 +3386,7 @@
 
             <div class="distribution-box">
               <div class="distribution-title">🎁 Distribution</div>
+              <div id="vol-distribution-entitlement" style="margin:8px 0 10px;padding:10px 12px;background:#f7faf7;border:1px solid #dce9df;border-radius:10px;font-size:.82rem;font-weight:800;color:#405047;line-height:1.7"></div>
               <div class="distribution-grid">
                 <label class="distribution-item">
                   <input type="checkbox" id="dist-tshirtcap" value="T-Shirt & Cap">
@@ -5219,25 +5220,36 @@ function renderManagementStats() {
     }).join('');
   }
 
-  // Foods & Logistics: entitlement is based on participant type plus companions.
+  // Foods & Logistics: ONLY verified participants are counted.
+  // T-Shirt & Cap is for the verified main participant when they are an
+  // Ex-Student/Current Student. Breakfast/Lunch include the verified main
+  // participant + adult companions as pieces, while children are shown as
+  // separate child packets.
   const foodEl=document.getElementById('mgmt-foods-logistics');
   if(foodEl){
     const verifiedRegs = regs.filter(r=>String(r.paymentVerificationStatus||'')==='Verified');
     const eligibleMain = verifiedRegs.filter(r=>['alumni','student'].includes(String(r.type||''))).length;
-    // Food counts include only verified participants and their registered companions.
-    const breakfastTotal = verifiedRegs.reduce((n,r)=>n + 1 + Math.max(0,Number(r.guestCount||0)) + Math.max(0,Number(r.childCount||0)),0);
-    const lunchTotal = breakfastTotal;
-    const delivered = item => verifiedRegs.reduce((n,r)=>n,0);
+    const breakfastAdultTotal = verifiedRegs.reduce((n,r)=>n + 1 + Math.max(0,Number(r.guestCount||0)),0);
+    const breakfastChildTotal = verifiedRegs.reduce((n,r)=>n + Math.max(0,Number(r.childCount||0)),0);
+    const lunchAdultTotal = breakfastAdultTotal;
+    const lunchChildTotal = breakfastChildTotal;
     const distributionLog = window._distributionSummary || {};
     const tshirtDelivered = Number(distributionLog['T-Shirt']||0);
     const capDelivered = Number(distributionLog['Cap']||0);
     const breakfastDelivered = Number(distributionLog['Breakfast']||0);
+    const breakfastChildDelivered = Number(distributionLog['Breakfast_Child']||0);
     const lunchDelivered = Number(distributionLog['Lunch']||0);
+    const lunchChildDelivered = Number(distributionLog['Lunch_Child']||0);
+    const foodLine = (adultTotal, childTotal, adultDel, childDel) => {
+      const left = `${toBanglaDigits(adultTotal)} piece` + (childTotal ? `, ${toBanglaDigits(childTotal)} child packet` : '');
+      const delivered = `${toBanglaDigits(adultDel)} piece` + (childTotal ? `, ${toBanglaDigits(childDel)} child packet` : '');
+      return `${left} <span style="color:#16733a;font-size:.72rem;font-weight:800;">(Delivered ${delivered})</span>`;
+    };
     foodEl.innerHTML = [
-      ['👕 T-Shirt & 🧢 Cap', eligibleMain, Math.min(tshirtDelivered,capDelivered)],
-      ['🍳 Breakfast', breakfastTotal, breakfastDelivered],
-      ['🍱 Lunch', lunchTotal, lunchDelivered]
-    ].map(([label,total,del])=>`<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${toBanglaDigits(total)} piece <span style="color:#16733a;font-size:.72rem;font-weight:800;">(Delivered ${toBanglaDigits(del)} piece)</span></div></div>`).join('');
+      ['👕 T-Shirt & 🧢 Cap', `${toBanglaDigits(eligibleMain)} piece`, `${toBanglaDigits(Math.min(tshirtDelivered,capDelivered))} piece`],
+      ['🍳 Breakfast', foodLine(breakfastAdultTotal, breakfastChildTotal, breakfastDelivered, breakfastChildDelivered), ''],
+      ['🍱 Lunch', foodLine(lunchAdultTotal, lunchChildTotal, lunchDelivered, lunchChildDelivered), '']
+    ].map(([label,total,del])=>`<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${total}${del ? ` <span style="color:#16733a;font-size:.72rem;font-weight:800;">(Delivered ${del})</span>` : ''}</div></div>`).join('');
   }
 
   const batchMap={};
@@ -5710,12 +5722,23 @@ async function renderVolunteerParticipant(p) {
 
   const statuses = p.distribution || {};
   const perms = p.permissions || volunteerPermissions || {};
+  const isStudent = ['alumni','student'].includes(String(p.type||''));
+  const adultFoodQty = 1 + Math.max(0, Number(p.guestCount||0));
+  const childFoodQty = Math.max(0, Number(p.childCount||0));
   const tshirtDone=!!statuses['T-Shirt'];
   const capDone=!!statuses['Cap'];
   const tshirtCapDone=tshirtDone && capDone;
-  setDistributionState('dist-tshirtcap', 'dist-tshirtcap-status', tshirtCapDone, !perms.tshirtCap);
+  setDistributionState('dist-tshirtcap', 'dist-tshirtcap-status', tshirtCapDone, !perms.tshirtCap || !isStudent);
   setDistributionState('dist-breakfast', 'dist-breakfast-status', statuses['Breakfast'], !perms.breakfast);
   setDistributionState('dist-lunch', 'dist-lunch-status', statuses['Lunch'], !perms.lunch);
+  const ent = document.getElementById('vol-distribution-entitlement');
+  if(ent){
+    const parts=[];
+    if(isStudent && perms.tshirtCap) parts.push('👕 1 piece T-Shirt & Cap');
+    if(perms.breakfast) parts.push('🍳 '+toBanglaDigits(adultFoodQty)+' piece Breakfast'+(childFoodQty ? ', '+toBanglaDigits(childFoodQty)+' child packet' : ''));
+    if(perms.lunch) parts.push('🍱 '+toBanglaDigits(adultFoodQty)+' piece Lunch'+(childFoodQty ? ', '+toBanglaDigits(childFoodQty)+' child packet' : ''));
+    ent.innerHTML = parts.length ? 'প্রাপ্য: ' + parts.join(' & ') : 'এই Volunteer-এর জন্য কোনো অনুমোদিত item নেই।';
+  }
 
   document.getElementById('vol-confirm-area').style.display = 'none';
   document.getElementById('vol-result-msg').textContent = '';
