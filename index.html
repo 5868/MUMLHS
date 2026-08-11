@@ -6375,7 +6375,7 @@ if (isAdminUnlocked) {
   // If the tab exists but is accidentally hidden by an inline/style rule,
   // restore its normal tab display once the admin panel is rendered.
   var observer = new MutationObserver(function () {
-    var tab = document.getElementById('adminTabVolunteer'); 
+    var tab = document.getElementById('adminTabVolunteer');
     if (tab) {
       tab.style.display = '';
       tab.style.visibility = 'visible';
