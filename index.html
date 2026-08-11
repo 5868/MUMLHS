@@ -4360,8 +4360,10 @@ function updateSummary() {
   const otherPending = pending.filter(r => r.type === 'guest' || r.type === 'other').length;
   const set = (id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('total-count', verified.length);
-  const adultCompanions = rows.reduce((sum,r)=>sum + Math.max(0, Number(r.guestCount||0)), 0);
-  const childCompanions = rows.reduce((sum,r)=>sum + Math.max(0, Number(r.childCount||0)), 0);
+  // Companion/child summary is restricted to VERIFIED participants only.
+  // Pending registrations must never inflate the public/management totals.
+  const adultCompanions = verified.reduce((sum,r)=>sum + Math.max(0, Number(r.guestCount||0)), 0);
+  const childCompanions = verified.reduce((sum,r)=>sum + Math.max(0, Number(r.childCount||0)), 0);
   const totalCompanionText = `(সাথে আসবেন প্রাপ্ত বয়স্ক ${toBanglaDigits(adultCompanions)} জন, শিশু ${toBanglaDigits(childCompanions)} জন)`;
   const totalPendingEl=document.getElementById('total-pending'); if(totalPendingEl) totalPendingEl.innerHTML = totalCompanionText + (pending.length ? ` <span class="summary-pending">· ${toBanglaDigits(pending.length)} জন Pending</span>` : '');
   set('alumni-count', counts('alumni'));
