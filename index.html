@@ -4392,15 +4392,10 @@ async function submitRegistration() {
   showRegistrationProgress('এপ্লিকেশন ফর্ম ডাউনলোড হচ্ছে অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন।');
   try {
     if (USE_CLOUD) {
-      // Profile photo must be archived, but a Drive/API delay must never prevent
-      // the participant's Application PDF from downloading.
-      await Promise.race([
-        uploadPhotoToDrive(reg),
-        new Promise(resolve => setTimeout(() => resolve({success:false,error:'photo_upload_timeout'}), 12000))
-      ]);
-      if (reg.paymentScreenshot) {
-        uploadPaymentScreenshotToDrive(reg).catch(e => console.warn('Payment proof upload:',e));
-      }
+      await uploadPhotoToDrive(reg);
+      if (reg.paymentScreenshot) await uploadPaymentScreenshotToDrive(reg);
+      // ID/Photo Card are intentionally NOT generated before payment verification.
+      // Only the submitted application PDF is generated and archived here.
     }
 
     await downloadApplicationPDF(reg, true);
@@ -4657,45 +4652,43 @@ async function saveToCloud(reg) {
 
 // ─── GOOGLE DRIVE PHOTO UPLOAD ───
 async function uploadPhotoToDrive(reg) {
-  if (!reg.photo || !reg.photo.startsWith('data:')) return {success:false,error:'no_photo'};
-  if (!GAS_URL || GAS_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') return {success:false,error:'no_gas_url'};
+  if (!reg.photo || !reg.photo.startsWith('data:')) return; // ছবি না থাকলে skip
+  if (!GAS_URL || GAS_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') return;
 
   try {
     const payload = {
-      action: 'uploadProfilePhoto',
-      uniqueId: reg.uniqueId,
+      uniqueId : reg.uniqueId,
       imageData: reg.photo,
-      kind: 'profile',
-      name: reg.name,
-      phone: reg.phone,
-      batch: reg.batch,
-      date: reg.date
+      kind     : 'profile',
+      name     : reg.name,
+      phone    : reg.phone,
+      batch    : reg.batch,
+      date     : reg.date
     };
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
-    try {
-      const res = await fetch(GAS_URL, {
-        method:'POST',
-        headers:{'Content-Type':'text/plain'},
-        body:JSON.stringify(payload),
-        signal:controller.signal
-      });
-      const result = await res.json();
-      if (result.success) {
-        reg.photoUrl = result.url || '';
-        const ridx=registrations.findIndex(x=>x.uniqueId===reg.uniqueId);
-        if(ridx>=0){ registrations[ridx].photoUrl=reg.photoUrl; localStorage.setItem('muhs_registrations',JSON.stringify(registrations)); }
-        showToast(`📸 ছবি Drive-এ সেভ হয়েছে (ID: ${reg.uniqueId})`);
-      } else {
-        console.warn('Drive photo upload rejected:',result);
-        showToast('⚠️ নিবন্ধন হয়েছে, কিন্তু ছবি Drive-এ সংরক্ষণ হয়নি।', 'error');
+
+    const res = await fetch(GAS_URL, {
+      method : 'POST',
+      headers: { 'Content-Type': 'text/plain' }, // GAS quirk: text/plain bypasses CORS preflight
+      body   : JSON.stringify(payload)
+    });
+
+    const result = await res.json();
+    if (result.success) {
+      reg.photoUrl = result.url || reg.photoUrl || '';
+      const ridx = registrations.findIndex(x => x.uniqueId === reg.uniqueId);
+      if (ridx >= 0) {
+        registrations[ridx].photoUrl = reg.photoUrl;
+        localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
       }
-      return result;
-    } finally { clearTimeout(timer); }
-  } catch(err) {
-    console.warn('Drive photo upload failed:',err);
-    showToast('⚠️ নিবন্ধন হয়েছে, কিন্তু ছবি Drive-এ সংরক্ষণ হয়নি। PDF download চলবে।', 'error');
-    return {success:false,error:String(err&&err.message||err)};
+      showToast(`📸 ছবি Drive-এ সেভ হয়েছে (ID: ${reg.uniqueId})`);
+    } else {
+      console.warn('Drive photo upload rejected:', result);
+      showToast('⚠️ ছবি Google Drive-এ save হয়নি: ' + (result.detail || result.error || 'unknown error'), 'error');
+    }
+  } catch (err) {
+    console.warn('Drive upload failed:', err.message);
+    showToast('⚠️ ছবি Google Drive-এ save হয়নি: ' + (err && err.message ? err.message : err), 'error');
+    // PDF generation/download must continue even if Drive photo upload fails.
   }
 }
 
@@ -6237,58 +6230,56 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
     const pdfBase64=pdf.output('datauristring');
     const fileName=(reg.uniqueId||'application')+'_Application.pdf';
 
-    // Download FIRST. Do not make the user's download depend on the
-    // Google Drive network request. This also prevents a slow/hanging GAS
-    // response from stopping the browser download.
+    // Archive the exact generated PDF first, then trigger the browser download.
+    // This avoids a page-lifecycle race where the browser cancels a background
+    // fetch immediately after the download starts. A Drive failure never blocks
+    // the local download.
+    if(archiveToDrive && USE_CLOUD){
+      try{
+        const res=await fetch(GAS_URL,{
+          method:'POST',
+          headers:{'Content-Type':'text/plain'},
+          body:JSON.stringify({
+            action:'uploadApplicationPDF',
+            uniqueId:reg.uniqueId,
+            name:reg.name,
+            imageData:pdfBase64
+          })
+        });
+        const result=await res.json();
+        if(result.success){
+          reg.applicationPdfUrl=result.url;
+          const ridx=registrations.findIndex(x=>x.uniqueId===reg.uniqueId);
+          if(ridx>=0){
+            registrations[ridx].applicationPdfUrl=result.url;
+            localStorage.setItem('muhs_registrations',JSON.stringify(registrations));
+          }
+          console.info('Application PDF archived successfully:', result.url, 'folder:', result.folderId || '');
+        }else{
+          console.error('Application PDF archive rejected:', result);
+          showToast('⚠️ Google Drive-এ PDF save হয়নি। PDF download চালু করা হচ্ছে।', 'error');
+        }
+      }catch(e){
+        console.error('Application PDF archive failed:',e);
+        showToast('⚠️ Google Drive-এ PDF save হয়নি। PDF download চালু করা হচ্ছে।', 'error');
+      }
+    }
+
+    // Primary browser download. jsPDF's own save path is more reliable than a
+    // delayed anchor click after several awaited network operations.
     try {
+      pdf.save(fileName);
+    } catch (downloadErr) {
+      console.warn('jsPDF save failed; falling back to Blob download:', downloadErr);
       const pdfBlob = pdf.output('blob');
       const blobUrl = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
       a.href = blobUrl;
       a.download = fileName;
-      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-    } catch (downloadErr) {
-      console.warn('Blob download failed; falling back to jsPDF save:', downloadErr);
-      pdf.save(fileName);
-    }
-
-    // Archive independently after the local download has already started.
-    // The Drive save can therefore never block the participant's PDF download.
-    if(archiveToDrive && USE_CLOUD){
-      (async function archiveApplicationPdfInBackground(){
-        try{
-          const res=await fetch(GAS_URL,{
-            method:'POST',
-            headers:{'Content-Type':'text/plain'},
-            body:JSON.stringify({
-              action:'uploadApplicationPDF',
-              uniqueId:reg.uniqueId,
-              name:reg.name,
-              imageData:pdfBase64
-            })
-          });
-          const result=await res.json();
-          if(result.success){
-            reg.applicationPdfUrl=result.url;
-            const ridx=registrations.findIndex(x=>x.uniqueId===reg.uniqueId);
-            if(ridx>=0){
-              registrations[ridx].applicationPdfUrl=result.url;
-              localStorage.setItem('muhs_registrations',JSON.stringify(registrations));
-            }
-            console.info('Application PDF archived successfully:', result.url, 'folder:', result.folderId || '');
-          }else{
-            console.error('Application PDF archive rejected:', result);
-            showToast('⚠️ PDF ডাউনলোড হয়েছে, তবে Google Drive-এ সংরক্ষণ ব্যর্থ হয়েছে।', 'error');
-          }
-        }catch(e){
-          console.error('Application PDF archive failed:',e);
-          showToast('⚠️ PDF ডাউনলোড হয়েছে, তবে Google Drive-এ সংরক্ষণ ব্যর্থ হয়েছে।', 'error');
-        }
-      })();
     }
     return true;
   }catch(e){
