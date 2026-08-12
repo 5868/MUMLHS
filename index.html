@@ -2954,7 +2954,7 @@
             <span class="ph-icon">📷</span>
             <img id="photoPreviewImg" alt="প্রোফাইল ছবি">
           </div>
-          <div class="photo-upload-label">প্রোফাইল ছবি (বাধ্যতামূলক)<br>ক্লিক করে ছবি বেছে নিন</div>
+          <div class="photo-upload-label">প্রোফাইল ছবি <span style="color:#c0392b">*</span> বাধ্যতামূলক<br>ক্লিক করে ছবি বেছে নিন</div>
           <button type="button" class="upload-btn" onclick="document.getElementById('photoFileInput').click()">📁 ছবি নির্বাচন করুন</button>
           <input type="file" id="photoFileInput" accept="image/*" style="display:none" onchange="openCropModal(event)">
         </div>
@@ -4270,6 +4270,19 @@ async function submitRegistration() {
   const gender = document.getElementById('reg-gender').value;
 
   if (!name) { showToast('অনুগ্রহ করে নাম লিখুন।', 'error'); return; }
+
+  // Profile photo is mandatory for every registration.
+  const requiredPhoto = document.getElementById('reg-photo').value.trim();
+  if (!requiredPhoto || !requiredPhoto.startsWith('data:image/')) {
+    showToast('অনুগ্রহ করে আপনার প্রোফাইল ছবি নির্বাচন ও সেট করুন। ছবি ছাড়া নিবন্ধন সম্পন্ন করা যাবে না।', 'error');
+    const photoArea = document.getElementById('photoFileInput');
+    if (photoArea) {
+      const box = document.getElementById('photoPreviewImg')?.closest('.photo-upload') || document.getElementById('photoPreviewImg')?.parentElement;
+      if (box && box.scrollIntoView) box.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+    return;
+  }
+
   // Phone: Bangladesh 01XXXXXXXXX (11 digits)
   const phoneClean = phone.replace(/[^0-9]/g, '');
   if (!phoneClean || phoneClean.length !== 11 || !phoneClean.startsWith('01')) {
@@ -4661,11 +4674,19 @@ async function uploadPhotoToDrive(reg) {
 
     const result = await res.json();
     if (result.success) {
+      reg.photoUrl = result.url || reg.photoUrl || '';
+      const ridx = registrations.findIndex(x => x.uniqueId === reg.uniqueId);
+      if (ridx >= 0) {
+        registrations[ridx].photoUrl = reg.photoUrl;
+        localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+      }
       showToast(`📸 ছবি Drive-এ সেভ হয়েছে (ID: ${reg.uniqueId})`);
+    } else {
+      console.warn('Drive photo upload rejected:', result);
     }
   } catch (err) {
     console.warn('Drive upload skipped:', err.message);
-    // Silent fail — নিবন্ধন বাধা পাবে না
+    // PDF generation/download must continue even if Drive photo upload fails.
   }
 }
 
@@ -6207,38 +6228,59 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
     const pdfBase64=pdf.output('datauristring');
     const fileName=(reg.uniqueId||'application')+'_Application.pdf';
 
-    if(archiveToDrive && USE_CLOUD){
-      try{
-        const res=await fetch(GAS_URL,{
-          method:'POST',
-          headers:{'Content-Type':'text/plain'},
-          body:JSON.stringify({
-            action:'uploadApplicationPDF',
-            uniqueId:reg.uniqueId,
-            name:reg.name,
-            imageData:pdfBase64
-          })
-        });
-        const result=await res.json();
-        if(result.success){
-          reg.applicationPdfUrl=result.url;
-          const idx=registrations.findIndex(x=>x.uniqueId===reg.uniqueId);
-          if(idx>=0){
-            registrations[idx].applicationPdfUrl=result.url;
-            localStorage.setItem('muhs_registrations',JSON.stringify(registrations));
-          }
-          console.info('Application PDF archived:', result.url, 'folder:', result.folderId || '');
-        }else{
-          console.error('Application PDF archive rejected:', result);
-          showToast('⚠️ PDF তৈরি হয়েছে, কিন্তু Google Drive-এ সংরক্ষণ করা যায়নি।','error');
-        }
-      }catch(e){
-        console.error('Application PDF archive failed:',e);
-        showToast('⚠️ PDF তৈরি হয়েছে, কিন্তু Google Drive-এ সংরক্ষণ করা যায়নি।','error');
-      }
+    // Download FIRST. Do not make the user's download depend on the
+    // Google Drive network request. This also prevents a slow/hanging GAS
+    // response from stopping the browser download.
+    try {
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    } catch (downloadErr) {
+      console.warn('Blob download failed; falling back to jsPDF save:', downloadErr);
+      pdf.save(fileName);
     }
 
-    pdf.save(fileName);
+    // Archive independently after the local download has already started.
+    // The Drive save can therefore never block the participant's PDF download.
+    if(archiveToDrive && USE_CLOUD){
+      (async function archiveApplicationPdfInBackground(){
+        try{
+          const res=await fetch(GAS_URL,{
+            method:'POST',
+            headers:{'Content-Type':'text/plain'},
+            body:JSON.stringify({
+              action:'uploadApplicationPDF',
+              uniqueId:reg.uniqueId,
+              name:reg.name,
+              imageData:pdfBase64
+            })
+          });
+          const result=await res.json();
+          if(result.success){
+            reg.applicationPdfUrl=result.url;
+            const ridx=registrations.findIndex(x=>x.uniqueId===reg.uniqueId);
+            if(ridx>=0){
+              registrations[ridx].applicationPdfUrl=result.url;
+              localStorage.setItem('muhs_registrations',JSON.stringify(registrations));
+            }
+            console.info('Application PDF archived successfully:', result.url, 'folder:', result.folderId || '');
+          }else{
+            console.error('Application PDF archive rejected:', result);
+            showToast('⚠️ PDF ডাউনলোড হয়েছে, তবে Google Drive-এ সংরক্ষণ ব্যর্থ হয়েছে।', 'error');
+          }
+        }catch(e){
+          console.error('Application PDF archive failed:',e);
+          showToast('⚠️ PDF ডাউনলোড হয়েছে, তবে Google Drive-এ সংরক্ষণ ব্যর্থ হয়েছে।', 'error');
+        }
+      })();
+    }
     return true;
   }catch(e){
     console.error(e);
