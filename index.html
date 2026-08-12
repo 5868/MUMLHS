@@ -4376,48 +4376,126 @@ async function submitRegistration() {
     }
   }
 
-  // Reset
-  ['reg-name','reg-phone','reg-email','reg-message','reg-current-village','reg-current-post','reg-current-upazila','reg-current-district','reg-permanent-village','reg-permanent-post','reg-permanent-upazila','reg-permanent-district'].forEach(id => document.getElementById(id).value = '');
+  // Keep the in-memory registration intact until the assets have been prepared.
+  // Resetting only the form controls does NOT destroy reg.photo/reg.paymentScreenshot.
+
+  /*
+   * IMPORTANT:
+   * The old version started three independent Drive requests with Promise.allSettled()
+   * and only after a long async chain attempted pdf.save().  That was fragile in
+   * browsers and also caused DriveApp/ScriptLock contention.
+   *
+   * New flow:
+   *   1. Prepare the PDF locally.
+   *   2. Trigger the local download immediately when possible.
+   *   3. Send PHOTO + PDF together in ONE Apps Script request.
+   *   4. Upload payment screenshot separately only when supplied.
+   *
+   * Even if browser download is blocked, cloud archival continues.
+   */
+  showRegistrationProgress('এপ্লিকেশন কপি প্রস্তুত হচ্ছে — অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন।');
+
+  let pdfDataUrl = '';
+  let pdfDownloadStarted = false;
+
+  try {
+    const pdfResult = await buildApplicationPDFData(reg);
+    if (pdfResult && pdfResult.dataUrl) {
+      pdfDataUrl = pdfResult.dataUrl;
+      window._lastApplicationPdfId = reg.uniqueId;
+      pdfDownloadStarted = triggerApplicationPdfDownload(pdfResult.blob, reg.uniqueId);
+
+      if (!pdfDownloadStarted) {
+        showToast('⚠️ PDF তৈরি হয়েছে, কিন্তু browser automatic download block করেছে।', 'error');
+      }
+    } else {
+      showToast('⚠️ PDF তৈরি করা যায়নি।', 'error');
+    }
+  } catch (err) {
+    console.error('Application PDF preparation failed:', err);
+    showToast('⚠️ PDF তৈরিতে সমস্যা হয়েছে।', 'error');
+  }
+
+  // IMPORTANT: cloud archival is NOT conditional on successful browser download.
+  if (USE_CLOUD) {
+    try {
+      showRegistrationProgress('ছবি ও Application PDF Google Drive-এ সংরক্ষণ হচ্ছে…');
+
+      const assetPayload = {
+        action: 'uploadRegistrationAssets',
+        uniqueId: reg.uniqueId,
+        name: reg.name,
+        photoData: reg.photo || '',
+        pdfData: pdfDataUrl || ''
+      };
+
+      const assetRes = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(assetPayload)
+      });
+
+      const assetRaw = await assetRes.text();
+      let assetResult = null;
+      try { assetResult = JSON.parse(assetRaw); }
+      catch (_) { throw new Error('Apps Script returned invalid JSON: ' + assetRaw.slice(0,250)); }
+
+      console.log('Registration asset archive:', assetResult);
+
+      if (assetResult && assetResult.photo && assetResult.photo.success) {
+        reg.photoUrl = assetResult.photo.url || reg.photoUrl || '';
+      } else if (assetResult && assetResult.photo && !assetResult.photo.skipped) {
+        console.error('Photo archive failed:', assetResult.photo);
+        showToast('⚠️ ছবি Google Drive-এ save হয়নি।', 'error');
+      }
+
+      if (assetResult && assetResult.pdf && assetResult.pdf.success) {
+        reg.applicationPdfUrl = assetResult.pdf.url || reg.applicationPdfUrl || '';
+      } else if (pdfDataUrl) {
+        console.error('Application PDF archive failed:', assetResult && assetResult.pdf);
+        showToast('⚠️ Application PDF Google Drive-এ save হয়নি।', 'error');
+      }
+
+      const ridx = registrations.findIndex(x => x.uniqueId === reg.uniqueId);
+      if (ridx >= 0) {
+        registrations[ridx].photoUrl = reg.photoUrl || '';
+        registrations[ridx].applicationPdfUrl = reg.applicationPdfUrl || '';
+        localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+      }
+    } catch (err) {
+      console.error('Combined Drive archive failed:', err);
+      showToast('⚠️ Google Drive archive failed: ' + (err.message || err), 'error');
+    }
+
+    // Payment screenshot remains a separate, smaller request.
+    if (reg.paymentScreenshot) {
+      try {
+        await uploadPaymentScreenshotToDrive(reg);
+      } catch (err) {
+        console.warn('Payment screenshot archive failed:', err);
+      }
+    }
+  }
+
+  // Reset form controls only AFTER the asset payload has been captured/sent.
+  ['reg-name','reg-phone','reg-email','reg-message','reg-current-village','reg-current-post','reg-current-upazila','reg-current-district','reg-permanent-village','reg-permanent-post','reg-permanent-upazila','reg-permanent-district'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   document.getElementById('reg-batch').selectedIndex = 0;
-  ['reg-type','reg-gender','reg-blood-group','reg-tshirt-size','reg-class','reg-branch'].forEach(id => document.getElementById(id).selectedIndex = 0);
-  const dobInput = document.getElementById('reg-dob'); if (dobInput) dobInput.value = '';
+  ['reg-type','reg-gender','reg-blood-group','reg-tshirt-size','reg-class','reg-branch'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.selectedIndex = 0;
+  });
+  const dobInput2 = document.getElementById('reg-dob');
+  if (dobInput2) dobInput2.value = '';
   document.getElementById('reg-photo').value = '';
   document.getElementById('photoPreviewImg').style.display = 'none';
   document.getElementById('photoPreviewImg').src = '';
   document.querySelector('#photoRing .ph-icon').style.display = 'block';
   resetPaymentFields();
 
-  // IMPORTANT: Do not wait for Drive uploads before starting the browser PDF download.
-  // Network awaits can cause Chrome/Edge to treat a later programmatic download as
-  // unrelated to the original button click. Generate/download the PDF first, then
-  // archive the photo/payment-proof/PDF in the background.
-  showRegistrationProgress('এপ্লিকেশন ফর্ম তৈরি ও ডাউনলোড হচ্ছে — অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন।');
-  try {
-    // The PDF uses the local photo data already stored in reg.photo, so it does not
-    // need the Drive photo upload to finish first.
-    const pdfDownloaded = await downloadApplicationPDF(reg, false);
-    if (!pdfDownloaded) {
-      hideRegistrationProgress();
-      return;
-    }
-  } finally {
-    hideRegistrationProgress();
-  }
-
-  // Drive archival is deliberately started only after the local PDF download has
-  // been triggered. These operations are independent and must never block the user
-  // from receiving the application copy.
-  if (USE_CLOUD) {
-    Promise.allSettled([
-      uploadPhotoToDrive(reg),
-      reg.paymentScreenshot ? uploadPaymentScreenshotToDrive(reg) : Promise.resolve(true),
-      downloadApplicationPDF(reg, true)
-    ]).then(results => {
-      results.forEach((r,i) => {
-        if (r.status === 'rejected') console.warn('Background Drive task failed:', i, r.reason);
-      });
-    });
-  }
+  hideRegistrationProgress();
 
   showToast(`✅ নিবন্ধন সফল! আপনার আইডি: ${uniqueId}`);
   // Show ID in a visible box too
@@ -4489,6 +4567,25 @@ function setView(v, btn) {
 
 
 // ─── REGISTRATION SUCCESS MODAL ───
+function downloadApplicationCopyNow(){
+  const url=window._applicationPdfObjectUrl;
+  if(!url){
+    showToast('Application PDF এখনও প্রস্তুত হয়নি।','error');
+    return;
+  }
+  try{
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=(window._lastApplicationPdfId||'application')+'_Application.pdf';
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }catch(e){
+    window.open(url,'_blank','noopener');
+  }
+}
+
 function showRegSuccessModal(uid, name, reg) {
   const ex = document.getElementById('regSuccessModal');
   if (ex) ex.remove();
@@ -4509,6 +4606,7 @@ function showRegSuccessModal(uid, name, reg) {
         <div id="registrationQR" style="background:#fff;padding:7px;border-radius:12px;display:inline-flex;box-shadow:0 5px 18px rgba(0,0,0,.08);"></div>
       </div>
       <div style="font-size:.68rem;color:#777;line-height:1.4;margin:0 0 .75rem;${(reg && reg.registeredAtLabel) ? '' : 'display:none;'}">নিবন্ধনের তারিখ ও সময়: ${(reg && reg.registeredAtLabel) ? reg.registeredAtLabel : ''}</div>
+      <button onclick="downloadApplicationCopyNow()" style="width:100%;padding:9px 10px;background:var(--gold);color:#1b1b1b;border:none;border-radius:10px;font-size:0.82rem;font-weight:800;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;margin-bottom:7px;">📥 Application Copy Download</button>
       <button onclick="document.getElementById('regSuccessModal').remove()" style="width:100%;padding:9px 10px;background:var(--deep-green);color:white;border:none;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;">ঠিক আছে ✓</button>
     </div>
   `;
@@ -6111,12 +6209,11 @@ async function generateVerifiedCards(participant){
 // ═══════════════════════════════════════════════════
 // A4 APPLICATION PDF
 // ═══════════════════════════════════════════════════
-async function downloadApplicationPDF(reg, archiveToDrive=true){
-  if(!reg || !reg.uniqueId) return;
+async function buildApplicationPDFData(reg){
+  if(!reg || !reg.uniqueId) return null;
   const root=document.getElementById('applicationPdfRender');
   if(!root || !window.html2canvas || !window.jspdf){
-    showToast('PDF engine লোড হয়নি।','error');
-    return false;
+    throw new Error('PDF engine not loaded');
   }
 
   const esc = v => escapeHtmlSafe(v);
@@ -6127,131 +6224,50 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
     : reg.type==='student'
       ? [reg.studentClass ? 'শ্রেণি: '+reg.studentClass : '', reg.branch ? 'শাখা: '+reg.branch : ''].filter(Boolean).join(' • ')
       : '';
-  const currentAddress = [
-    reg.currentVillage, reg.currentPost, reg.currentUpazila, reg.currentDistrict
-  ].filter(Boolean).join(', ');
-  const permanentAddress = [
-    reg.permanentVillage, reg.permanentPost, reg.permanentUpazila, reg.permanentDistrict
-  ].filter(Boolean).join(', ');
+  const currentAddress = [reg.currentVillage,reg.currentPost,reg.currentUpazila,reg.currentDistrict].filter(Boolean).join(', ');
+  const permanentAddress = [reg.permanentVillage,reg.permanentPost,reg.permanentUpazila,reg.permanentDistrict].filter(Boolean).join(', ');
 
   let status='Pending', statusClass='pending';
-  if(String(reg.paymentVerificationStatus||'')==='Verified'){
-    status='Verified'; statusClass='verified';
-  }else if(String(reg.paymentMethod||'').includes('অফিস')){
-    status='Not paid'; statusClass='notpaid';
-  }
+  if(String(reg.paymentVerificationStatus||'')==='Verified'){status='Verified';statusClass='verified';}
+  else if(String(reg.paymentMethod||'').includes('অফিস')){status='Not paid';statusClass='notpaid';}
 
   try{
     const photoSource=await resolveCardPhotoSource(reg);
     root.innerHTML='';
-
     const wrap=document.createElement('div');
     wrap.className='pdf-a4';
     wrap.innerHTML=`
       <div class="pdf-border"></div>
-
       <div class="pdf-head">
         <div class="school">মনসুর উদ্দিন বহুমুখী উচ্চ বিদ্যালয়, কেল্লাই</div>
         <div class="event">৫০ বছর পূর্তি উৎসব ২০২৬ &nbsp;•&nbsp; ২৪ অক্টোবর ২০২৬</div>
       </div>
-
       <div class="pdf-title">নিবন্ধন আবেদনপত্র</div>
-
       <table class="pdf-grid">
-        <tr>
-          <td class="label">Registration ID</td>
-          <td class="value">${esc(reg.uniqueId)}</td>
-          <td class="label">Participant Type</td>
-          <td class="value">${esc(typeLabel)}</td>
-          <td class="pdf-photo-cell" rowspan="5">
-            <img class="pdf-photo" id="pdf-photo-img" src="${photoSource||''}" alt="">
-          </td>
-        </tr>
-        <tr>
-          <td class="label">Name</td>
-          <td class="value" colspan="3">${esc(reg.name)}</td>
-        </tr>
-        <tr>
-          <td class="label">Phone Number</td>
-          <td class="value">${esc(normalizeBDPhone(reg.phone))}</td>
-          <td class="label">Email</td>
-          <td class="value">${esc(reg.email)}</td>
-        </tr>
-        <tr>
-          <td class="label">Blood Group</td>
-          <td class="value">${esc(reg.bloodGroup)}</td>
-          <td class="label">T-Shirt Size</td>
-          <td class="value">${esc(reg.tshirtSize)}</td>
-        </tr>
-        <tr>
-          <td class="label">Date of Birth</td>
-          <td class="value" colspan="3">${esc(reg.dob || reg.dateOfBirth || '')}</td>
-        </tr>
-        <tr>
-          <td class="label">Batch / Class</td>
-          <td class="value" colspan="3">${esc(academic)}</td>
-        </tr>
+        <tr><td class="label">Registration ID</td><td class="value">${esc(reg.uniqueId)}</td><td class="label">Participant Type</td><td class="value">${esc(typeLabel)}</td><td class="pdf-photo-cell" rowspan="5"><img class="pdf-photo" id="pdf-photo-img" src="${photoSource||''}" alt=""></td></tr>
+        <tr><td class="label">Name</td><td class="value" colspan="3">${esc(reg.name)}</td></tr>
+        <tr><td class="label">Phone Number</td><td class="value">${esc(normalizeBDPhone(reg.phone))}</td><td class="label">Email</td><td class="value">${esc(reg.email)}</td></tr>
+        <tr><td class="label">Blood Group</td><td class="value">${esc(reg.bloodGroup)}</td><td class="label">T-Shirt Size</td><td class="value">${esc(reg.tshirtSize)}</td></tr>
+        <tr><td class="label">Date of Birth</td><td class="value" colspan="3">${esc(reg.dob || reg.dateOfBirth || '')}</td></tr>
+        <tr><td class="label">Batch / Class</td><td class="value" colspan="3">${esc(academic)}</td></tr>
       </table>
-
       <div class="pdf-section-title">অংশগ্রহণের তথ্য</div>
       <table class="pdf-payment-grid">
-        <tr>
-          <td class="pay-title">অতিথির সংখ্যা</td>
-          <td>${esc(toBanglaDigits(String(reg.guestCount || 0)))} জন</td>
-          <td class="pay-title">শিশুর সংখ্যা</td>
-          <td>${esc(toBanglaDigits(String(reg.childCount || 0)))} জন</td>
-        </tr>
-        <tr>
-          <td class="pay-title">নিবন্ধনের তারিখ ও সময়</td>
-          <td colspan="3">${esc(reg.registeredAtLabel || formatBanglaDateTime(reg.registeredAt || reg.timestamp || new Date()))}</td>
-        </tr>
+        <tr><td class="pay-title">অতিথির সংখ্যা</td><td>${esc(toBanglaDigits(String(reg.guestCount || 0)))} জন</td><td class="pay-title">শিশুর সংখ্যা</td><td>${esc(toBanglaDigits(String(reg.childCount || 0)))} জন</td></tr>
+        <tr><td class="pay-title">নিবন্ধনের তারিখ ও সময়</td><td colspan="3">${esc(reg.registeredAtLabel || formatBanglaDateTime(reg.registeredAt || reg.timestamp || new Date()))}</td></tr>
       </table>
-
       <div class="pdf-section-title">ঠিকানা</div>
-      <table class="pdf-address-grid">
-        <tr>
-          <td class="addr-title">বর্তমান ঠিকানা</td>
-          <td>${esc(currentAddress)}</td>
-          <td class="addr-title">স্থায়ী ঠিকানা</td>
-          <td>${esc(permanentAddress)}</td>
-        </tr>
-      </table>
-
+      <table class="pdf-address-grid"><tr><td class="addr-title">বর্তমান ঠিকানা</td><td>${esc(currentAddress)}</td><td class="addr-title">স্থায়ী ঠিকানা</td><td>${esc(permanentAddress)}</td></tr></table>
       <div class="pdf-section-title">পেমেন্ট তথ্য</div>
       <table class="pdf-payment-grid">
-        <tr>
-          <td class="pay-title">Payment Method</td>
-          <td>${esc(reg.paymentMethod)}</td>
-          <td class="pay-title">TxnID</td>
-          <td>${esc(reg.txnId)}</td>
-        </tr>
-        <tr>
-          <td class="pay-title">Calculated Total</td>
-          <td>৳ ${Number(reg.totalFee||0).toLocaleString('en-US')}</td>
-          <td class="pay-title">Payment Proof</td>
-          <td>${esc(reg.paymentProofType || (reg.paymentProofUrl ? 'Submitted' : ''))}</td>
-        </tr>
+        <tr><td class="pay-title">Payment Method</td><td>${esc(reg.paymentMethod)}</td><td class="pay-title">TxnID</td><td>${esc(reg.txnId)}</td></tr>
+        <tr><td class="pay-title">Calculated Total</td><td>৳ ${Number(reg.totalFee||0).toLocaleString('en-US')}</td><td class="pay-title">Payment Proof</td><td>${esc(reg.paymentProofType || (reg.paymentProofUrl ? 'Submitted' : ''))}</td></tr>
       </table>
-
-      <div class="pdf-status">
-        Payment Verification Status:
-        <span class="${statusClass}">${esc(status)}</span>
-        ${status==='Pending' ? ' — TxnID / Screenshot received; verification pending.'
-          : status==='Not paid' ? ' — Office payment selected; payment not yet verified.'
-          : ' — Payment verified.'}
+      <div class="pdf-status">Payment Verification Status: <span class="${statusClass}">${esc(status)}</span>
+        ${status==='Pending' ? ' — TxnID / Screenshot received; verification pending.' : status==='Not paid' ? ' — Office payment selected; payment not yet verified.' : ' — Payment verified.'}
       </div>
-
-      <div class="pdf-qr">
-        <div class="pdf-qr-box" id="pdfQrBox"></div>
-        <small>Payment verification / ID Card access</small>
-      </div>
-
-      <div class="pdf-footer-note">
-        এই আবেদনপত্রটি নিবন্ধনের প্রমাণ হিসেবে সংরক্ষণ করুন। Payment verification সম্পন্ন না হওয়া পর্যন্ত ID Card ও Photo Card সক্রিয় হবে না।
-        উপরের QR code scan করে payment verification status এবং verification সম্পন্ন হলে ID Card download করা যাবে।
-      </div>
-    `;
-
+      <div class="pdf-qr"><div class="pdf-qr-box" id="pdfQrBox"></div><small>Payment verification / ID Card access</small></div>
+      <div class="pdf-footer-note">এই আবেদনপত্রটি নিবন্ধনের প্রমাণ হিসেবে সংরক্ষণ করুন। Payment verification সম্পন্ন না হওয়া পর্যন্ত ID Card ও Photo Card সক্রিয় হবে না।</div>`;
     root.appendChild(wrap);
 
     const photoImg=wrap.querySelector('#pdf-photo-img');
@@ -6259,101 +6275,86 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
       await new Promise(resolve=>{
         if(photoImg.complete) return resolve();
         photoImg.onload=resolve; photoImg.onerror=resolve;
-        setTimeout(resolve,1200);
+        setTimeout(resolve,1500);
       });
     }
 
-    // This is the ONLY QR that is presented for participant download/access.
-    renderParticipantQR(wrap.querySelector('#pdfQrBox'), reg, 384);
-    await new Promise(r=>setTimeout(r,250));
+    renderParticipantQR(wrap.querySelector('#pdfQrBox'),reg,320);
+    await new Promise(r=>setTimeout(r,150));
 
-    const canvas=await html2canvas(wrap,{
-      scale:6,
-      useCORS:true,
-      backgroundColor:'#fff',
-      logging:false
-    });
-
-    const imgData=canvas.toDataURL('image/png');
+    // Lower scale keeps the generated PDF small enough for Apps Script/Drive upload.
+    const canvas=await html2canvas(wrap,{scale:2.5,useCORS:true,backgroundColor:'#fff',logging:false});
+    const imgData=canvas.toDataURL('image/jpeg',0.88);
     const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF({
-      orientation:'portrait',
-      unit:'mm',
-      format:'a4',
-      compress:true
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+    pdf.addImage(imgData,'JPEG',0,0,210,297,undefined,'FAST');
+
+    const blob=pdf.output('blob');
+    const reader=new FileReader();
+    const dataUrl=await new Promise((resolve,reject)=>{
+      reader.onload=()=>resolve(reader.result);
+      reader.onerror=reject;
+      reader.readAsDataURL(blob);
     });
-    pdf.addImage(imgData,'PNG',0,0,210,297,undefined,'FAST');
 
-    const pdfBase64=pdf.output('datauristring');
-    const fileName=(reg.uniqueId||'application')+'_Application.pdf';
+    return {blob:blob,dataUrl:dataUrl,fileName:(reg.uniqueId||'application')+'_Application.pdf'};
+  } finally {
+    root.innerHTML='';
+  }
+}
 
-    // CRITICAL: Trigger the browser download BEFORE any Drive/network await.
-    // The previous version waited for the Drive upload here, which is exactly what
-    // caused the application PDF not to download reliably after form submission.
-    let downloadStarted = false;
-    try {
-      pdf.save(fileName);
-      downloadStarted = true;
-    } catch (downloadErr) {
-      console.warn('jsPDF save failed; falling back to Blob download:', downloadErr);
+function triggerApplicationPdfDownload(blob, uniqueId){
+  if(!blob) return false;
+  // Keep the generated PDF available for a real user-click fallback. Automatic
+  // downloads after async work can be blocked by Chrome/Edge.
+  try {
+    if (window._applicationPdfObjectUrl) URL.revokeObjectURL(window._applicationPdfObjectUrl);
+  } catch (_) {}
+  window._applicationPdfObjectUrl = URL.createObjectURL(blob);
+  const fileName=(uniqueId||'application')+'_Application.pdf';
+  try{
+    // First method: normal download link.
+    const url=window._applicationPdfObjectUrl;
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=fileName;
+    a.style.position='fixed';
+    a.style.left='-9999px';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Do not revoke immediately; the success-modal fallback button uses it.
+    return true;
+  }catch(err){
+    console.warn('Blob download failed:',err);
+    try{
+      const url=URL.createObjectURL(blob);
+      window.location.href=url;
+      return true;
+    }catch(e){
+      return false;
     }
+  }
+}
 
-    if (!downloadStarted) {
-      try {
-        const pdfBlob = pdf.output('blob');
-        const blobUrl = URL.createObjectURL(pdfBlob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = fileName;
-        a.rel = 'noopener';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { a.remove(); URL.revokeObjectURL(blobUrl); }, 15000);
-        downloadStarted = true;
-      } catch (fallbackErr) {
-        console.error('PDF browser download fallback failed:', fallbackErr);
-      }
-    }
-
-    // Drive archival happens AFTER the local download has been initiated.
+// Backward-compatible entry point used by any older card/admin code.
+async function downloadApplicationPDF(reg, archiveToDrive=true){
+  try{
+    const built=await buildApplicationPDFData(reg);
+    if(!built) return false;
+    const ok=triggerApplicationPdfDownload(built.blob,reg.uniqueId);
     if(archiveToDrive && USE_CLOUD){
       try{
-        const res=await fetch(GAS_URL,{
-          method:'POST',
-          headers:{'Content-Type':'text/plain;charset=utf-8'},
-          body:JSON.stringify({
-            action:'uploadApplicationPDF',
-            uniqueId:reg.uniqueId,
-            name:reg.name,
-            imageData:pdfBase64
-          })
-        });
-        const raw=await res.text();
-        let result;
-        try { result=JSON.parse(raw); } catch(parseErr) { throw new Error('Google Apps Script returned invalid JSON: '+raw.slice(0,180)); }
-        if(result.success){
-          reg.applicationPdfUrl=result.url;
-          const ridx=registrations.findIndex(x=>x.uniqueId===reg.uniqueId);
-          if(ridx>=0){
-            registrations[ridx].applicationPdfUrl=result.url;
-            localStorage.setItem('muhs_registrations',JSON.stringify(registrations));
-          }
-          console.info('Application PDF archived successfully:', result.url);
-        }else{
-          console.error('Application PDF archive rejected:', result);
-        }
-      }catch(e){
-        console.error('Application PDF archive failed:',e);
-      }
+        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body:JSON.stringify({action:'uploadApplicationPDF',uniqueId:reg.uniqueId,name:reg.name,imageData:built.dataUrl})});
+        const out=await res.json();
+        if(out && out.success) reg.applicationPdfUrl=out.url||'';
+      }catch(e){console.warn('Legacy PDF archive failed:',e);}
     }
-    return downloadStarted;
+    return ok;
   }catch(e){
-    console.error(e);
-    showToast('❌ Application PDF তৈরি করা যায়নি।','error');
+    console.error('Application PDF failed:',e);
     return false;
-  }finally{
-    root.innerHTML='';
   }
 }
 
