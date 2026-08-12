@@ -358,6 +358,48 @@
   .scanner-actions .vol-primary-btn {
     margin-top:0;
   }
+  .manual-id-search {
+    margin-top:14px;
+    padding:14px;
+    border:1px solid #dce7df;
+    border-radius:14px;
+    background:#f8fbf9;
+  }
+  .manual-id-search-title {
+    font-weight:800;
+    color:var(--deep-green);
+    font-size:.82rem;
+    margin-bottom:8px;
+  }
+  .manual-id-search-row {
+    display:flex;
+    gap:8px;
+    align-items:stretch;
+  }
+  .manual-id-search-row input {
+    flex:1;
+    min-width:0;
+    border:1px solid #cfd9d2;
+    border-radius:10px;
+    padding:11px 12px;
+    font-size:.85rem;
+    outline:none;
+    background:#fff;
+  }
+  .manual-id-search-row input:focus {
+    border-color:#1d6f50;
+    box-shadow:0 0 0 3px rgba(29,111,80,.08);
+  }
+  .manual-id-search-row button {
+    margin:0;
+    white-space:nowrap;
+  }
+  .manual-id-search-msg {
+    min-height:18px;
+    margin-top:7px;
+    font-size:.74rem;
+    font-weight:700;
+  }
   .scanner-help {
     color:#7b817d;
     font-size:.76rem;
@@ -3359,6 +3401,15 @@
             <button class="vol-secondary-btn" id="camera-stop-btn" onclick="stopVolunteerScanner()" style="display:none;">⏹ Camera বন্ধ করুন</button>
           </div>
           <p class="scanner-help">অংশগ্রহণকারীর QR code ক্যামেরার ফ্রেমের মাঝখানে রাখুন।</p>
+
+          <div class="manual-id-search">
+            <div class="manual-id-search-title">⌨️ QR Code না থাকলে ID দিয়ে খুঁজুন</div>
+            <div class="manual-id-search-row">
+              <input id="vol-manual-id" type="text" inputmode="text" autocomplete="off" placeholder="Event ID লিখুন (যেমন: MUMLHS-0001)" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchVolunteerById();}">
+              <button class="vol-secondary-btn" id="manual-id-search-btn" onclick="searchVolunteerById()">🔎 Search ID</button>
+            </div>
+            <div id="manual-id-search-msg" class="manual-id-search-msg" aria-live="polite"></div>
+          </div>
         </div>
 
         <div class="scan-result-column">
@@ -5678,6 +5729,49 @@ async function onVolunteerQrSuccess(decodedText) {
   } catch(err) {
     console.error(err);
     showVolunteerScanError('Participant তথ্য লোড করা যায়নি।');
+  }
+}
+
+async function searchVolunteerById() {
+  if (!volunteerToken) return;
+  const input = document.getElementById('vol-manual-id');
+  const btn = document.getElementById('manual-id-search-btn');
+  const msg = document.getElementById('manual-id-search-msg');
+  let uniqueId = String(input?.value || '').trim();
+  if (uniqueId.indexOf('MUHS:') === 0) uniqueId = uniqueId.substring(5).trim();
+  try { const u = new URL(uniqueId); const q = u.searchParams.get('uid'); if (q) uniqueId = q; } catch(e) {}
+  if (uniqueId.indexOf('MUHS:') === 0) uniqueId = uniqueId.substring(5).trim();
+  if (!uniqueId) {
+    if (msg) { msg.textContent = 'Event ID লিখুন।'; msg.style.color = '#b42318'; }
+    input?.focus();
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ খোঁজা হচ্ছে...'; }
+  if (msg) { msg.textContent = 'Participant তথ্য খোঁজা হচ্ছে...'; msg.style.color = '#6b756f'; }
+  try {
+    const data = await volunteerPost({
+      action:'volunteerScan',
+      token:volunteerToken,
+      uniqueId:uniqueId
+    });
+    if (!data.success) {
+      if (data.error === 'invalid_token') volunteerLogout();
+      else {
+        showVolunteerScanError(data.message || 'এই ID-এর কোনো registration পাওয়া যায়নি।');
+        if (msg) { msg.textContent = data.message || 'এই ID-এর কোনো registration পাওয়া যায়নি।'; msg.style.color = '#b42318'; }
+      }
+      return;
+    }
+    volunteerCurrent = data.participant;
+    volunteerVerified = false;
+    if (msg) { msg.textContent = '✓ Participant পাওয়া গেছে।'; msg.style.color = '#16733a'; }
+    renderVolunteerParticipant(data.participant);
+  } catch(err) {
+    console.error(err);
+    if (msg) { msg.textContent = 'Server error — আবার চেষ্টা করুন।'; msg.style.color = '#b42318'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔎 Search ID'; }
   }
 }
 
