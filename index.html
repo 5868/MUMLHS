@@ -4392,10 +4392,15 @@ async function submitRegistration() {
   showRegistrationProgress('এপ্লিকেশন ফর্ম ডাউনলোড হচ্ছে অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন।');
   try {
     if (USE_CLOUD) {
-      await uploadPhotoToDrive(reg);
-      if (reg.paymentScreenshot) await uploadPaymentScreenshotToDrive(reg);
-      // ID/Photo Card are intentionally NOT generated before payment verification.
-      // Only the submitted application PDF is generated and archived here.
+      // Profile photo must be archived, but a Drive/API delay must never prevent
+      // the participant's Application PDF from downloading.
+      await Promise.race([
+        uploadPhotoToDrive(reg),
+        new Promise(resolve => setTimeout(() => resolve({success:false,error:'photo_upload_timeout'}), 12000))
+      ]);
+      if (reg.paymentScreenshot) {
+        uploadPaymentScreenshotToDrive(reg).catch(e => console.warn('Payment proof upload:',e));
+      }
     }
 
     await downloadApplicationPDF(reg, true);
@@ -4652,41 +4657,45 @@ async function saveToCloud(reg) {
 
 // ─── GOOGLE DRIVE PHOTO UPLOAD ───
 async function uploadPhotoToDrive(reg) {
-  if (!reg.photo || !reg.photo.startsWith('data:')) return; // ছবি না থাকলে skip
-  if (!GAS_URL || GAS_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') return;
+  if (!reg.photo || !reg.photo.startsWith('data:')) return {success:false,error:'no_photo'};
+  if (!GAS_URL || GAS_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') return {success:false,error:'no_gas_url'};
 
   try {
     const payload = {
-      uniqueId : reg.uniqueId,
+      action: 'uploadProfilePhoto',
+      uniqueId: reg.uniqueId,
       imageData: reg.photo,
-      kind     : 'profile',
-      name     : reg.name,
-      phone    : reg.phone,
-      batch    : reg.batch,
-      date     : reg.date
+      kind: 'profile',
+      name: reg.name,
+      phone: reg.phone,
+      batch: reg.batch,
+      date: reg.date
     };
-
-    const res = await fetch(GAS_URL, {
-      method : 'POST',
-      headers: { 'Content-Type': 'text/plain' }, // GAS quirk: text/plain bypasses CORS preflight
-      body   : JSON.stringify(payload)
-    });
-
-    const result = await res.json();
-    if (result.success) {
-      reg.photoUrl = result.url || reg.photoUrl || '';
-      const ridx = registrations.findIndex(x => x.uniqueId === reg.uniqueId);
-      if (ridx >= 0) {
-        registrations[ridx].photoUrl = reg.photoUrl;
-        localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(GAS_URL, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain'},
+        body:JSON.stringify(payload),
+        signal:controller.signal
+      });
+      const result = await res.json();
+      if (result.success) {
+        reg.photoUrl = result.url || '';
+        const ridx=registrations.findIndex(x=>x.uniqueId===reg.uniqueId);
+        if(ridx>=0){ registrations[ridx].photoUrl=reg.photoUrl; localStorage.setItem('muhs_registrations',JSON.stringify(registrations)); }
+        showToast(`📸 ছবি Drive-এ সেভ হয়েছে (ID: ${reg.uniqueId})`);
+      } else {
+        console.warn('Drive photo upload rejected:',result);
+        showToast('⚠️ নিবন্ধন হয়েছে, কিন্তু ছবি Drive-এ সংরক্ষণ হয়নি।', 'error');
       }
-      showToast(`📸 ছবি Drive-এ সেভ হয়েছে (ID: ${reg.uniqueId})`);
-    } else {
-      console.warn('Drive photo upload rejected:', result);
-    }
-  } catch (err) {
-    console.warn('Drive upload skipped:', err.message);
-    // PDF generation/download must continue even if Drive photo upload fails.
+      return result;
+    } finally { clearTimeout(timer); }
+  } catch(err) {
+    console.warn('Drive photo upload failed:',err);
+    showToast('⚠️ নিবন্ধন হয়েছে, কিন্তু ছবি Drive-এ সংরক্ষণ হয়নি। PDF download চলবে।', 'error');
+    return {success:false,error:String(err&&err.message||err)};
   }
 }
 
