@@ -5261,61 +5261,101 @@ function switchManagementStatsTab(tab, btn) {
 
 function renderManagementStats() {
   const regs = Array.isArray(registrations) ? registrations : [];
-  const batchList = document.getElementById('mgmt-batch-list');
-  const classList = document.getElementById('mgmt-class-list');
-  const paymentTotalEl = document.getElementById('mgmt-payment-total');
-  const paymentCatsEl = document.getElementById('mgmt-payment-cats');
-  if (!batchList || !classList) return;
-
-  const verified = regs.filter(r => String(r.paymentVerificationStatus || '') === 'Verified');
-  const pending = regs.filter(r => String(r.paymentVerificationStatus || '') !== 'Verified');
-  const money = v => Number(v || 0);
-  const fmt = n => '৳ ' + Math.max(0, money(n)).toLocaleString('en-US');
+  const summary = (cloudSummary && typeof cloudSummary === 'object') ? cloudSummary : {};
+  const money = v => {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    const n = Number(String(v ?? '').replace(/[৳,\s]/g,''));
+    return isFinite(n) ? n : 0;
+  };
+  const normType = v => {
+    const s=String(v ?? '').trim().toLowerCase();
+    if(['alumni','ex-student','ex student','প্রাক্তন','প্রাক্তন শিক্ষার্থী'].includes(s)) return 'alumni';
+    if(['student','current student','বর্তমান','বর্তমান শিক্ষার্থী','শিক্ষার্থী'].includes(s)) return 'student';
+    if(['teacher','staff','officer','শিক্ষক','কর্মকর্তা'].includes(s)) return 'teacher';
+    if(['guest','অতিথি'].includes(s)) return 'guest';
+    return 'other';
+  };
+  const normStatus = v => {
+    const s=String(v ?? '').trim().toLowerCase();
+    return ['verified','verify','paid','approved','confirmed','সম্পন্ন','যাচাইকৃত','ভেরিফাইড'].includes(s) ? 'Verified' : 'Pending';
+  };
+  const verified = regs.filter(r => normStatus(r.paymentVerificationStatus) === 'Verified');
+  const pending = regs.filter(r => normStatus(r.paymentVerificationStatus) !== 'Verified');
+  const fmt = n => '৳ ' + Math.max(0,money(n)).toLocaleString('en-US');
   const pendingText = n => n > 0 ? `<span class="mgmt-stat-pending">(Pending ${fmt(n)})</span>` : '';
 
-  // Payment dashboard uses the authoritative auto-calculated fee of verified registrations.
-  // This prevents a zero/blank Received_Money import from making verified revenue appear as ৳ 0.
-  const publicReceived = cloudSummary && Number(cloudSummary.receivedTotal || 0) >= 0 ? Number(cloudSummary.receivedTotal || 0) : 0;
-  const receivedTotal = verified.reduce((sum,r)=>sum + money(r.autoCalculatedFee || r.totalFee || r.calculatedFee),0);
-  const pendingAmount = pending.reduce((sum,r)=>Math.max(0,sum + Math.max(0,money(r.autoCalculatedFee || r.totalFee || r.calculatedFee)-money(r.receivedAmount))),0);
-  if(paymentTotalEl) paymentTotalEl.innerHTML = `${fmt(receivedTotal || publicReceived)} <small style="font-size:.68rem;color:#9a6500;font-weight:800;">(Pending ${fmt(pendingAmount)})</small>`;
+  const paymentTotalEl = document.getElementById('mgmt-payment-total');
+  const paymentCatsEl = document.getElementById('mgmt-payment-cats');
+  const batchList = document.getElementById('mgmt-batch-list');
+  const classList = document.getElementById('mgmt-class-list');
+  if (!batchList || !classList) return;
+
+  // Prefer the server summary. It is calculated directly from Google Sheets and
+  // remains correct even when the browser has a stale/partial local dataset.
+  const serverReceived = money(summary.receivedTotal);
+  const localReceived = verified.reduce((sum,r)=>sum + money(r.autoCalculatedFee ?? r.calculatedFee ?? r.totalFee),0);
+  const receivedTotal = Object.prototype.hasOwnProperty.call(summary,'receivedTotal') ? serverReceived : localReceived;
+
+  const serverPendingAmount = money(summary.pendingAmount);
+  const localPendingAmount = pending.reduce((sum,r)=>sum + Math.max(0,money(r.autoCalculatedFee ?? r.calculatedFee ?? r.totalFee)-money(r.receivedAmount)),0);
+  const pendingAmount = Object.prototype.hasOwnProperty.call(summary,'pendingAmount') ? serverPendingAmount : localPendingAmount;
+
+  if(paymentTotalEl) {
+    paymentTotalEl.innerHTML = `${fmt(receivedTotal)} <small style="font-size:.68rem;color:#9a6500;font-weight:800;">(Pending ${fmt(pendingAmount)})</small>`;
+  }
+
   if(paymentCatsEl){
     const cats=[
-      ['প্রাক্তন শিক্ষার্থী (অতিথীসহ)','alumni'],['বর্তমান শিক্ষার্থী (অতিথীসহ)','student'],['শিক্ষক/কর্মকর্তা','teacher'],['অতিথি/অন্যান্য','other']
+      ['প্রাক্তন শিক্ষার্থী (অতিথীসহ)','alumni'],
+      ['বর্তমান শিক্ষার্থী (অতিথীসহ)','student'],
+      ['শিক্ষক/কর্মকর্তা','teacher'],
+      ['অতিথি/অন্যান্য','other']
     ];
     paymentCatsEl.innerHTML=cats.map(([label,key])=>{
       let amount=0;
-      const rows=key==='other' ? verified.filter(r=>['guest','other'].includes(r.type)) : verified.filter(r=>r.type===key);
-      const pendingRows=key==='other' ? pending.filter(r=>['guest','other'].includes(r.type)) : pending.filter(r=>r.type===key);
-      const pendingCat=pendingRows.reduce((a,r)=>a+Math.max(0,money(r.autoCalculatedFee || r.totalFee || r.calculatedFee)-money(r.receivedAmount)),0);
-      amount=rows.reduce((a,r)=>a+money(r.autoCalculatedFee || r.totalFee || r.calculatedFee),0);
-      if(!amount && cloudSummary && cloudSummary.receivedByType){
-        amount=key==='other' ? Number(cloudSummary.receivedByType.guest||0)+Number(cloudSummary.receivedByType.other||0) : Number(cloudSummary.receivedByType[key]||0);
+      let pendingCat=0;
+      const serverCats=summary.receivedByType || {};
+      if(Object.prototype.hasOwnProperty.call(serverCats,key) || (key==='other' && (serverCats.guest!==undefined || serverCats.other!==undefined))){
+        amount = key==='other' ? money(serverCats.guest)+money(serverCats.other) : money(serverCats[key]);
+        const pKey='pending'+(key==='alumni'?'Alumni':key==='student'?'Student':key==='teacher'?'Teacher':'Other');
+        pendingCat = money(summary[pKey+'_Amount']);
+      } else {
+        const rows=key==='other' ? verified.filter(r=>['guest','other'].includes(normType(r.type))) : verified.filter(r=>normType(r.type)===key);
+        const pendingRows=key==='other' ? pending.filter(r=>['guest','other'].includes(normType(r.type))) : pending.filter(r=>normType(r.type)===key);
+        amount=rows.reduce((a,r)=>a+money(r.autoCalculatedFee ?? r.calculatedFee ?? r.totalFee),0);
+        pendingCat=pendingRows.reduce((a,r)=>a+Math.max(0,money(r.autoCalculatedFee ?? r.calculatedFee ?? r.totalFee)-money(r.receivedAmount)),0);
       }
       return `<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${fmt(amount)} <small style="display:block;color:#9a6500;font-size:.65rem;">(Pending ${fmt(pendingCat)})</small></div></div>`;
     }).join('');
   }
 
-  // Foods & Logistics: ONLY verified participants are counted.
-  // T-Shirt & Cap is for the verified main participant when they are an
-  // Ex-Student/Current Student. Breakfast/Lunch include the verified main
-  // participant + adult companions as pieces, while children are shown as
-  // separate child packets.
+  // Foods & logistics. Prefer verified registration totals; if the browser
+  // dataset is unavailable/empty, fall back to the server's verified summary.
   const foodEl=document.getElementById('mgmt-foods-logistics');
   if(foodEl){
-    const verifiedRegs = regs.filter(r=>String(r.paymentVerificationStatus||'')==='Verified');
-    const eligibleMain = verifiedRegs.filter(r=>['alumni','student'].includes(String(r.type||''))).length;
-    const breakfastAdultTotal = verifiedRegs.reduce((n,r)=>n + 1 + Math.max(0,Number(r.guestCount||0)),0);
-    const breakfastChildTotal = verifiedRegs.reduce((n,r)=>n + Math.max(0,Number(r.childCount||0)),0);
-    const lunchAdultTotal = breakfastAdultTotal;
-    const lunchChildTotal = breakfastChildTotal;
+    const serverHasData = Number(summary.verified || 0) > 0;
+    const verifiedCount = verified.length || (serverHasData ? Number(summary.verified)||0 : 0);
+    const eligibleMain = verified.length
+      ? verified.filter(r=>['alumni','student'].includes(normType(r.type))).length
+      : money(summary.verifiedAlumni)+money(summary.verifiedStudent);
+
+    const adultCompanions = verified.length
+      ? verified.reduce((n,r)=>n+Math.max(0,money(r.guestCount)),0)
+      : money(summary.adultCompanions);
+    const childCompanions = verified.length
+      ? verified.reduce((n,r)=>n+Math.max(0,money(r.childCount)),0)
+      : money(summary.childCompanions);
+
+    const breakfastAdultTotal = verifiedCount + adultCompanions;
+    const breakfastChildTotal = childCompanions;
     const distributionLog = window._distributionSummary || {};
-    const tshirtDelivered = Number(distributionLog['T-Shirt']||0);
-    const capDelivered = Number(distributionLog['Cap']||0);
-    const breakfastDelivered = Number(distributionLog['Breakfast']||0);
-    const breakfastChildDelivered = Number(distributionLog['Breakfast_Child']||0);
-    const lunchDelivered = Number(distributionLog['Lunch']||0);
-    const lunchChildDelivered = Number(distributionLog['Lunch_Child']||0);
+    const tshirtDelivered = money(distributionLog['T-Shirt']);
+    const capDelivered = money(distributionLog['Cap']);
+    const breakfastDelivered = money(distributionLog['Breakfast']);
+    const breakfastChildDelivered = money(distributionLog['Breakfast_Child']);
+    const lunchDelivered = money(distributionLog['Lunch']);
+    const lunchChildDelivered = money(distributionLog['Lunch_Child']);
+
     const foodLine = (adultTotal, childTotal, adultDel, childDel) => {
       const left = `${toBanglaDigits(adultTotal)} piece` + (childTotal ? `, ${toBanglaDigits(childTotal)} child packet` : '');
       const delivered = `${toBanglaDigits(adultDel)} piece` + (childTotal ? `, ${toBanglaDigits(childDel)} child packet` : '');
@@ -5324,7 +5364,7 @@ function renderManagementStats() {
     foodEl.innerHTML = [
       ['👕 T-Shirt & 🧢 Cap', `${toBanglaDigits(eligibleMain)} piece`, `${toBanglaDigits(Math.min(tshirtDelivered,capDelivered))} piece`],
       ['🍳 Breakfast', foodLine(breakfastAdultTotal, breakfastChildTotal, breakfastDelivered, breakfastChildDelivered), ''],
-      ['🍱 Lunch', foodLine(lunchAdultTotal, lunchChildTotal, lunchDelivered, lunchChildDelivered), '']
+      ['🍱 Lunch', foodLine(breakfastAdultTotal, breakfastChildTotal, lunchDelivered, lunchChildDelivered), '']
     ].map(([label,total,del])=>`<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${total}${del ? ` <span style="color:#16733a;font-size:.72rem;font-weight:800;">(Delivered ${del})</span>` : ''}</div></div>`).join('');
   }
 
