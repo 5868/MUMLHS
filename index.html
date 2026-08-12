@@ -4387,21 +4387,38 @@ async function submitRegistration() {
   document.querySelector('#photoRing .ph-icon').style.display = 'block';
   resetPaymentFields();
 
-  // Google Drive-এ ছবি আপলোড (async — background এ চলবে)
-  // Upload after the Sheet row exists, so the returned Drive URLs are saved to the correct row.
-  showRegistrationProgress('এপ্লিকেশন ফর্ম ডাউনলোড হচ্ছে অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন।');
+  // IMPORTANT: Do not wait for Drive uploads before starting the browser PDF download.
+  // Network awaits can cause Chrome/Edge to treat a later programmatic download as
+  // unrelated to the original button click. Generate/download the PDF first, then
+  // archive the photo/payment-proof/PDF in the background.
+  showRegistrationProgress('এপ্লিকেশন ফর্ম তৈরি ও ডাউনলোড হচ্ছে — অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন।');
   try {
-    if (USE_CLOUD) {
-      await uploadPhotoToDrive(reg);
-      if (reg.paymentScreenshot) await uploadPaymentScreenshotToDrive(reg);
-      // ID/Photo Card are intentionally NOT generated before payment verification.
-      // Only the submitted application PDF is generated and archived here.
+    // The PDF uses the local photo data already stored in reg.photo, so it does not
+    // need the Drive photo upload to finish first.
+    const pdfDownloaded = await downloadApplicationPDF(reg, false);
+    if (!pdfDownloaded) {
+      hideRegistrationProgress();
+      return;
     }
-
-    await downloadApplicationPDF(reg, true);
   } finally {
     hideRegistrationProgress();
   }
+
+  // Drive archival is deliberately started only after the local PDF download has
+  // been triggered. These operations are independent and must never block the user
+  // from receiving the application copy.
+  if (USE_CLOUD) {
+    Promise.allSettled([
+      uploadPhotoToDrive(reg),
+      reg.paymentScreenshot ? uploadPaymentScreenshotToDrive(reg) : Promise.resolve(true),
+      downloadApplicationPDF(reg, true)
+    ]).then(results => {
+      results.forEach((r,i) => {
+        if (r.status === 'rejected') console.warn('Background Drive task failed:', i, r.reason);
+      });
+    });
+  }
+
   showToast(`✅ নিবন্ধন সফল! আপনার আইডি: ${uniqueId}`);
   // Show ID in a visible box too
   window._lastReg = reg;
@@ -6270,15 +6287,41 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
     const pdfBase64=pdf.output('datauristring');
     const fileName=(reg.uniqueId||'application')+'_Application.pdf';
 
-    // Archive the exact generated PDF first, then trigger the browser download.
-    // This avoids a page-lifecycle race where the browser cancels a background
-    // fetch immediately after the download starts. A Drive failure never blocks
-    // the local download.
+    // CRITICAL: Trigger the browser download BEFORE any Drive/network await.
+    // The previous version waited for the Drive upload here, which is exactly what
+    // caused the application PDF not to download reliably after form submission.
+    let downloadStarted = false;
+    try {
+      pdf.save(fileName);
+      downloadStarted = true;
+    } catch (downloadErr) {
+      console.warn('jsPDF save failed; falling back to Blob download:', downloadErr);
+    }
+
+    if (!downloadStarted) {
+      try {
+        const pdfBlob = pdf.output('blob');
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { a.remove(); URL.revokeObjectURL(blobUrl); }, 15000);
+        downloadStarted = true;
+      } catch (fallbackErr) {
+        console.error('PDF browser download fallback failed:', fallbackErr);
+      }
+    }
+
+    // Drive archival happens AFTER the local download has been initiated.
     if(archiveToDrive && USE_CLOUD){
       try{
         const res=await fetch(GAS_URL,{
           method:'POST',
-          headers:{'Content-Type':'text/plain'},
+          headers:{'Content-Type':'text/plain;charset=utf-8'},
           body:JSON.stringify({
             action:'uploadApplicationPDF',
             uniqueId:reg.uniqueId,
@@ -6286,7 +6329,9 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
             imageData:pdfBase64
           })
         });
-        const result=await res.json();
+        const raw=await res.text();
+        let result;
+        try { result=JSON.parse(raw); } catch(parseErr) { throw new Error('Google Apps Script returned invalid JSON: '+raw.slice(0,180)); }
         if(result.success){
           reg.applicationPdfUrl=result.url;
           const ridx=registrations.findIndex(x=>x.uniqueId===reg.uniqueId);
@@ -6294,34 +6339,15 @@ async function downloadApplicationPDF(reg, archiveToDrive=true){
             registrations[ridx].applicationPdfUrl=result.url;
             localStorage.setItem('muhs_registrations',JSON.stringify(registrations));
           }
-          console.info('Application PDF archived successfully:', result.url, 'folder:', result.folderId || '');
+          console.info('Application PDF archived successfully:', result.url);
         }else{
           console.error('Application PDF archive rejected:', result);
-          showToast('⚠️ Google Drive-এ PDF save হয়নি। PDF download চালু করা হচ্ছে।', 'error');
         }
       }catch(e){
         console.error('Application PDF archive failed:',e);
-        showToast('⚠️ Google Drive-এ PDF save হয়নি। PDF download চালু করা হচ্ছে।', 'error');
       }
     }
-
-    // Primary browser download. jsPDF's own save path is more reliable than a
-    // delayed anchor click after several awaited network operations.
-    try {
-      pdf.save(fileName);
-    } catch (downloadErr) {
-      console.warn('jsPDF save failed; falling back to Blob download:', downloadErr);
-      const pdfBlob = pdf.output('blob');
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-    }
-    return true;
+    return downloadStarted;
   }catch(e){
     console.error(e);
     showToast('❌ Application PDF তৈরি করা যায়নি।','error');
