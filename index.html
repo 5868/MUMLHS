@@ -4656,11 +4656,7 @@ async function lookupRegistrationForDownload(retryAttempt = 0) {
     const response = await fetch(GAS_URL, {
       method: 'POST',
       headers: {'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({
-        action: 'lookupRegistrationForDownload',
-        uniqueId,
-        mobileLast4
-      })
+      body: JSON.stringify({ action:'lookupRegistrationForDownload', uniqueId, mobileLast4 })
     });
     const data = await response.json();
 
@@ -4683,33 +4679,36 @@ async function lookupRegistrationForDownload(retryAttempt = 0) {
             <div class="lookup-info-item"><span>Event ID</span><strong>${eventId}</strong></div>
             <div class="lookup-info-item"><span>Registration Type</span><strong>${type}</strong></div>
           </div>
-          <div class="lookup-message">
-            আপনার পেমেন্ট যাচাই সম্পন্ন হলে SMS ও Email-এর মাধ্যমে জানানো হবে।<br>
-            এরপর Event ID Card ও Photo Card ডাউনলোড করা যাবে।
-          </div>
+          <div class="lookup-message">আপনার পেমেন্ট যাচাই সম্পন্ন হলে SMS ও Email-এর মাধ্যমে জানানো হবে।<br>এরপর Event ID Card ও Photo Card ডাউনলোড করা যাবে।</div>
         </div>`;
       return;
     }
 
-    const idUrl = String(p.idCardDownloadUrl || '').trim();
-    const photoUrl = String(p.photoCardDownloadUrl || '').trim();
-
-    // Verification is complete but the automatic card archive may still be
-    // finishing in the admin browser. Retry briefly without requiring admin action.
-    if ((!idUrl || !photoUrl) && retryAttempt < 3) {
-      resultEl.innerHTML = `
-        <div class="lookup-result-card verified">
-          <div class="lookup-status">✅ Payment Verified</div>
-          <div class="lookup-info-grid">
-            <div class="lookup-info-item"><span>নাম</span><strong>${name}</strong></div>
-            <div class="lookup-info-item"><span>Event ID</span><strong>${eventId}</strong></div>
-            <div class="lookup-info-item"><span>Registration Type</span><strong>${type}</strong></div>
-          </div>
-          <div class="lookup-message">আপনার কার্ড প্রস্তুত হচ্ছে। স্বয়ংক্রিয়ভাবে আবার চেষ্টা করা হচ্ছে...</div>
-        </div>`;
-      setTimeout(() => lookupRegistrationForDownload(retryAttempt + 1), 2200);
-      return;
+    // IMPORTANT: Card downloads are generated locally from participant data.
+    // The archived ID/Photo Card files in Google Drive are NOT used as the
+    // download source. Therefore deleting an old card file, or a slow Drive
+    // archive operation, cannot break the participant's download.
+    const cardReg = {
+      ...p,
+      uniqueId: String(p.uniqueId || uniqueId),
+      name: String(p.name || ''),
+      phone: String(p.phone || ''),
+      type: String(p.typeCode || p.rawType || p.type || '').toLowerCase(),
+      batch: String(p.batch || ''),
+      studentClass: String(p.studentClass || ''),
+      branch: String(p.branch || ''),
+      bloodGroup: String(p.bloodGroup || ''),
+      tshirtSize: String(p.tshirtSize || ''),
+      photoUrl: String(p.photoUrl || ''),
+      idCardUrl: String(p.idCardUrl || ''),
+      photoCardUrl: String(p.photoCardUrl || '')
+    };
+    // Backend returns a display type as well as a normalized type code.
+    if (!['alumni','student','teacher','guest','other'].includes(cardReg.type)) {
+      cardReg.type = String(p.normalizedType || '').toLowerCase() || 'other';
     }
+
+    window._lookupCardParticipant = cardReg;
 
     resultEl.innerHTML = `
       <div class="lookup-result-card verified">
@@ -4719,13 +4718,20 @@ async function lookupRegistrationForDownload(retryAttempt = 0) {
           <div class="lookup-info-item"><span>Event ID</span><strong>${eventId}</strong></div>
           <div class="lookup-info-item"><span>Registration Type</span><strong>${type}</strong></div>
         </div>
-        ${idUrl && photoUrl ? `
-          <div class="lookup-downloads">
-            <a class="lookup-download-btn" href="${escapeHtmlSafe(idUrl)}" target="_blank" rel="noopener">🪪 Download Event ID Card</a>
-            <a class="lookup-download-btn secondary" href="${escapeHtmlSafe(photoUrl)}" target="_blank" rel="noopener">📸 Download Photo Card</a>
-          </div>` :
-          `<div class="lookup-message">Payment Verified হয়েছে। কার্ড ফাইল প্রস্তুত হতে কিছুটা সময় লাগতে পারে। অনুগ্রহ করে কিছুক্ষণ পরে আবার অনুসন্ধান করুন।</div>`}
+        <div class="lookup-message">কার্ডটি Google Drive-এর পুরোনো ফাইল থেকে নেওয়া হবে না। আপনার তথ্য ও ছবি দিয়ে এই browser-এই নতুন করে card তৈরি হবে।</div>
+        <div class="lookup-downloads">
+          <button type="button" class="lookup-download-btn" onclick="downloadLookupEventIdCard()">🪪 Download Event ID Card</button>
+          <button type="button" class="lookup-download-btn secondary" onclick="downloadLookupPhotoCard()">📸 Download Photo Card</button>
+        </div>
       </div>`;
+
+    // Pre-fetch the registered photo into browser memory. This makes the actual
+    // download button independent of a later Drive-card lookup and avoids an
+    // unnecessary wait when the participant clicks Download.
+    try {
+      const photoSource = await resolveCardPhotoSource(cardReg);
+      if (photoSource) cardReg.photo = photoSource;
+    } catch (_) {}
   } catch (err) {
     console.error('Registration lookup failed:', err);
     resultEl.innerHTML = '<div class="lookup-result-card error">❌ সার্ভারের সাথে সংযোগ করা যাচ্ছে না। কিছুক্ষণ পরে আবার চেষ্টা করুন।</div>';
@@ -4734,6 +4740,18 @@ async function lookupRegistrationForDownload(retryAttempt = 0) {
     btn.disabled = false;
     btn.textContent = '🔎 অনুসন্ধান করুন';
   }
+}
+
+function downloadLookupEventIdCard(){
+  const reg = window._lookupCardParticipant;
+  if (!reg) { showToast('আগে Event ID দিয়ে যাচাই করুন।','error'); return; }
+  downloadIdCard(reg, true);
+}
+
+function downloadLookupPhotoCard(){
+  const reg = window._lookupCardParticipant;
+  if (!reg) { showToast('আগে Event ID দিয়ে যাচাই করুন।','error'); return; }
+  downloadPhotoCard(reg, true);
 }
 
 // ─── SAVE TO GOOGLE SHEETS ───
@@ -5051,7 +5069,7 @@ async function downloadIdCard(reg, shouldDownload) {
       ctx.save();ctx.beginPath();ctx.arc(W/2,138,61,0,Math.PI*2);ctx.clip();ctx.drawImage(logo,W/2-61,77,122,122);ctx.restore();
     }
     ctx.textAlign='center';ctx.fillStyle=black;ctx.font='800 34px Arial,sans-serif';ctx.fillText('MANSUR UDDIN M.L HIGH SCHOOL',W/2,260);
-    ctx.font='400 28px Arial,sans-serif';ctx.fillText('KELLAI',W/2,300);
+    ctx.font='400 28px Arial,sans-serif';ctx.fillText('KILLAI',W/2,300);
     ctx.font='500 25px Arial,sans-serif';ctx.fillText('50 YEARS GOLDEN JUBILEE REUNION',W/2,342);
     ctx.font='400 22px Arial,sans-serif';ctx.fillText('ESTD. 1975 | GOLDEN JUBILEE 2026',W/2,378);
 
