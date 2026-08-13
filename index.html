@@ -2976,7 +2976,7 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>জন্ম তারিখ <span>*</span></label>
+            <label>জন্ম তারিখ</label>
             <input type="date" class="form-control" id="reg-dob">
           </div>
           <div class="form-group">
@@ -4295,7 +4295,6 @@ async function submitRegistration() {
   if (!bloodGroup) { showToast('Blood Group নির্বাচন করুন।', 'error'); return; }
   if (!tshirtSize) { showToast('T-Shirt Size নির্বাচন করুন।', 'error'); return; }
   const dob = document.getElementById('reg-dob').value;
-  if (!dob) { showToast('জন্ম তারিখ নির্বাচন করুন।', 'error'); return; }
   const batch = document.getElementById('reg-batch').value;
   const cls = document.getElementById('reg-class').value;
   const branch = document.getElementById('reg-branch').value;
