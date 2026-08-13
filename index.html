@@ -2465,6 +2465,19 @@
 @media(max-width:800px){.vol-admin-form{grid-template-columns:1fr 1fr}.vol-admin-form button{grid-column:1/-1}}
 @media(max-width:560px){.vol-admin-form{grid-template-columns:1fr}.vol-admin-form button{grid-column:auto}.vol-admin-table{font-size:.75rem}.vol-admin-table th,.vol-admin-table td{padding:8px 6px}}
 
+  /* ─── PAYMENT VERIFIER DASHBOARD ─── */
+  .payment-verifier-summary{margin-top:18px;margin-bottom:18px;border:1px solid #dce8df;border-radius:16px;background:#fff;box-shadow:0 6px 22px rgba(18,67,42,.06);overflow:hidden}
+  .payment-verifier-summary-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;background:linear-gradient(135deg,#f3faf5,#fffdf5);border-bottom:1px solid #e5eee7}
+  .payment-verifier-summary-head h3{margin:0;color:var(--deep-green);font-size:1rem}
+  .payment-verifier-live{font-size:.68rem;font-weight:800;color:#16733a;white-space:nowrap}
+  .payment-verifier-table-wrap{overflow:auto}
+  .payment-verifier-table{width:100%;border-collapse:collapse;min-width:980px;font-size:.76rem}
+  .payment-verifier-table th{padding:10px 9px;text-align:center;background:#f7faf7;color:#315443;border-bottom:1px solid #dfe9e2;white-space:nowrap}
+  .payment-verifier-table td{padding:10px 9px;text-align:center;border-bottom:1px solid #edf2ee;white-space:nowrap}
+  .payment-verifier-table th:first-child,.payment-verifier-table td:first-child{text-align:left}
+  .payment-verifier-name{font-weight:900;color:#0b3d2e}.payment-verifier-phone{display:block;color:#68736c;font-size:.67rem;margin-top:2px;font-weight:600}
+  .payment-verifier-zero{color:#9aa59e}.payment-verifier-amount{font-weight:900;color:#16733a}
+  .payment-verifier-empty{padding:22px;text-align:center;color:#68736c;font-size:.8rem}
   /* ─── PAYMENT VERIFICATION / APPLICATION ─── */
   .payment-waiting-card{margin-top:1.5rem;background:#fff;border:1px solid rgba(200,150,12,.24);border-radius:18px;box-shadow:0 10px 30px rgba(11,61,46,.08);overflow:hidden;}
   .payment-waiting-head{padding:1rem 1.15rem;background:linear-gradient(135deg,#0b3d2e,#145a3e);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px;}
@@ -3522,13 +3535,18 @@
       <div class="mgmt-payment-cats" id="mgmt-payment-cats"></div>
     </div>
 
-    <div class="mgmt-payment-summary" style="margin-top:18px;">
-      <div class="mgmt-payment-summary-head">
-        <h3>👤 Payment Verification Dashboard</h3>
-        <div class="mgmt-payment-total" style="font-size:.72rem;color:#68736c;" id="payment-verifier-live-status">Live</div>
+    <div class="payment-verifier-summary" id="payment-verifier-summary">
+      <div class="payment-verifier-summary-head">
+        <h3>💳 Payment Verification Dashboard</h3>
+        <div class="payment-verifier-live" id="payment-verifier-live">Live • Loading...</div>
       </div>
-      <div id="payment-verifier-dashboard" style="overflow-x:auto;">
-        <div style="padding:18px;color:#68736c;text-align:center;">Payment verifier data loading...</div>
+      <div class="payment-verifier-table-wrap">
+        <table class="payment-verifier-table">
+          <thead><tr>
+            <th>Verifier</th><th>Ex-Student</th><th>Student</th><th>Teachers/Management</th><th>Others</th><th>Total</th><th>Verified Amount</th>
+          </tr></thead>
+          <tbody id="payment-verifier-body"><tr><td colspan="7" class="payment-verifier-empty">লোড হচ্ছে...</td></tr></tbody>
+        </table>
       </div>
     </div>
 
@@ -3637,7 +3655,6 @@
             <label><span>User ID</span><input id="va-username" required autocomplete="off" placeholder="যেমন: volunteer01"></label>
             <label><span>Password</span><input id="va-password" type="password" required autocomplete="new-password" placeholder="Password"></label>
             <label><span>নাম</span><input id="va-name" required placeholder="ভলান্টিয়ারের নাম"></label>
-            <label><span>মোবাইল</span><input id="va-phone" type="tel" placeholder="01XXXXXXXXX"></label>
             <div class="vol-form-perms">
               <strong>Permission:</strong>
               <label><input type="checkbox" id="va-perm-tshirtcap"> 👕 T-Shirt & Cap</label>
@@ -4064,8 +4081,6 @@ async function adminUnlock() {
     document.getElementById('adminLockedView').style.display = 'none';
     document.getElementById('adminUnlockedView').style.display = 'block';
     showToast('✅ এডমিন মোড চালু — ' + (data.total || registrations.length) + 'টি নিবন্ধন');
-    renderManagementStats();
-    startPaymentVerifierDashboardLive();
 
   } catch (err) {
     const msg = err && err.message ? err.message : String(err);
@@ -4082,7 +4097,6 @@ async function adminUnlock() {
 }
 
 function adminLock() {
-  if(paymentVerifierRefreshTimer) { clearInterval(paymentVerifierRefreshTimer); paymentVerifierRefreshTimer=null; }
   sessionStorage.removeItem('muhs_admin_key');
   isAdminUnlocked = false;
   document.getElementById('adminLockedView').style.display = 'flex';
@@ -5421,66 +5435,8 @@ function switchManagementStatsTab(tab, btn) {
   renderManagementStats();
 }
 
-
-let paymentVerifierRefreshTimer = null;
-let paymentVerifierRefreshing = false;
-
-function renderPaymentVerifierDashboard(rows) {
-  const el=document.getElementById('payment-verifier-dashboard');
-  if(!el) return;
-  const money = v => {
-    const n=Number(String(v ?? '').replace(/[৳,\s]/g,''));
-    return isFinite(n)?n:0;
-  };
-  const esc = v => String(v ?? '').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
-  if(!Array.isArray(rows) || !rows.length){
-    el.innerHTML='<div style="padding:18px;color:#68736c;text-align:center;">কোনো active Payment Verifier পাওয়া যায়নি।</div>';
-    return;
-  }
-  const cell = x => `${x.participants} <span style="font-size:.72rem;color:#68736c;">(M-${x.companion}, C-${x.child})</span>`;
-  const head = `<table style="width:100%;border-collapse:collapse;min-width:820px;font-size:.82rem;">
-    <thead><tr style="background:#f4f7f4;">
-      <th style="padding:10px;text-align:left;">Verifier</th>
-      <th style="padding:10px;">Ex Student</th><th style="padding:10px;">Student</th>
-      <th style="padding:10px;">Teachers/Kormokorrta</th><th style="padding:10px;">Others</th>
-      <th style="padding:10px;">Total</th><th style="padding:10px;text-align:right;">Verified Amount</th>
-    </tr></thead><tbody>`;
-  const body=rows.map(v=>`<tr style="border-top:1px solid #e7ece8;">
-    <td style="padding:10px;text-align:left;"><b>${esc(v.name)}</b><div style="font-size:.68rem;color:#68736c;">${esc(v.phone || v.username)}</div></td>
-    <td style="padding:10px;text-align:center;">${cell(v.alumni)}</td>
-    <td style="padding:10px;text-align:center;">${cell(v.student)}</td>
-    <td style="padding:10px;text-align:center;">${cell(v.teacher)}</td>
-    <td style="padding:10px;text-align:center;">${cell(v.other)}</td>
-    <td style="padding:10px;text-align:center;font-weight:800;">${cell(v.total)}</td>
-    <td style="padding:10px;text-align:right;font-weight:800;">৳ ${money(v.amount).toLocaleString('en-US')}</td>
-  </tr>`).join('');
-  el.innerHTML=head+body+'</tbody></table>';
-}
-
-async function refreshPaymentVerifierDashboard() {
-  if(paymentVerifierRefreshing || !isAdminUnlocked || !USE_CLOUD) return;
-  paymentVerifierRefreshing=true;
-  try{
-    const key=sessionStorage.getItem('muhs_admin_key')||'';
-    if(!key) return;
-    const res=await fetch(GAS_URL+'?action=adminPaymentVerifierSummary&key='+encodeURIComponent(key)+'&t='+Date.now(),{cache:'no-store'});
-    const data=await res.json();
-    if(data && data.success){
-      renderPaymentVerifierDashboard(data.verifiers||[]);
-      const st=document.getElementById('payment-verifier-live-status');
-      if(st) st.textContent='Live • '+new Date().toLocaleTimeString();
-    }
-  }catch(e){ console.warn('Payment verifier dashboard refresh failed:',e); }
-  finally{ paymentVerifierRefreshing=false; }
-}
-
-function startPaymentVerifierDashboardLive() {
-  if(paymentVerifierRefreshTimer) clearInterval(paymentVerifierRefreshTimer);
-  refreshPaymentVerifierDashboard();
-  paymentVerifierRefreshTimer=setInterval(refreshPaymentVerifierDashboard,5000);
-}
-
 function renderManagementStats() {
+  loadPaymentVerifierSummary();
   const regs = Array.isArray(registrations) ? registrations : [];
   const summary = (cloudSummary && typeof cloudSummary === 'object') ? cloudSummary : {};
   const money = v => {
@@ -5608,6 +5564,42 @@ function renderManagementStats() {
     return `<div class="stats-row"><div class="name">${label}</div><div class="count"><span>${toBanglaDigits(count)} জন</span> <span class="mgmt-stat-pending-inline">(${toBanglaDigits(pendingRows.length)} জন Pending)</span><div class="mgmt-stat-money">${fmt(received)} <span class="mgmt-stat-pending-amount">(Pending ${fmt(pend)})</span></div></div></div>`;
   }).join('');
 }
+async function loadPaymentVerifierSummary(){
+  const body=document.getElementById('payment-verifier-body');
+  const live=document.getElementById('payment-verifier-live');
+  if(!body) return;
+  try{
+    const res=await fetch(GAS_URL+'?action=paymentVerifierSummary&t='+Date.now(), {cache:'no-store'});
+    if(!res.ok) throw new Error('Server error: '+res.status);
+    const data=await res.json();
+    if(!data.success) throw new Error(data.message || data.error || 'লোড ব্যর্থ');
+    const rows=Array.isArray(data.verifiers)?data.verifiers:[];
+    const fmt=n=>Number(n||0).toLocaleString('en-US');
+    const cell=(n,m,c)=> n ? `${fmt(n)} (M-${fmt(m)}, C-${fmt(c)})` : `<span class="payment-verifier-zero">0 (M-0, C-0)</span>`;
+    if(!rows.length){
+      body.innerHTML='<tr><td colspan="7" class="payment-verifier-empty">Payment Verification-এর জন্য বর্তমানে কোনো Active অনুমোদিত Volunteer নেই।</td></tr>';
+    }else{
+      body.innerHTML=rows.map(v=>{
+        const totalM=Number(v.adultCompanions||0), totalC=Number(v.childCompanions||0);
+        return `<tr><td><span class="payment-verifier-name">${escapeHtml(v.name||v.username||'—')}</span>${v.phone?`<span class="payment-verifier-phone">${escapeHtml(v.phone)}</span>`:''}</td>`+
+          `<td>${cell(v.alumni,v.alumniM,v.alumniC)}</td><td>${cell(v.student,v.studentM,v.studentC)}</td><td>${cell(v.teacher,v.teacherM,v.teacherC)}</td><td>${cell(v.other,v.otherM,v.otherC)}</td>`+
+          `<td>${cell(v.total,totalM,totalC)}</td><td class="payment-verifier-amount">৳ ${fmt(v.amount)}</td></tr>`;
+      }).join('');
+    }
+    if(live) live.textContent='Live • '+new Date().toLocaleTimeString();
+  }catch(e){
+    body.innerHTML=`<tr><td colspan="7" class="payment-verifier-empty" style="color:#b42318;">❌ ${escapeHtml(e.message||String(e))}</td></tr>`;
+    if(live) live.textContent='Live • Error';
+  }
+}
+
+if(!window._paymentVerifierDashboardTimer){
+  window._paymentVerifierDashboardTimer=setInterval(()=>{
+    const body=document.getElementById('payment-verifier-body');
+    if(body) loadPaymentVerifierSummary();
+  },5000);
+}
+
 async function volunteerAdminPost(payload) {
   const key = sessionStorage.getItem('muhs_admin_key') || '';
   if (!key) throw new Error('Admin login required');
@@ -5628,7 +5620,7 @@ async function loadVolunteerAdminList() {
       return `<tr>
         <td>${i+1}</td>
         <td><strong>${escapeHtml(v.username)}</strong></td>
-        <td>${escapeHtml(v.name)}<div style="font-size:.7rem;color:#68736c;">${escapeHtml(v.phone || "—")}</div></td>
+        <td>${escapeHtml(v.name)}</td>
         <td><span class="vol-status ${v.active?'on':'off'}">${v.active?'ACTIVE':'INACTIVE'}</span><div class="vol-perm-note">শুধু অনুমোদিত item-ই scan-এর পরে দেখাবে</div></td>
         <td>
           <div class="vol-perm-buttons">
@@ -5639,7 +5631,7 @@ async function loadVolunteerAdminList() {
           </div>
           <div class="vol-perm-buttons">
             <button class="vol-perm-btn" onclick="toggleVolunteerAdmin('${escapeJs(v.username)}',${v.active})">${v.active?'⏸ Deactivate':'▶ Activate'}</button>
-            <button class="vol-perm-btn" onclick="editVolunteerAdmin('${escapeJs(v.username)}','${escapeJs(v.name)}','${escapeJs(v.phone || '')}',${!!p.tshirtCap},${!!p.breakfast},${!!p.lunch},${!!p.paymentVerification})">✏️ Edit</button>
+            <button class="vol-perm-btn" onclick="editVolunteerAdmin('${escapeJs(v.username)}','${escapeJs(v.name)}',${!!p.tshirtCap},${!!p.breakfast},${!!p.lunch},${!!p.paymentVerification})">✏️ Edit</button>
             <button class="vol-perm-btn" onclick="deleteVolunteerAdmin('${escapeJs(v.username)}')">🗑 Delete</button>
           </div>
         </td>
@@ -5656,11 +5648,10 @@ function escapeJs(s){
     .replace(/\r?\n/g, ' ');
 }
 
-function editVolunteerAdmin(username,name,phone='',tshirtCap=false,breakfast=false,lunch=false,paymentVerification=false){
+function editVolunteerAdmin(username,name,tshirtCap=false,breakfast=false,lunch=false,paymentVerification=false){
   document.getElementById('va-username').value=username;
   document.getElementById('va-username').readOnly=true;
   document.getElementById('va-name').value=name;
-  document.getElementById('va-phone').value=phone || '';
   document.getElementById('va-password').required=false;
   document.getElementById('va-password').value='';
   document.getElementById('va-perm-tshirtcap').checked=!!tshirtCap;
@@ -5675,7 +5666,6 @@ function resetVolunteerAdminForm(){
   document.getElementById('va-username').value=''; document.getElementById('va-username').readOnly=false;
   document.getElementById('va-password').value=''; document.getElementById('va-password').required=true;
   document.getElementById('va-name').value='';
-  document.getElementById('va-phone').value='';
   document.getElementById('va-perm-tshirtcap').checked=false;
   document.getElementById('va-perm-breakfast').checked=false;
   document.getElementById('va-perm-lunch').checked=false;
@@ -5688,7 +5678,6 @@ async function saveVolunteerAdmin(){
   const username=document.getElementById('va-username').value.trim();
   const password=document.getElementById('va-password').value;
   const name=document.getElementById('va-name').value.trim();
-  const phone=document.getElementById('va-phone').value.trim();
   const permissions={
     tshirtCap:document.getElementById('va-perm-tshirtcap').checked,
     breakfast:document.getElementById('va-perm-breakfast').checked,
@@ -5698,7 +5687,7 @@ async function saveVolunteerAdmin(){
   if(!username||!name||(document.getElementById('va-password').required&&!password)){showToast('সব প্রয়োজনীয় তথ্য দিন।','error');return;}
   const editing=document.getElementById('va-username').readOnly;
   try{
-    const data=await volunteerAdminPost({action:editing?'adminVolunteerUpdate':'adminVolunteerCreate',username,password,name,phone,permissions});
+    const data=await volunteerAdminPost({action:editing?'adminVolunteerUpdate':'adminVolunteerCreate',username,password,name,permissions});
     if(!data.success) throw new Error(data.message||data.error||'সংরক্ষণ ব্যর্থ');
     showToast(editing?'ভলান্টিয়ার আপডেট হয়েছে।':'ভলান্টিয়ার যোগ হয়েছে।','success');
     resetVolunteerAdminForm(); loadVolunteerAdminList();
