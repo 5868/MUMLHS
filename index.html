@@ -2664,7 +2664,7 @@
       <span class="badge-year">২০২৬</span>
     </div>
     <div class="glass-card reveal-r" style="--d:.3s">
-      <div class="cd-eyebrow"><span class="dot-live"></span>অনুষ্ঠিত হবে হতে বাকি</div>
+      <div class="cd-eyebrow"><span class="dot-live"></span>অনুষ্ঠিত হতে বাকি</div>
       <div class="cd-days-row"><span id="cd-days">০০</span><small>দিন</small></div>
       <div class="cd-hms">
         <div class="cd-unit"><span id="cd-hours">০০</span><small>ঘণ্টা</small></div>
@@ -2728,8 +2728,8 @@
     </div>
     <div class="about-grid">
       <div class="about-card founder-card">
-        <img class="founder-photo" src="images/School/Founder1.jpg" alt="প্রতিষ্ঠাতা মোঃ আবুল কাশেম মহোদয়" onerror="this.style.display='none';">
-        <div class="founder-name">প্রতিষ্ঠাতা মোঃ আবুল কাশেম মহোদয়</div>
+        <img class="founder-photo" src="images/School/Founder1.jpg" alt="প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয়" onerror="this.style.display='none';">
+        <div class="founder-name">প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয়</div>
         <div class="founder-copy">
           <h3>প্রতিষ্ঠাতার প্রতি শ্রদ্ধাঞ্জলি</h3>
           <p>প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয় তার সম্মানিত পিতা জনাব মোঃ মনসুর উদ্দিন মহোদয় নামে ১৯৭৫ সালে বিদ্যালয়টি স্থাপন করেন। বিদ্যালয় কর্তৃপক্ষ অত্যন্ত শ্রদ্ধার সাথে তাদের প্রতি চিরকৃতজ্ঞ।</p>
@@ -2799,8 +2799,8 @@
       <p class="section-sub">১৯৭৫ থেকে ২০২৬ — পাঁচ দশকের উল্লেখযোগ্য মাইলফলকসমূহ</p>
     </div>
     <div class="history-founder">
-        <img src="images/School/Founder2.jpg" alt="প্রতিষ্ঠাতা মোঃ আবুল কাশেম মহোদয়" onerror="this.style.display='none'">
-        <div class="founder-name">প্রতিষ্ঠাতা মোঃ আবুল কাশেম মহোদয়</div>
+        <img src="images/School/Founder2.jpg" alt="প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয়" onerror="this.style.display='none'">
+        <div class="founder-name">প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয়</div>
         <div>
           <div class="hf-title">বিদ্যালয় প্রতিষ্ঠার গৌরবময় স্মৃতি</div>
           <div class="hf-copy">প্রতিষ্ঠাতা জনাব মোঃ আবুল কাশেম মহোদয় তার সম্মানিত পিতা জনাব মোঃ মনসুর উদ্দিন মহোদয় নামে ১৯৭৫ সালে বিদ্যালয়টি স্থাপন করেন। বিদ্যালয় কর্তৃপক্ষ অত্যন্ত শ্রদ্ধার সাথে তাদের প্রতি চিরকৃতজ্ঞ।</div>
@@ -3545,7 +3545,7 @@
 
     <div class="payment-verifier-summary" id="payment-verifier-summary">
       <div class="payment-verifier-summary-head">
-        <h3>💳 Payment Verification Dashboard</h3>
+        <h3>💳 Payment Verification Dashboard <span style="font-size:.68rem;font-weight:800;color:#7b5a12;margin-left:6px;">Auto Payment (TxnID)</span></h3>
         <div class="payment-verifier-live" id="payment-verifier-live">Live • Loading...</div>
       </div>
       <div class="payment-verifier-table-wrap">
@@ -4526,33 +4526,27 @@ async function submitRegistration() {
         console.warn('Payment screenshot archive failed:', err);
       }
     }
-  }
 
-  // Office notification is intentionally sent LAST, after the existing
-  // PDF/photo/payment-proof archive attempts. It is best-effort and can
-  // never block registration completion or PDF download.
-  if (USE_CLOUD) {
+    // Notify the office only AFTER the participant SMS/email and the PDF/photo/payment
+    // archive workflow has been attempted. A notification failure must never block registration.
     try {
       const noticeRes = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'sendSubmissionAdminNotification',
-          uniqueId: reg.uniqueId
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({
+          action:'sendPostArchiveSubmissionNotification',
+          uniqueId:reg.uniqueId, name:reg.name, phone:reg.phone, email:reg.email,
+          type:reg.type, guestCount:reg.guestCount, childCount:reg.childCount,
+          txnId:reg.txnId, totalFee:reg.totalFee,
+          archiveStatus:'PDF/Photo/Payment archive process completed or attempted'
         })
       });
-      const noticeRaw = await noticeRes.text();
-      let noticeResult = null;
-      try { noticeResult = JSON.parse(noticeRaw); }
-      catch (_) { throw new Error('Invalid notification response: ' + noticeRaw.slice(0,200)); }
-      if (!noticeResult || !noticeResult.success) {
-        console.warn('Submission admin notification failed:', noticeResult);
-      } else {
-        console.log('New submission notification sent to hriday.bdurp@gmail.com');
-      }
+      const noticeRaw=await noticeRes.text();
+      let notice=null;
+      try{ notice=JSON.parse(noticeRaw); }catch(_){ notice={success:false,error:'invalid_json'}; }
+      console.log('Post-archive office notification:',notice);
     } catch (err) {
-      // Never interrupt/reset the successful registration flow for an office email failure.
-      console.warn('Submission admin notification failed:', err);
+      console.warn('Post-archive office notification failed:',err);
     }
   }
 
@@ -4611,7 +4605,9 @@ function updateSummary() {
   set('alumni-pending', pendCounts('alumni') ? `(Pending ${toBanglaDigits(pendCounts('alumni'))})` : '');
   set('student-pending', pendCounts('student') ? `(Pending ${toBanglaDigits(pendCounts('student'))})` : '');
   set('teacher-pending', pendCounts('teacher') ? `(Pending ${toBanglaDigits(pendCounts('teacher'))})` : '');
-  set('guest-pending', otherPending ? `(Pending ${toBanglaDigits(otherPending)})` : '');
+  const otherAdultCompanions = verified.filter(r => r.type === 'guest' || r.type === 'other').reduce((sum,r)=>sum + Math.max(0, Number(r.guestCount||0)), 0);
+  const otherChildCompanions = verified.filter(r => r.type === 'guest' || r.type === 'other').reduce((sum,r)=>sum + Math.max(0, Number(r.childCount||0)), 0);
+  set('guest-pending', `(M-${toBanglaDigits(otherAdultCompanions)}, C-${toBanglaDigits(otherChildCompanions)})` + (otherPending ? ` · Pending ${toBanglaDigits(otherPending)}` : ''));
   const heroTotal=document.getElementById('hero-total-count');
   if(heroTotal) heroTotal.innerHTML = `${toBanglaDigits(verified.length)} জন <small style="display:block;font-family:'Noto Sans Bengali',sans-serif;font-size:.68rem;font-weight:700;opacity:.78;margin-top:5px;">${pending.length ? `(Pending ${toBanglaDigits(pending.length)} জন)` : ''}</small>`;
 }
@@ -5519,10 +5515,10 @@ function renderManagementStats() {
 
   if(paymentCatsEl){
     const cats=[
-      ['প্রাক্তন শিক্ষার্থী (অতিথীসহ)','alumni'],
-      ['বর্তমান শিক্ষার্থী (অতিথীসহ)','student'],
+      ['প্রাক্তন শিক্ষার্থী','alumni'],
+      ['বর্তমান শিক্ষার্থী','student'],
       ['শিক্ষক/কর্মকর্তা','teacher'],
-      ['অতিথি/অন্যান্য','other']
+      ['Others','other']
     ];
     paymentCatsEl.innerHTML=cats.map(([label,key])=>{
       let amount=0;
@@ -5600,26 +5596,19 @@ function renderManagementStats() {
     return `<div class="stats-row"><div class="name">${label}</div><div class="count"><span>${toBanglaDigits(count)} জন</span> <span class="mgmt-stat-pending-inline">(${toBanglaDigits(pendingRows.length)} জন Pending)</span><div class="mgmt-stat-money">${fmt(received)} <span class="mgmt-stat-pending-amount">(Pending ${fmt(pend)})</span></div></div></div>`;
   }).join('');
 }
-let _paymentVerifierLoadInFlight = false;
-let _paymentVerifierLastGoodRows = null;
-
 async function loadPaymentVerifierSummary(){
   const body=document.getElementById('payment-verifier-body');
   const live=document.getElementById('payment-verifier-live');
-  if(!body || _paymentVerifierLoadInFlight) return;
-  _paymentVerifierLoadInFlight=true;
+  if(!body || window._paymentVerifierLoading) return;
+  window._paymentVerifierLoading = true;
   try{
     const res=await fetch(GAS_URL+'?action=paymentVerifierSummary&t='+Date.now(), {cache:'no-store'});
     if(!res.ok) throw new Error('Server error: '+res.status);
     const data=await res.json();
     if(!data.success) throw new Error(data.message || data.error || 'লোড ব্যর্থ');
-
     const rows=Array.isArray(data.verifiers)?data.verifiers:[];
-    _paymentVerifierLastGoodRows=rows;
-
     const fmt=n=>Number(n||0).toLocaleString('en-US');
     const cell=(n,m,c)=> n ? `${fmt(n)} (M-${fmt(m)}, C-${fmt(c)})` : `<span class="payment-verifier-zero">0 (M-0, C-0)</span>`;
-
     if(!rows.length){
       body.innerHTML='<tr><td colspan="7" class="payment-verifier-empty">Payment Verification-এর জন্য বর্তমানে কোনো Active অনুমোদিত Volunteer নেই।</td></tr>';
     }else{
@@ -5632,12 +5621,11 @@ async function loadPaymentVerifierSummary(){
     }
     if(live) live.textContent='Live • '+new Date().toLocaleTimeString();
   }catch(e){
-    // Keep the last successful table intact during transient failures.
-    // The dashboard should never disappear just because one 5-second poll failed.
-    console.warn('Payment verifier refresh failed:', e);
-    if(live) live.textContent='Live • '+new Date().toLocaleTimeString()+' (sync retry)';
-  }finally{
-    _paymentVerifierLoadInFlight=false;
+    // Keep the last successful verifier table intact on transient network/server errors.
+    if(live) live.textContent='Live • Retry';
+    console.warn('Payment verifier dashboard refresh failed:', e);
+  } finally {
+    window._paymentVerifierLoading = false;
   }
 }
 
@@ -5647,7 +5635,6 @@ if(!window._paymentVerifierDashboardTimer){
     if(body) loadPaymentVerifierSummary();
   },5000);
 }
-
 
 async function volunteerAdminPost(payload) {
   const key = sessionStorage.getItem('muhs_admin_key') || '';
