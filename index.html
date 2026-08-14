@@ -4605,8 +4605,18 @@ function updateSummary() {
   set('alumni-pending', pendCounts('alumni') ? `(Pending ${toBanglaDigits(pendCounts('alumni'))})` : '');
   set('student-pending', pendCounts('student') ? `(Pending ${toBanglaDigits(pendCounts('student'))})` : '');
   set('teacher-pending', pendCounts('teacher') ? `(Pending ${toBanglaDigits(pendCounts('teacher'))})` : '');
-  const otherAdultCompanions = verified.filter(r => r.type === 'guest' || r.type === 'other').reduce((sum,r)=>sum + Math.max(0, Number(r.guestCount||0)), 0);
-  const otherChildCompanions = verified.filter(r => r.type === 'guest' || r.type === 'other').reduce((sum,r)=>sum + Math.max(0, Number(r.childCount||0)), 0);
+  // Server-side totals are authoritative for Others/Guest companion counts.
+  // This prevents M/C from becoming 0 when an older Sheet has shifted columns.
+  const toCount = v => {
+    if (typeof v === 'number') return isFinite(v) ? Math.max(0, v) : 0;
+    const s = String(v ?? '').trim().replace(/[০১২৩৪৫৬৭৮৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+    const n = Number(s);
+    return isFinite(n) ? Math.max(0, n) : 0;
+  };
+  const serverOtherM = cloudSummary && cloudSummary.otherAdultCompanions != null ? toCount(cloudSummary.otherAdultCompanions) : null;
+  const serverOtherC = cloudSummary && cloudSummary.otherChildCompanions != null ? toCount(cloudSummary.otherChildCompanions) : null;
+  const otherAdultCompanions = serverOtherM !== null ? serverOtherM : verified.filter(r => r.type === 'guest' || r.type === 'other').reduce((sum,r)=>sum + toCount(r.guestCount), 0);
+  const otherChildCompanions = serverOtherC !== null ? serverOtherC : verified.filter(r => r.type === 'guest' || r.type === 'other').reduce((sum,r)=>sum + toCount(r.childCount), 0);
   set('guest-pending', `(M-${toBanglaDigits(otherAdultCompanions)}, C-${toBanglaDigits(otherChildCompanions)})` + (otherPending ? ` · Pending ${toBanglaDigits(otherPending)}` : ''));
   const heroTotal=document.getElementById('hero-total-count');
   if(heroTotal) heroTotal.innerHTML = `${toBanglaDigits(verified.length)} জন <small style="display:block;font-family:'Noto Sans Bengali',sans-serif;font-size:.68rem;font-weight:700;opacity:.78;margin-top:5px;">${pending.length ? `(Pending ${toBanglaDigits(pending.length)} জন)` : ''}</small>`;
