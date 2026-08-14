@@ -4528,6 +4528,34 @@ async function submitRegistration() {
     }
   }
 
+  // Office notification is intentionally sent LAST, after the existing
+  // PDF/photo/payment-proof archive attempts. It is best-effort and can
+  // never block registration completion or PDF download.
+  if (USE_CLOUD) {
+    try {
+      const noticeRes = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'sendSubmissionAdminNotification',
+          uniqueId: reg.uniqueId
+        })
+      });
+      const noticeRaw = await noticeRes.text();
+      let noticeResult = null;
+      try { noticeResult = JSON.parse(noticeRaw); }
+      catch (_) { throw new Error('Invalid notification response: ' + noticeRaw.slice(0,200)); }
+      if (!noticeResult || !noticeResult.success) {
+        console.warn('Submission admin notification failed:', noticeResult);
+      } else {
+        console.log('New submission notification sent to hriday.bdurp@gmail.com');
+      }
+    } catch (err) {
+      // Never interrupt/reset the successful registration flow for an office email failure.
+      console.warn('Submission admin notification failed:', err);
+    }
+  }
+
   // Reset form controls only AFTER the asset payload has been captured/sent.
   ['reg-name','reg-phone','reg-email','reg-message','reg-current-village','reg-current-post','reg-current-upazila','reg-current-district','reg-permanent-village','reg-permanent-post','reg-permanent-upazila','reg-permanent-district'].forEach(id => {
     const el = document.getElementById(id);
@@ -5572,18 +5600,26 @@ function renderManagementStats() {
     return `<div class="stats-row"><div class="name">${label}</div><div class="count"><span>${toBanglaDigits(count)} জন</span> <span class="mgmt-stat-pending-inline">(${toBanglaDigits(pendingRows.length)} জন Pending)</span><div class="mgmt-stat-money">${fmt(received)} <span class="mgmt-stat-pending-amount">(Pending ${fmt(pend)})</span></div></div></div>`;
   }).join('');
 }
+let _paymentVerifierLoadInFlight = false;
+let _paymentVerifierLastGoodRows = null;
+
 async function loadPaymentVerifierSummary(){
   const body=document.getElementById('payment-verifier-body');
   const live=document.getElementById('payment-verifier-live');
-  if(!body) return;
+  if(!body || _paymentVerifierLoadInFlight) return;
+  _paymentVerifierLoadInFlight=true;
   try{
     const res=await fetch(GAS_URL+'?action=paymentVerifierSummary&t='+Date.now(), {cache:'no-store'});
     if(!res.ok) throw new Error('Server error: '+res.status);
     const data=await res.json();
     if(!data.success) throw new Error(data.message || data.error || 'লোড ব্যর্থ');
+
     const rows=Array.isArray(data.verifiers)?data.verifiers:[];
+    _paymentVerifierLastGoodRows=rows;
+
     const fmt=n=>Number(n||0).toLocaleString('en-US');
     const cell=(n,m,c)=> n ? `${fmt(n)} (M-${fmt(m)}, C-${fmt(c)})` : `<span class="payment-verifier-zero">0 (M-0, C-0)</span>`;
+
     if(!rows.length){
       body.innerHTML='<tr><td colspan="7" class="payment-verifier-empty">Payment Verification-এর জন্য বর্তমানে কোনো Active অনুমোদিত Volunteer নেই।</td></tr>';
     }else{
@@ -5596,8 +5632,12 @@ async function loadPaymentVerifierSummary(){
     }
     if(live) live.textContent='Live • '+new Date().toLocaleTimeString();
   }catch(e){
-    body.innerHTML=`<tr><td colspan="7" class="payment-verifier-empty" style="color:#b42318;">❌ ${escapeHtml(e.message||String(e))}</td></tr>`;
-    if(live) live.textContent='Live • Error';
+    // Keep the last successful table intact during transient failures.
+    // The dashboard should never disappear just because one 5-second poll failed.
+    console.warn('Payment verifier refresh failed:', e);
+    if(live) live.textContent='Live • '+new Date().toLocaleTimeString()+' (sync retry)';
+  }finally{
+    _paymentVerifierLoadInFlight=false;
   }
 }
 
@@ -5607,6 +5647,7 @@ if(!window._paymentVerifierDashboardTimer){
     if(body) loadPaymentVerifierSummary();
   },5000);
 }
+
 
 async function volunteerAdminPost(payload) {
   const key = sessionStorage.getItem('muhs_admin_key') || '';
