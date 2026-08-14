@@ -4615,8 +4615,17 @@ function updateSummary() {
   };
   const serverOtherM = cloudSummary && cloudSummary.otherAdultCompanions != null ? toCount(cloudSummary.otherAdultCompanions) : null;
   const serverOtherC = cloudSummary && cloudSummary.otherChildCompanions != null ? toCount(cloudSummary.otherChildCompanions) : null;
-  const otherAdultCompanions = serverOtherM !== null ? serverOtherM : verified.filter(r => r.type === 'guest' || r.type === 'other').reduce((sum,r)=>sum + toCount(r.guestCount), 0);
-  const otherChildCompanions = serverOtherC !== null ? serverOtherC : verified.filter(r => r.type === 'guest' || r.type === 'other').reduce((sum,r)=>sum + toCount(r.childCount), 0);
+  // All accompanying adults/children are presented under Others, because
+  // companion participation/payment is integrated into the Others category.
+  // This is intentionally independent of the registrant's own category.
+  const totalAdultCompanions = cloudSummary && cloudSummary.adultCompanions != null
+    ? toCount(cloudSummary.adultCompanions)
+    : verified.reduce((sum,r)=>sum + toCount(r.guestCount), 0);
+  const totalChildCompanions = cloudSummary && cloudSummary.childCompanions != null
+    ? toCount(cloudSummary.childCompanions)
+    : verified.reduce((sum,r)=>sum + toCount(r.childCount), 0);
+  const otherAdultCompanions = totalAdultCompanions;
+  const otherChildCompanions = totalChildCompanions;
   set('guest-pending', `(M-${toBanglaDigits(otherAdultCompanions)}, C-${toBanglaDigits(otherChildCompanions)})` + (otherPending ? ` · Pending ${toBanglaDigits(otherPending)}` : ''));
   const heroTotal=document.getElementById('hero-total-count');
   if(heroTotal) heroTotal.innerHTML = `${toBanglaDigits(verified.length)} জন <small style="display:block;font-family:'Noto Sans Bengali',sans-serif;font-size:.68rem;font-weight:700;opacity:.78;margin-top:5px;">${pending.length ? `(Pending ${toBanglaDigits(pending.length)} জন)` : ''}</small>`;
