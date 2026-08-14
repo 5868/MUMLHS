@@ -2675,8 +2675,8 @@
       </div>
     </div>
     <div class="glass-card total-reg-card reveal-r" style="--d:.42s">
-      <div class="total-reg-number" id="hero-total-count">০ জন</div>
-      <div class="total-reg-label">মোট নিবন্ধন (Verified)</div>
+      <div class="total-reg-number" id="hero-total-count">0</div>
+      <div class="total-reg-label">মোট নিবন্ধন</div>
     </div>
   </aside>
 
@@ -4590,45 +4590,47 @@ function updateSummary() {
   const pendCounts = type => pending.filter(r => r.type === type).length;
   const otherVerified = verified.filter(r => r.type === 'guest' || r.type === 'other').length;
   const otherPending = pending.filter(r => r.type === 'guest' || r.type === 'other').length;
-  const set = (id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  const set = (id,v)=>{const el=document.getElementById(id);if(el)el.textContent=toEnglishDigits(v);};
   set('total-count', verified.length);
   // Companion/child summary is restricted to VERIFIED participants only.
   // Pending registrations must never inflate the public/management totals.
-  const adultCompanions = verified.reduce((sum,r)=>sum + Math.max(0, Number(r.guestCount||0)), 0);
-  const childCompanions = verified.reduce((sum,r)=>sum + Math.max(0, Number(r.childCount||0)), 0);
-  const totalCompanionText = `(সাথে আসবেন প্রাপ্ত বয়স্ক ${toBanglaDigits(adultCompanions)} জন, শিশু ${toBanglaDigits(childCompanions)} জন)`;
-  const totalPendingEl=document.getElementById('total-pending'); if(totalPendingEl) totalPendingEl.innerHTML = totalCompanionText + (pending.length ? ` <span class="summary-pending">· ${toBanglaDigits(pending.length)} জন Pending</span>` : '');
-  set('alumni-count', counts('alumni'));
-  set('student-count', counts('student'));
-  set('teacher-count', counts('teacher'));
-  set('guest-count', otherVerified);
-  set('alumni-pending', pendCounts('alumni') ? `(Pending ${toBanglaDigits(pendCounts('alumni'))})` : '');
-  set('student-pending', pendCounts('student') ? `(Pending ${toBanglaDigits(pendCounts('student'))})` : '');
-  set('teacher-pending', pendCounts('teacher') ? `(Pending ${toBanglaDigits(pendCounts('teacher'))})` : '');
-  // Server-side totals are authoritative for Others/Guest companion counts.
-  // This prevents M/C from becoming 0 when an older Sheet has shifted columns.
   const toCount = v => {
     if (typeof v === 'number') return isFinite(v) ? Math.max(0, v) : 0;
     const s = String(v ?? '').trim().replace(/[০১২৩৪৫৬৭৮৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
     const n = Number(s);
     return isFinite(n) ? Math.max(0, n) : 0;
   };
+  const adultCompanions = cloudSummary && cloudSummary.adultCompanions != null
+    ? toCount(cloudSummary.adultCompanions)
+    : verified.reduce((sum,r)=>sum + Math.max(0, Number(r.guestCount||0)), 0);
+  const childCompanions = cloudSummary && cloudSummary.childCompanions != null
+    ? toCount(cloudSummary.childCompanions)
+    : verified.reduce((sum,r)=>sum + Math.max(0, Number(r.childCount||0)), 0);
+  const totalAttendees = verified.length + adultCompanions + childCompanions;
+  const totalPendingEl=document.getElementById('total-pending'); if(totalPendingEl) totalPendingEl.textContent = '';
+  set('total-count', totalAttendees);
+  set('alumni-count', counts('alumni'));
+  set('student-count', counts('student'));
+  set('teacher-count', counts('teacher'));
+  // All companions/children are displayed under Others.
+  set('guest-count', adultCompanions + childCompanions);
+  set('alumni-pending', pendCounts('alumni') ? `(Pending ${toBanglaDigits(pendCounts('alumni'))})` : '');
+  set('student-pending', pendCounts('student') ? `(Pending ${toBanglaDigits(pendCounts('student'))})` : '');
+  set('teacher-pending', pendCounts('teacher') ? `(Pending ${toBanglaDigits(pendCounts('teacher'))})` : '');
+  // Server-side totals are authoritative for Others/Guest companion counts.
+  // This prevents M/C from becoming 0 when an older Sheet has shifted columns.
   const serverOtherM = cloudSummary && cloudSummary.otherAdultCompanions != null ? toCount(cloudSummary.otherAdultCompanions) : null;
   const serverOtherC = cloudSummary && cloudSummary.otherChildCompanions != null ? toCount(cloudSummary.otherChildCompanions) : null;
   // All accompanying adults/children are presented under Others, because
   // companion participation/payment is integrated into the Others category.
   // This is intentionally independent of the registrant's own category.
-  const totalAdultCompanions = cloudSummary && cloudSummary.adultCompanions != null
-    ? toCount(cloudSummary.adultCompanions)
-    : verified.reduce((sum,r)=>sum + toCount(r.guestCount), 0);
-  const totalChildCompanions = cloudSummary && cloudSummary.childCompanions != null
-    ? toCount(cloudSummary.childCompanions)
-    : verified.reduce((sum,r)=>sum + toCount(r.childCount), 0);
+  const totalAdultCompanions = adultCompanions;
+  const totalChildCompanions = childCompanions;
   const otherAdultCompanions = totalAdultCompanions;
   const otherChildCompanions = totalChildCompanions;
-  set('guest-pending', `(M-${toBanglaDigits(otherAdultCompanions)}, C-${toBanglaDigits(otherChildCompanions)})` + (otherPending ? ` · Pending ${toBanglaDigits(otherPending)}` : ''));
+  set('guest-pending', `(M-${toEnglishDigits(otherAdultCompanions)}, C-${toEnglishDigits(otherChildCompanions)})`);
   const heroTotal=document.getElementById('hero-total-count');
-  if(heroTotal) heroTotal.innerHTML = `${toBanglaDigits(verified.length)} জন <small style="display:block;font-family:'Noto Sans Bengali',sans-serif;font-size:.68rem;font-weight:700;opacity:.78;margin-top:5px;">${pending.length ? `(Pending ${toBanglaDigits(pending.length)} জন)` : ''}</small>`;
+  if(heroTotal) heroTotal.textContent = toEnglishDigits(totalAttendees);
 }
 
 // ─── TABLE ───
