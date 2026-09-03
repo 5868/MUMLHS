@@ -3015,8 +3015,8 @@
         </div>
         <div class="form-row" id="companion-group" style="display:none">
           <div class="form-group">
-            <label>অতিথি সংখ্যা <small>(প্রতি জন ৫০০ টাকা)</small></label>
-            <input type="number" min="0" max="20" step="1" class="form-control" id="reg-guest-count" value="0" placeholder="অতিথি সংখ্যা">
+            <label>সাথে আসবেন এমন প্রাপ্তবয়স্ক/অতিথি সংখ্যা <small>(প্রতি জন ৭০০ টাকা)</small></label>
+            <input type="number" min="0" max="20" step="1" class="form-control" id="reg-guest-count" value="0" placeholder="প্রাপ্তবয়স্ক/অতিথি সংখ্যা">
           </div>
           <div class="form-group">
             <label>৫ বছরের নিচে শিশু <small>(ফ্রি)</small></label>
@@ -3144,8 +3144,8 @@
 
         <div class="payment-summary" id="payment-summary">
           <div class="payment-summary-title">💳 পেমেন্টের আগে আপনার মোট ফি দেখে নিন</div>
-          <div class="payment-summary-amount" id="payment-total">পরিচয় নির্বাচন ও অতিথি সংখ্যা জানালে মোট ফি দেখাবে</div>
-          <div class="payment-summary-note" id="payment-summary-note">পরিচয় ও অতিথি অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।</div>
+          <div class="payment-summary-amount" id="payment-total">পরিচয় নির্বাচন ও সাথে আসা প্রাপ্তবয়স্ক/অতিথির সংখ্যা জানালে মোট ফি দেখাবে</div>
+          <div class="payment-summary-note" id="payment-summary-note">পরিচয়, সাথে আসা প্রাপ্তবয়স্ক/অতিথি ও শিশুর সংখ্যা অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।</div>
         </div>
 
         <div class="payment-info-box payment-method-details" id="payment-method-details" style="display:none;margin:10px 0 14px;padding:14px 16px;border:1px solid rgba(192,57,43,.18);border-radius:14px;background:#fffafa;line-height:1.7;font-size:.86rem;">
@@ -4170,7 +4170,7 @@ function syncPermanentAddress() {
   });
 }
 const registrationFees = { alumni:700, student:300, teacher:700, guest:700, other:700 };
-const guestFee = 500;
+const guestFee = 700;
 const feeLabels = { alumni:'প্রাক্তন শিক্ষার্থী', student:'বর্তমান শিক্ষার্থী', teacher:'শিক্ষক/কর্মকর্তা', guest:'অতিথি', other:'অন্যান্য' };
 function formatBDT(n) { return `${Number(n).toLocaleString('en-US')} টাকা`; }
 function getCompanionCounts() {
@@ -4198,14 +4198,14 @@ function updateRegistrationFee() {
   branch.disabled = !isStudent; branch.required = false;
   if (!isStudent) { cls.value=''; branch.value=''; }
   companionGroup.style.display = type ? '' : 'none';
-  if (!type) { total.textContent='পরিচয় নির্বাচন করলে মোট ফি দেখাবে'; note.textContent='পরিচয় ও অতিথি অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।'; return; }
+  if (!type) { total.textContent='পরিচয় নির্বাচন করলে মোট ফি দেখাবে'; note.textContent='পরিচয়, সাথে আসা প্রাপ্তবয়স্ক/অতিথি ও শিশুর সংখ্যা অনুযায়ী রেজিস্ট্রেশন ফি গণনা হবে।'; return; }
   const baseFee = registrationFees[type] || 0;
   const { guests, children } = getCompanionCounts();
   const guestTotal = guests * guestFee;
   const grandTotal = baseFee + guestTotal;
   total.textContent = grandTotal === 0 ? 'ফ্রি (০ টাকা)' : formatBDT(grandTotal);
   let parts = [`${feeLabels[type]}: ${formatBDT(baseFee)}`];
-  if (guests) parts.push(`অতিথি ${guests} জন × ${formatBDT(guestFee)} = ${formatBDT(guestTotal)}`);
+  if (guests) parts.push(`সাথে আসা প্রাপ্তবয়স্ক/অতিথি ${guests} জন × ${formatBDT(guestFee)} = ${formatBDT(guestTotal)}`);
   if (children) parts.push(`৫ বছরের নিচে শিশু ${children} জন — ফ্রি`);
   note.textContent = parts.join(' + ') + ` — সর্বমোট: ${formatBDT(grandTotal)}`;
 }
@@ -4607,7 +4607,7 @@ function updateSummary() {
     ? toCount(cloudSummary.childCompanions)
     : verified.reduce((sum,r)=>sum + Math.max(0, Number(r.childCount||0)), 0);
   const totalAttendees = verified.length + adultCompanions + childCompanions;
-  const totalPendingEl=document.getElementById('total-pending'); if(totalPendingEl) totalPendingEl.textContent = '';
+  const totalPendingEl=document.getElementById('total-pending'); if(totalPendingEl) totalPendingEl.innerHTML = `সাথে আসা প্রাপ্তবয়স্ক: <strong>${toBanglaDigits(adultCompanions)} জন</strong> × ৳700 &nbsp;|&nbsp; শিশু: <strong>${toBanglaDigits(childCompanions)} জন</strong> (ফ্রি)`;
   set('total-count', totalAttendees);
   set('alumni-count', counts('alumni'));
   set('student-count', counts('student'));
@@ -5592,7 +5592,7 @@ function renderManagementStats() {
       return `${left} <span style="color:#16733a;font-size:.72rem;font-weight:800;">(Delivered ${delivered})</span>`;
     };
     foodEl.innerHTML = [
-      ['👕 T-Shirt & 🧢 Cap', `${toBanglaDigits(eligibleMain)} piece`, `${toBanglaDigits(Math.min(tshirtDelivered,capDelivered))} piece`],
+      ['👕 T-Shirt & 🧢 Cap', `${toBanglaDigits(eligibleMain)} piece <small style="display:block;color:#68736c;font-size:.64rem;">(নিবন্ধিত অংশগ্রহণকারী; সাথে আসা ব্যক্তিরা অন্তর্ভুক্ত নয়)</small>`, `${toBanglaDigits(Math.min(tshirtDelivered,capDelivered))} piece`],
       ['🍳 Breakfast', foodLine(breakfastAdultTotal, breakfastChildTotal, breakfastDelivered, breakfastChildDelivered), ''],
       ['🍱 Lunch', foodLine(breakfastAdultTotal, breakfastChildTotal, lunchDelivered, lunchChildDelivered), '']
     ].map(([label,total,del])=>`<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${total}${del ? ` <span style="color:#16733a;font-size:.72rem;font-weight:800;">(Delivered ${del})</span>` : ''}</div></div>`).join('');
