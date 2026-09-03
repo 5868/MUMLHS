@@ -4169,7 +4169,7 @@ function syncPermanentAddress() {
     document.getElementById(`reg-permanent-${k}`).value = document.getElementById(`reg-current-${k}`).value;
   });
 }
-const registrationFees = { alumni:700, student:300, teacher:500, guest:500, other:500 };
+const registrationFees = { alumni:700, student:300, teacher:700, guest:700, other:700 };
 const guestFee = 500;
 const feeLabels = { alumni:'প্রাক্তন শিক্ষার্থী', student:'বর্তমান শিক্ষার্থী', teacher:'শিক্ষক/কর্মকর্তা', guest:'অতিথি', other:'অন্যান্য' };
 function formatBDT(n) { return `${Number(n).toLocaleString('en-US')} টাকা`; }
@@ -5566,8 +5566,8 @@ function renderManagementStats() {
     const serverHasData = Number(summary.verified || 0) > 0;
     const verifiedCount = verified.length || (serverHasData ? Number(summary.verified)||0 : 0);
     const eligibleMain = verified.length
-      ? verified.filter(r=>['alumni','student'].includes(normType(r.type))).length
-      : money(summary.verifiedAlumni)+money(summary.verifiedStudent);
+      ? verified.filter(r=>['alumni','student','teacher','guest','other'].includes(normType(r.type))).length
+      : money(summary.verifiedAlumni)+money(summary.verifiedStudent)+money(summary.verifiedTeacher)+money(summary.verifiedGuest)+money(summary.verifiedOther);
 
     const adultCompanions = verified.length
       ? verified.reduce((n,r)=>n+Math.max(0,money(r.guestCount)),0)
@@ -6151,19 +6151,19 @@ async function renderVolunteerParticipant(p) {
 
   const statuses = p.distribution || {};
   const perms = p.permissions || volunteerPermissions || {};
-  const isStudent = ['alumni','student'].includes(String(p.type||''));
+  const isTshirtEligible = ['alumni','student','teacher','guest','other'].includes(String(p.type||''));
   const adultFoodQty = 1 + Math.max(0, Number(p.guestCount||0));
   const childFoodQty = Math.max(0, Number(p.childCount||0));
   const tshirtDone=!!statuses['T-Shirt'];
   const capDone=!!statuses['Cap'];
   const tshirtCapDone=tshirtDone && capDone;
-  setDistributionState('dist-tshirtcap', 'dist-tshirtcap-status', tshirtCapDone, !perms.tshirtCap || !isStudent);
+  setDistributionState('dist-tshirtcap', 'dist-tshirtcap-status', tshirtCapDone, !perms.tshirtCap || !isTshirtEligible);
   setDistributionState('dist-breakfast', 'dist-breakfast-status', statuses['Breakfast'], !perms.breakfast);
   setDistributionState('dist-lunch', 'dist-lunch-status', statuses['Lunch'], !perms.lunch);
   const ent = document.getElementById('vol-distribution-entitlement');
   if(ent){
     const parts=[];
-    if(isStudent && perms.tshirtCap) parts.push('👕 1 piece T-Shirt & Cap');
+    if(isTshirtEligible && perms.tshirtCap) parts.push('👕 1 piece T-Shirt & Cap');
     if(perms.breakfast) parts.push('🍳 '+toBanglaDigits(adultFoodQty)+' piece Breakfast'+(childFoodQty ? ', '+toBanglaDigits(childFoodQty)+' child packet' : ''));
     if(perms.lunch) parts.push('🍱 '+toBanglaDigits(adultFoodQty)+' piece Lunch'+(childFoodQty ? ', '+toBanglaDigits(childFoodQty)+' child packet' : ''));
     ent.innerHTML = parts.length ? 'প্রাপ্য: ' + parts.join(' & ') : 'এই Volunteer-এর জন্য কোনো অনুমোদিত item নেই।';
