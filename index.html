@@ -5577,6 +5577,8 @@ function renderManagementStats() {
       : money(summary.childCompanions);
 
     const breakfastAdultTotal = verifiedCount + adultCompanions;
+    // T-Shirt & Cap are eligible for everyone except children, including accompanying adults/guests.
+    const tshirtCapEligible = verifiedCount + adultCompanions;
     const breakfastChildTotal = childCompanions;
     const distributionLog = window._distributionSummary || {};
     const tshirtDelivered = money(distributionLog['T-Shirt']);
@@ -5592,7 +5594,7 @@ function renderManagementStats() {
       return `${left} <span style="color:#16733a;font-size:.72rem;font-weight:800;">(Delivered ${delivered})</span>`;
     };
     foodEl.innerHTML = [
-      ['👕 T-Shirt & 🧢 Cap', `${toBanglaDigits(eligibleMain)} piece <small style="display:block;color:#68736c;font-size:.64rem;">(নিবন্ধিত অংশগ্রহণকারী; সাথে আসা ব্যক্তিরা অন্তর্ভুক্ত নয়)</small>`, `${toBanglaDigits(Math.min(tshirtDelivered,capDelivered))} piece`],
+      ['👕 T-Shirt & 🧢 Cap', `${toBanglaDigits(tshirtCapEligible)} piece <small style="display:block;color:#68736c;font-size:.64rem;">(নিবন্ধিত অংশগ্রহণকারী + সাথে আসা প্রাপ্তবয়স্ক/অতিথি; ৫ বছরের নিচের শিশু বাদ)</small>`, `${toBanglaDigits(Math.min(tshirtDelivered,capDelivered))} piece`],
       ['🍳 Breakfast', foodLine(breakfastAdultTotal, breakfastChildTotal, breakfastDelivered, breakfastChildDelivered), ''],
       ['🍱 Lunch', foodLine(breakfastAdultTotal, breakfastChildTotal, lunchDelivered, lunchChildDelivered), '']
     ].map(([label,total,del])=>`<div class="mgmt-payment-cat"><div class="cat-name">${label}</div><div class="cat-value">${total}${del ? ` <span style="color:#16733a;font-size:.72rem;font-weight:800;">(Delivered ${del})</span>` : ''}</div></div>`).join('');
