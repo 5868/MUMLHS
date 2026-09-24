@@ -3620,6 +3620,7 @@
             <button class="vt-btn" id="btnTable" title="টেবিল ভিউ" onclick="setView('table',this)">☰</button>
           </div>
           <button class="btn-export" onclick="loadFromCloud(true)" style="margin-right:6px;" title="Sheets থেকে আপডেট করুন">🔄 রিফ্রেশ</button>
+          <button class="btn-export" onclick="updateAllExistingPhotoCards()" style="margin-right:6px;background:#173f76;color:#fff;" title="বর্তমান Photo-CARD.png template দিয়ে সব Verified Photo Card পুনরায় তৈরি করুন">♻️ Update All Photo Cards</button>
           <button class="btn-export" onclick="exportCSV()">⬇ CSV</button>
         </div>
         <!-- Card view -->
@@ -4960,7 +4961,8 @@ async function uploadIdCardToDrive(reg, imageData) {
       name: reg.name,
       phone: reg.phone,
       batch: toEnglishDigits(reg.batch || ''),
-      date: reg.date
+      date: reg.date,
+      replaceExisting: reg._replaceExisting === true
     };
     const res = await fetch(GAS_URL, {
       method: 'POST',
@@ -5291,7 +5293,7 @@ function buildPhotoCardCanvas(reg, done) {
     return new Promise(resolve=>{ const img=new Image(); img.crossOrigin='anonymous'; img.onload=()=>resolve(img); img.onerror=()=>resolve(null); img.src=src; });
   }
   function getTemplateSources(){
-    return ['images/school/Photo-CARD.png','./images/school/Photo-CARD.png'];
+    return ['images/School/Photo-CARD.png','./images/School/Photo-CARD.png'];
   }
   function fitText(text,maxWidth,startSize,minSize,weight,family){
     let size=startSize; while(size>minSize){ctx.font=`${weight} ${size}px ${family}`; if(ctx.measureText(String(text||'')).width<=maxWidth)return size; size--;} return minSize;
@@ -5344,7 +5346,7 @@ function downloadPhotoCard(reg, shouldDownload) {
   shouldDownload = (shouldDownload !== false);
   buildPhotoCardCanvas(reg, function(canvas) {
     if (!canvas) {
-      showToast('❌ Photo Card তৈরি করা যায়নি। images/school/Photo-CARD.png চেক করুন।', 'error');
+      showToast('❌ Photo Card তৈরি করা যায়নি। images/School/Photo-CARD.png চেক করুন।', 'error');
       return;
     }
     let data;
@@ -5363,6 +5365,41 @@ function downloadPhotoCard(reg, shouldDownload) {
       showToast('📥 Photo Card ডাউনলোড হচ্ছে!');
     }
   });
+}
+
+async function updateAllExistingPhotoCards(){
+  if (!isAdminUnlocked) { showToast('❌ Admin login required','error'); return; }
+  const verified = registrations.filter(r => r && r.uniqueId && String(r.paymentVerificationStatus||'').trim() === 'Verified');
+  if (!verified.length) { showToast('ℹ️ কোনো Verified registration পাওয়া যায়নি।','error'); return; }
+  const ok = confirm('বর্তমান Photo-CARD.png template দিয়ে '+verified.length+'টি Verified Photo Card নতুন করে তৈরি ও Drive-এ replace করা হবে।\n\nপুরোনো Photo Card file trash-এ যাবে। চালিয়ে যাবেন?');
+  if (!ok) return;
+
+  const btn = document.querySelector('button[onclick="updateAllExistingPhotoCards()"]');
+  const oldText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '♻️ Updating...'; }
+
+  let success = 0, failed = 0;
+  for (let i = 0; i < verified.length; i++) {
+    const r = verified[i];
+    try {
+      await new Promise(resolve => {
+        buildPhotoCardCanvas(r, async function(canvas){
+          if (!canvas) { failed++; resolve(); return; }
+          try {
+            const data = canvas.toDataURL('image/png');
+            const result = await uploadIdCardToDrive({...r, _driveKind:'photoCard', _replaceExisting:true}, data);
+            if (result && result.success) success++; else failed++;
+          } catch (e) { console.warn('Photo Card update failed:', r.uniqueId, e); failed++; }
+          resolve();
+        });
+      });
+    } catch (e) { failed++; console.warn('Photo Card update failed:', r.uniqueId, e); }
+    if (btn) btn.textContent = '♻️ Updating '+(i+1)+'/'+verified.length;
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = oldText || '♻️ Update All Photo Cards'; }
+  try { await loadFromCloud(true); } catch(e) {}
+  showToast('✅ Photo Card update complete — '+success+'টি updated'+(failed ? ', '+failed+'টি failed' : '')+'.', failed ? 'error' : 'success');
 }
 
 function renderTable() {
