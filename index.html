@@ -3928,6 +3928,9 @@ setInterval(updateCountdown, 1000);
 //  নিচের URL টা আপনার নিজের Script URL দিয়ে replace করুন
 // ═══════════════════════════════════════════════════
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbx2IKfYnYR5iTr5AxUdMPu0lG0ZhoSSRo6ymFnEqwm7wwmb_kmP4OOJMpIujAKA9Qst/exec';
+const MUMLHS_BUILD_ID = '2026-11-07-v2-uid-upload';
+console.info('[MUMLHS] build=' + MUMLHS_BUILD_ID + ' GAS=' + GAS_URL);
+fetch(GAS_URL + '?action=buildInfo&t=' + Date.now(), {cache:'no-store'}).then(r=>r.json()).then(x=>console.info('[MUMLHS] backend=',x)).catch(e=>console.warn('[MUMLHS] backend version check failed',e));
 // Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
 
 // ── Cloud mode ──
@@ -4454,7 +4457,7 @@ async function submitRegistration() {
    * New flow:
    *   1. Prepare the PDF locally.
    *   2. Trigger the local download immediately when possible.
-   *   3. Send PHOTO + PDF together in ONE Apps Script request.
+   *   3. Send PHOTO and PDF in separate Apps Script requests.
    *   4. Upload payment screenshot separately only when supplied.
    *
    * Even if browser download is blocked, cloud archival continues.
@@ -4482,73 +4485,76 @@ async function submitRegistration() {
     showToast('⚠️ PDF তৈরিতে সমস্যা হয়েছে।', 'error');
   }
 
-  // IMPORTANT: cloud archival is NOT conditional on successful browser download.
+  // Upload photo and PDF as separate requests. This avoids one oversized
+  // combined Base64 payload and isolates failures so one asset cannot block the other.
   if (USE_CLOUD) {
-    try {
-      showRegistrationProgress('ছবি ও Application PDF Google Drive-এ সংরক্ষণ হচ্ছে…');
-
-      const assetPayload = {
-        action: 'uploadRegistrationAssets',
-        uniqueId: reg.uniqueId,
-        phone: reg.phone,
-        name: reg.name,
-        photoData: reg.photo || '',
-        pdfData: pdfDataUrl || ''
-      };
-
-      let assetResult = null;
-      let lastAssetError = null;
-      // One safe retry: the server reuses files by deterministic filename and is idempotent.
-      for (let assetAttempt = 1; assetAttempt <= 4; assetAttempt++) {
+    showRegistrationProgress('ছবি ও Application PDF Google Drive-এ সংরক্ষণ হচ্ছে…');
+    const postJson = async (payload) => {
+      const response = await fetch(GAS_URL, {
+        method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify(payload), cache:'no-store'
+      });
+      const raw = await response.text();
+      let out;
+      try { out = JSON.parse(raw); }
+      catch (_) { throw new Error('Invalid Apps Script response: ' + raw.slice(0,220)); }
+      return out;
+    };
+    const retryUpload = async (label, payload) => {
+      let last = null;
+      for (let attempt=1; attempt<=3; attempt++) {
         try {
-          const assetRes = await fetch(GAS_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(assetPayload)
-          });
-          const assetRaw = await assetRes.text();
-          try { assetResult = JSON.parse(assetRaw); }
-          catch (_) { throw new Error('Apps Script returned invalid JSON: ' + assetRaw.slice(0,250)); }
-          if (assetResult && assetResult.success && assetResult.allSaved) break;
-          lastAssetError = new Error('Asset archive incomplete on attempt ' + assetAttempt);
-        } catch (assetErr) {
-          lastAssetError = assetErr;
-        }
-        if (assetAttempt < 4) await new Promise(resolve => setTimeout(resolve, 1200 * Math.pow(2, assetAttempt - 1)));
+          const out = await postJson(payload);
+          if (out && out.success === true) return out;
+          last = new Error(label + ': ' + ((out && (out.detail || out.error)) || 'server rejected upload'));
+          console.error('[MUMLHS upload]',label,'attempt',attempt,out);
+        } catch (err) { last = err; console.error('[MUMLHS upload]',label,'attempt',attempt,err); }
+        if (attempt<3) await new Promise(resolve=>setTimeout(resolve,1000*Math.pow(2,attempt-1)));
       }
-      if (!assetResult || assetResult.success !== true || assetResult.allSaved !== true) {
-        const detail = assetResult && (assetResult.detail || assetResult.error)
-          ? (assetResult.detail || assetResult.error)
-          : (lastAssetError && lastAssetError.message) || 'Drive did not confirm both files';
-        throw new Error('Drive archive incomplete after 4 attempts: ' + detail);
-      }
+      throw last || new Error(label + ' failed');
+    };
 
-      console.log('Registration asset archive:', assetResult);
-
-      if (assetResult && assetResult.photo && assetResult.photo.success) {
-        reg.photoUrl = assetResult.photo.url || reg.photoUrl || '';
-      } else if (assetResult && assetResult.photo && !assetResult.photo.skipped) {
-        console.error('Photo archive failed:', assetResult.photo);
-        showToast('⚠️ ছবি Google Drive-এ save হয়নি।', 'error');
+    const uploadResults = {photo:null,pdf:null};
+    if (reg.photo && reg.photo.indexOf('data:image/')===0) {
+      try {
+        uploadResults.photo = await retryUpload('Profile photo',{
+          action:'uploadRegistrationPhoto', uniqueId:reg.uniqueId, imageData:reg.photo
+        });
+        reg.photoUrl = uploadResults.photo.url || '';
+      } catch (err) {
+        uploadResults.photo = {success:false,error:String(err.message||err)};
+        showToast('⚠️ ছবি Drive-এ সংরক্ষণ হয়নি: '+(err.message||err),'error');
       }
-
-      if (assetResult && assetResult.pdf && assetResult.pdf.success) {
-        reg.applicationPdfUrl = assetResult.pdf.url || reg.applicationPdfUrl || '';
-      } else if (pdfDataUrl) {
-        console.error('Application PDF archive failed:', assetResult && assetResult.pdf);
-        showToast('⚠️ Application PDF Google Drive-এ save হয়নি।', 'error');
-      }
-
-      const ridx = registrations.findIndex(x => x.uniqueId === reg.uniqueId);
-      if (ridx >= 0) {
-        registrations[ridx].photoUrl = reg.photoUrl || '';
-        registrations[ridx].applicationPdfUrl = reg.applicationPdfUrl || '';
-        localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
-      }
-    } catch (err) {
-      console.error('Combined Drive archive failed:', err);
-      showToast('⚠️ Google Drive archive failed: ' + (err.message || err), 'error');
+    } else {
+      uploadResults.photo = {success:false,error:'missing_photo_data'};
     }
+
+    if (pdfDataUrl && pdfDataUrl.indexOf('data:application/pdf')===0) {
+      try {
+        uploadResults.pdf = await retryUpload('Application PDF',{
+          action:'uploadApplicationPDF', uniqueId:reg.uniqueId, name:reg.name, imageData:pdfDataUrl
+        });
+        reg.applicationPdfUrl = uploadResults.pdf.url || '';
+      } catch (err) {
+        uploadResults.pdf = {success:false,error:String(err.message||err)};
+        showToast('⚠️ Application PDF Drive-এ সংরক্ষণ হয়নি: '+(err.message||err),'error');
+      }
+    } else {
+      uploadResults.pdf = {success:false,error:'pdf_generation_failed'};
+    }
+
+    const ridx = registrations.findIndex(x => x.uniqueId === reg.uniqueId);
+    if (ridx >= 0) {
+      registrations[ridx].photoUrl = reg.photoUrl || '';
+      registrations[ridx].applicationPdfUrl = reg.applicationPdfUrl || '';
+      localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+    }
+    console.info('[MUMLHS] asset upload result',{
+      uniqueId:reg.uniqueId,
+      photoBytes:reg.photo ? Math.round(reg.photo.length*0.75) : 0,
+      pdfBytes:pdfDataUrl ? Math.round(pdfDataUrl.length*0.75) : 0,
+      photo:uploadResults.photo,pdf:uploadResults.pdf
+    });
 
     // Payment screenshot remains a separate, smaller request.
     if (reg.paymentScreenshot) {
