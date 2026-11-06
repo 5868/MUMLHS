@@ -4376,7 +4376,7 @@ async function submitRegistration() {
   }
 
   const batchForId = document.getElementById('reg-batch').value;
-  const uniqueId = generateUniqueId(batchForId, type);
+  let uniqueId = generateUniqueId(batchForId, type);
   const paymentMethodMap = { bkash:'বিকাশ', nagad:'নগদ', bank:'ব্যাংক ট্রান্সফার', office:'অফিসে পেমেন্ট/অন্যান্য' };
   const reg = {
     id: Date.now(),
@@ -4423,9 +4423,15 @@ async function submitRegistration() {
   // ☁️ Cloud এ save — server is authoritative for duplicate TxnID/phone checks.
   if (USE_CLOUD) {
     const cloudResult = await saveToCloud(reg);
-    if (!cloudResult || cloudResult.success !== true) {
+    if (!cloudResult || cloudResult.success !== true || !cloudResult.uniqueId) {
       return;
     }
+    // Server-issued ID is authoritative; keep all subsequent assets tied to it.
+    uniqueId = String(cloudResult.uniqueId);
+    reg.uniqueId = uniqueId;
+    const savedIndex = registrations.findIndex(r => r === reg || (r.id === reg.id && r.phone === reg.phone));
+    if (savedIndex >= 0) registrations[savedIndex].uniqueId = uniqueId;
+    localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
   }
 
   // Keep the in-memory registration intact until the assets have been prepared.
@@ -4476,21 +4482,33 @@ async function submitRegistration() {
       const assetPayload = {
         action: 'uploadRegistrationAssets',
         uniqueId: reg.uniqueId,
+        phone: reg.phone,
         name: reg.name,
         photoData: reg.photo || '',
         pdfData: pdfDataUrl || ''
       };
 
-      const assetRes = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(assetPayload)
-      });
-
-      const assetRaw = await assetRes.text();
       let assetResult = null;
-      try { assetResult = JSON.parse(assetRaw); }
-      catch (_) { throw new Error('Apps Script returned invalid JSON: ' + assetRaw.slice(0,250)); }
+      let lastAssetError = null;
+      // One safe retry: the server reuses files by deterministic filename and is idempotent.
+      for (let assetAttempt = 1; assetAttempt <= 2; assetAttempt++) {
+        try {
+          const assetRes = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(assetPayload)
+          });
+          const assetRaw = await assetRes.text();
+          try { assetResult = JSON.parse(assetRaw); }
+          catch (_) { throw new Error('Apps Script returned invalid JSON: ' + assetRaw.slice(0,250)); }
+          if (assetResult && assetResult.success && assetResult.allSaved) break;
+          lastAssetError = new Error('Asset archive incomplete on attempt ' + assetAttempt);
+        } catch (assetErr) {
+          lastAssetError = assetErr;
+        }
+        if (assetAttempt < 2) await new Promise(resolve => setTimeout(resolve, 1200));
+      }
+      if (!assetResult && lastAssetError) throw lastAssetError;
 
       console.log('Registration asset archive:', assetResult);
 
@@ -4874,6 +4892,7 @@ async function saveToCloud(reg) {
       }
       return result;
     }
+    if (result.uniqueId) reg.uniqueId = String(result.uniqueId);
     return result;
   } catch (err) {
     console.warn('Cloud save failed (data safe in localStorage):', err.message);
