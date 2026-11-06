@@ -4368,12 +4368,8 @@ async function submitRegistration() {
     return;
   }
 
-  const duplicate = registrations.find(r => r.phone === phoneClean);
-  if (duplicate) { showToast('এই মোবাইল নম্বরে ইতিমধ্যে নিবন্ধন হয়েছে!', 'error'); return; }
-  if (txnIdValue) {
-    const duplicateTxn = registrations.find(r => String(r.txnId || '').trim().toUpperCase() === txnIdValue.toUpperCase());
-    if (duplicateTxn) { showToast('এই TxnID ব্যবহার করে পূর্বে একবার পেমেন্ট করা হয়েছে।', 'error'); return; }
-  }
+  // Duplicate phone/TxnID validation is performed only by Google Sheets.
+  // localStorage is a display cache and must never block a new registration.
 
   const batchForId = document.getElementById('reg-batch').value;
   let uniqueId = generateUniqueId(batchForId, type);
@@ -4424,6 +4420,18 @@ async function submitRegistration() {
   if (USE_CLOUD) {
     const cloudResult = await saveToCloud(reg);
     if (!cloudResult || cloudResult.success !== true || !cloudResult.uniqueId) {
+      registrations = registrations.filter(r => r !== reg && !(r.id === reg.id && r.phone === reg.phone));
+      localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
+      updateBatchFilter();
+      renderTable();
+      renderManagementStats();
+      if (cloudResult && cloudResult.error === 'duplicate_phone') {
+        showToast('এই মোবাইল নম্বরে ইতিমধ্যে নিবন্ধন হয়েছে!', 'error');
+      } else if (cloudResult && cloudResult.error === 'duplicate_txnid') {
+        showToast('এই TxnID ব্যবহার করে পূর্বে একবার পেমেন্ট করা হয়েছে।', 'error');
+      } else if (!cloudResult || cloudResult.error === 'network_error') {
+        showToast('সার্ভারের সঙ্গে সংযোগ হয়নি। Google Sheet-এ registration নিশ্চিত না হওয়া পর্যন্ত আবার চেষ্টা করুন।', 'error');
+      }
       return;
     }
     // Server-issued ID is authoritative; keep all subsequent assets tied to it.
@@ -4491,7 +4499,7 @@ async function submitRegistration() {
       let assetResult = null;
       let lastAssetError = null;
       // One safe retry: the server reuses files by deterministic filename and is idempotent.
-      for (let assetAttempt = 1; assetAttempt <= 2; assetAttempt++) {
+      for (let assetAttempt = 1; assetAttempt <= 4; assetAttempt++) {
         try {
           const assetRes = await fetch(GAS_URL, {
             method: 'POST',
@@ -4506,9 +4514,14 @@ async function submitRegistration() {
         } catch (assetErr) {
           lastAssetError = assetErr;
         }
-        if (assetAttempt < 2) await new Promise(resolve => setTimeout(resolve, 1200));
+        if (assetAttempt < 4) await new Promise(resolve => setTimeout(resolve, 1200 * Math.pow(2, assetAttempt - 1)));
       }
-      if (!assetResult && lastAssetError) throw lastAssetError;
+      if (!assetResult || assetResult.success !== true || assetResult.allSaved !== true) {
+        const detail = assetResult && (assetResult.detail || assetResult.error)
+          ? (assetResult.detail || assetResult.error)
+          : (lastAssetError && lastAssetError.message) || 'Drive did not confirm both files';
+        throw new Error('Drive archive incomplete after 4 attempts: ' + detail);
+      }
 
       console.log('Registration asset archive:', assetResult);
 
@@ -4883,10 +4896,10 @@ async function saveToCloud(reg) {
     });
     const result = await response.json();
     if (!result.success) {
-      if (result.error === 'duplicate_txnid') {
-        registrations = registrations.filter(r => r.uniqueId !== reg.uniqueId);
-        localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
-        showToast('এই TxnID ব্যবহার করে পূর্বে একবার পেমেন্ট করা হয়েছে।', 'error');
+      if (result.error === 'duplicate_txnid' || result.error === 'duplicate_phone') {
+        showToast(result.error === 'duplicate_phone'
+          ? 'এই মোবাইল নম্বরে ইতিমধ্যে নিবন্ধন হয়েছে!'
+          : 'এই TxnID ব্যবহার করে পূর্বে একবার পেমেন্ট করা হয়েছে।', 'error');
       } else {
         showToast('❌ Registration save হয়নি: ' + (result.message || result.error || 'server error'), 'error');
       }
@@ -4895,7 +4908,9 @@ async function saveToCloud(reg) {
     if (result.uniqueId) reg.uniqueId = String(result.uniqueId);
     return result;
   } catch (err) {
-    console.warn('Cloud save failed (data safe in localStorage):', err.message);
+    console.warn('Cloud save failed:', err && err.message ? err.message : err);
+    // Do not leave an unconfirmed registration in the local cache as if it were real.
+    return { success:false, error:'network_error', detail:err && err.message ? err.message : String(err) };
   }
 }
 
