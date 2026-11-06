@@ -5143,7 +5143,7 @@ async function resolveCardPhotoSource(reg){
   return '';
 }
 
-async function downloadIdCard(reg, shouldDownload) {
+async function downloadIdCard(reg, shouldDownload, repairOptions) {
   shouldDownload = (shouldDownload !== false);
   if (!reg) return;
 
@@ -5290,7 +5290,8 @@ async function downloadIdCard(reg, shouldDownload) {
           }
           qrHost.remove();
           var cardDataUrl=canvas.toDataURL('image/jpeg',0.96);
-          uploadIdCardToDrive({...reg,_driveKind:'idcard'},cardDataUrl);
+          if (repairOptions && typeof repairOptions.onData === 'function') repairOptions.onData(cardDataUrl);
+          else if (!(repairOptions && repairOptions.noArchive)) uploadIdCardToDrive({...reg,_driveKind:'idcard'},cardDataUrl);
           if(shouldDownload){
             var link=document.createElement('a');
             link.download=(reg.uniqueId||'id_card')+'_card.jpg';
@@ -5303,7 +5304,8 @@ async function downloadIdCard(reg, shouldDownload) {
         },80);
       }catch(e){
         var cardDataUrl=canvas.toDataURL('image/jpeg',0.96);
-        uploadIdCardToDrive({...reg,_driveKind:'idcard'},cardDataUrl);
+        if (repairOptions && typeof repairOptions.onData === 'function') repairOptions.onData(cardDataUrl);
+        else if (!(repairOptions && repairOptions.noArchive)) uploadIdCardToDrive({...reg,_driveKind:'idcard'},cardDataUrl);
         if(shouldDownload){
           var link=document.createElement('a');
           link.download=(reg.uniqueId||'id_card')+'_card.jpg';
@@ -5381,7 +5383,7 @@ function buildPhotoCardCanvas(reg, done) {
     drawName(); drawParticipantType(); done(canvas);
   }).catch(err=>{console.error('Photo Card template rendering failed:',err);done(null);});
 }
-function downloadPhotoCard(reg, shouldDownload) {
+function downloadPhotoCard(reg, shouldDownload, repairOptions) {
   if (!reg) return;
   shouldDownload = (shouldDownload !== false);
   buildPhotoCardCanvas(reg, function(canvas) {
@@ -5396,7 +5398,8 @@ function downloadPhotoCard(reg, shouldDownload) {
       showToast('❌ Photo Card export করা যায়নি।', 'error');
       return;
     }
-    uploadIdCardToDrive({...reg, _driveKind:'photoCard'}, data);
+    if (repairOptions && typeof repairOptions.onData === 'function') repairOptions.onData(data);
+    else if (!(repairOptions && repairOptions.noArchive)) uploadIdCardToDrive({...reg, _driveKind:'photoCard'}, data);
     if (shouldDownload) {
       const a = document.createElement('a');
       a.download = (reg.uniqueId || 'photo_card') + '_photo-card.png';
@@ -5405,6 +5408,65 @@ function downloadPhotoCard(reg, shouldDownload) {
       showToast('📥 Photo Card ডাউনলোড হচ্ছে!');
     }
   });
+}
+
+async function repairParticipantDocuments(index){
+  if(!isAdminUnlocked){showToast('❌ Admin login required','error');return;}
+  const selected=window._renderedCardRecords && window._renderedCardRecords[index];
+  if(!selected || !selected.uniqueId){showToast('❌ Registration পাওয়া যায়নি।','error');return;}
+  const uid=String(selected.uniqueId).trim();
+  const ok=confirm('Event ID: '+uid+'\n\nএই ব্যক্তির Sheet PhotoURL (AG) ব্যবহার করে নতুন করে ID Card, Photocard ও Application PDF তৈরি হবে।\n\nতিনটি নতুন ফাইল ও Sheet Link যাচাই হওয়ার পরই পুরোনো ফাইল Trash হবে। চালিয়ে যাবেন?');
+  if(!ok)return;
+  const key=sessionStorage.getItem('muhs_admin_key')||'';
+  if(!key){showToast('❌ Admin login required','error');return;}
+  const card=document.querySelector('.person-card[data-card-index="'+index+'"]');
+  const btns=card?card.querySelectorAll('.person-card-download-btn'):[];
+  const repairBtn=btns.length?btns[btns.length-1]:null;
+  const oldText=repairBtn?repairBtn.textContent:'';
+  if(repairBtn){repairBtn.disabled=true;repairBtn.textContent='…';}
+  try{
+    // Read a fresh authenticated copy directly from Sheets; deliberately ignore stale local base64 photos.
+    const cloudResponse=await fetch(GAS_URL+'?action=getAll&key='+encodeURIComponent(key)+'&t='+Date.now(),{cache:'no-store'});
+    const cloudData=await cloudResponse.json();
+    if(!cloudData || cloudData.success!==true || !Array.isArray(cloudData.registrations)) throw new Error('Google Sheet থেকে Admin data refresh করা যায়নি।');
+    const fresh=cloudData.registrations.find(r=>String(r.uniqueId||'').trim()===uid);
+    if(!fresh)throw new Error('Sheet থেকে Registration পাওয়া যায়নি।');
+    const reg={...fresh,photo:'',photoUrl:String(fresh.photoUrl||'').trim()};
+    if(!extractDriveFileIdFromValue(reg.photoUrl))throw new Error('Google Sheet-এর AG / PhotoURL কলামে সঠিক Drive Photo Link নেই।');
+    const photoSource=await resolveCardPhotoSource(reg);
+    if(!photoSource)throw new Error('Sheet-এর PhotoURL থেকে ছবি লোড করা যায়নি। Drive sharing ও PhotoURL পরীক্ষা করুন।');
+    reg.photo=photoSource;
+
+    const idCardData=await new Promise((resolve,reject)=>{
+      let settled=false;
+      const timer=setTimeout(()=>{if(!settled){settled=true;reject(new Error('ID Card render timeout'));}},30000);
+      downloadIdCard(reg,false,{noArchive:true,onData:data=>{if(!settled){settled=true;clearTimeout(timer);resolve(data);}}});
+    });
+    const photoCardData=await new Promise((resolve,reject)=>{
+      let settled=false;
+      const timer=setTimeout(()=>{if(!settled){settled=true;reject(new Error('Photocard render timeout'));}},30000);
+      downloadPhotoCard(reg,false,{noArchive:true,onData:data=>{if(!settled){settled=true;clearTimeout(timer);resolve(data);}}});
+    });
+    const pdfBuilt=await buildApplicationPDFData(reg);
+    if(!idCardData || !photoCardData || !pdfBuilt || !pdfBuilt.dataUrl)throw new Error('তিনটি Document-এর সবগুলো তৈরি হয়নি।');
+
+    const response=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({
+      action:'adminRepairDocuments',adminKey:key,uniqueId:uid,
+      files:{idCard:idCardData,photoCard:photoCardData,applicationPdf:pdfBuilt.dataUrl}
+    })});
+    const result=await response.json();
+    if(!result || !result.success)throw new Error((result&& (result.message||result.detail||result.error))||'Server repair failed');
+    const ridx=registrations.findIndex(r=>String(r.uniqueId||'').trim()===uid);
+    if(ridx>=0){registrations[ridx].idCardUrl=result.idCardUrl;registrations[ridx].photoCardUrl=result.photoCardUrl;registrations[ridx].applicationPdfUrl=result.applicationPdfUrl;}
+    localStorage.setItem('muhs_registrations',JSON.stringify(registrations));
+    showToast('✅ '+uid+' — ID Card, Photocard ও Application PDF সফলভাবে Update হয়েছে।','success');
+    await loadFromCloud(true);
+  }catch(err){
+    console.error('Individual document repair failed:',uid,err);
+    showToast('❌ Repair ব্যর্থ: '+(err&&err.message?err.message:String(err)),'error');
+  }finally{
+    if(repairBtn){repairBtn.disabled=false;repairBtn.textContent=oldText||'♻️';}
+  }
 }
 
 async function updateAllExistingPhotoCards(){
@@ -5466,7 +5528,7 @@ function renderTable() {
       <div class="person-card photo-card-render" data-card-index="${i}">
         ${r.paymentVerificationStatus==='Verified' ? `<canvas class="person-card-canvas" id="photo-card-canvas-${i}"></canvas>` : `<div style="height:100%;min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(145deg,#f7faf7,#fffdf5);padding:24px;"><div style="width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff4d6;color:#9a6500;font-size:1.6rem;margin-bottom:12px;">💳</div><div style="font-weight:900;color:#0b3d2e;font-family:'Noto Serif Bengali',serif;font-size:1rem;">Waiting for Payment Verification</div><div style="margin-top:14px;display:grid;gap:6px;width:100%;font-size:.78rem;text-align:left;"><div><strong>ID:</strong> ${r.uniqueId||'—'}</div><div><strong>Name:</strong> ${r.name||'—'}</div><div><strong>Phone:</strong> ${r.phone||'—'}</div><div style="color:#9a6500;font-weight:900;"><strong>Pending Amount:</strong> ৳ ${Math.max(0,Number(r.autoCalculatedFee || r.totalFee || 0)-Number(r.receivedAmount||0)).toLocaleString('en-US')}</div></div></div>`}
         <div class="person-card-downloads">
-          ${r.paymentVerificationStatus==='Verified' ? `<button class="person-card-download-btn" title="Photo Card Download" onclick="event.stopPropagation();downloadPhotoCard(window._renderedCardRecords[${i}],true)">⬇</button><button class="person-card-download-btn" title="ID Card Download" onclick="event.stopPropagation();downloadIdCard(window._renderedCardRecords[${i}],true)">🪪</button>` : `<span style="font-size:.65rem;color:#9a6500;background:#fff4d6;padding:5px 8px;border-radius:8px;font-weight:800;">Payment Pending</span>`}
+          ${r.paymentVerificationStatus==='Verified' ? `<button class="person-card-download-btn" title="Photo Card Download" onclick="event.stopPropagation();downloadPhotoCard(window._renderedCardRecords[${i}],true)">⬇</button><button class="person-card-download-btn" title="ID Card Download" onclick="event.stopPropagation();downloadIdCard(window._renderedCardRecords[${i}],true)">🪪</button>${isAdminUnlocked ? `<button class="person-card-download-btn" style="background:#176b48;color:#fff;min-width:34px" title="Repair ID Card, Photo Card & Application PDF" onclick="event.stopPropagation();repairParticipantDocuments(${i})">♻️</button>` : ''}` : `<span style="font-size:.65rem;color:#9a6500;background:#fff4d6;padding:5px 8px;border-radius:8px;font-weight:800;">Payment Pending</span>`}
         </div>
       </div>`).join('');
     data.forEach((r,i)=>{
