@@ -3701,11 +3701,8 @@
           <div class="cm-toolbar" style="margin-top:16px">
             <input id="cm-search" type="search" placeholder="Main Event ID / Name / Mobile" oninput="renderCompanionMainList()">
             <select id="cm-filter" onchange="renderCompanionMainList()">
-              <option value="all">All Registrations</option>
-              <option value="with">With Companions</option>
-              <option value="without">Without Companions</option>
-              <option value="complete">Complete Companion Information</option>
-              <option value="incomplete">Incomplete Companion Information</option>
+              <option value="complete">Complete Companion</option>
+              <option value="incomplete" selected>Incomplete Companion</option>
             </select>
             <button class="cm-action cm-primary" onclick="loadCompanionAdmin()">Search / Refresh</button>
           </div>
@@ -7079,8 +7076,30 @@ let cmMains=[], cmCompanions=[], cmSelectedMain=null, cmEditingCompanion=null;
 async function companionAdminPost(payload){
   const key=sessionStorage.getItem('muhs_admin_key')||'';
   if(!key) throw new Error('Admin login required');
-  const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,adminKey:key})});
-  return await res.json();
+  // Apps Script POST redirects can fail CORS in some browsers. Submit through a
+  // hidden same-origin form target and receive the authenticated result by postMessage.
+  const requestId='cm_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+  let frame=document.getElementById('cm-api-frame');
+  if(!frame){frame=document.createElement('iframe');frame.id='cm-api-frame';frame.name='cm-api-frame';frame.style.display='none';document.body.appendChild(frame);}
+  return await new Promise((resolve,reject)=>{
+    let settled=false;
+    const cleanup=()=>{window.removeEventListener('message',onMessage);form.remove();clearTimeout(timer);};
+    const finish=(fn,value)=>{if(settled)return;settled=true;cleanup();fn(value);};
+    const onMessage=e=>{
+      const d=e.data||{};
+      if(d.__muhsAdminResponse===true&&d.requestId===requestId){
+        let result=d.payload;
+        if(typeof result==='string'){try{result=JSON.parse(result);}catch(_){return finish(reject,new Error('Invalid Apps Script response'));}}
+        finish(resolve,result||{success:false,error:'empty_response'});
+      }
+    };
+    window.addEventListener('message',onMessage);
+    const timer=setTimeout(()=>finish(reject,new Error('Apps Script response timeout. Deployment ও access check করুন।')),120000);
+    const form=document.createElement('form');form.method='POST';form.action=GAS_URL;form.target='cm-api-frame';form.style.display='none';
+    const fields={action:payload.action,responseMode:'postMessage',requestId,adminKey:key,payload:JSON.stringify(payload)};
+    Object.keys(fields).forEach(k=>{const input=document.createElement('input');input.type='hidden';input.name=k;input.value=String(fields[k]);form.appendChild(input);});
+    document.body.appendChild(form);form.submit();
+  });
 }
 async function loadCompanionAdmin(){
   if(!isAdminUnlocked){showToast('Admin login required','error');return;}
@@ -7096,20 +7115,23 @@ async function loadCompanionAdmin(){
 }
 function cmForMain(id){return cmCompanions.filter(c=>String(c.groupEventId||'')===String(id||''));}
 function cmComplete(c){return !!(String(c.name||'').trim()&&String(c.tshirtSize||'').trim()&&String(c.bloodGroup||'').trim()&&(String(c.photoUrl||'').trim()||c.photoOptOut));}
+function cmExpectedCount(m,cs){const declared=Math.max(0,Number(m.guestCount)||0)+Math.max(0,Number(m.childCount)||0);return Math.max(declared,cs.length);}
+function cmIsComplete(m,cs){const expected=cmExpectedCount(m,cs);return expected>0&&cs.length>=expected&&cs.every(cmComplete);}
 function renderCompanionMainList(){
   const host=document.getElementById('cm-main-results');if(!host)return;
   const q=String(document.getElementById('cm-search')?.value||'').trim().toLowerCase();
-  const f=document.getElementById('cm-filter')?.value||'all';
+  const f=document.getElementById('cm-filter')?.value||'incomplete';
   const rows=cmMains.filter(m=>{
-    const cs=cmForMain(m.uniqueId), complete=cs.filter(cmComplete).length;
+    const cs=cmForMain(m.uniqueId), expected=cmExpectedCount(m,cs);
     const match=!q||[m.uniqueId,m.name,m.phone].some(v=>String(v||'').toLowerCase().includes(q));
-    const filter=f==='with'?cs.length>0:f==='without'?cs.length===0:f==='complete'?cs.length>0&&complete===cs.length:f==='incomplete'?cs.length>complete:true;
-    return match&&filter;
+    const eligible=expected>0;
+    const complete=cmIsComplete(m,cs);
+    return eligible&&match&&(f==='complete'?complete:!complete);
   });
-  if(!rows.length){host.innerHTML='<div style="padding:12px;color:#718078">কোনো Main Registrant পাওয়া যায়নি।</div>';return;}
+  if(!rows.length){host.innerHTML='<div style="padding:12px;color:#718078">এই Filter-এ কোনো Main Registrant পাওয়া যায়নি।</div>';return;}
   host.innerHTML=rows.map(m=>{
-    const cs=cmForMain(m.uniqueId), done=cs.filter(cmComplete).length;
-    return `<button class="cm-main-card ${cmSelectedMain&&cmSelectedMain.uniqueId===m.uniqueId?'active':''}" onclick="selectCompanionMain('${escapeJs(m.uniqueId)}')"><strong>${escapeHtml(m.name||'—')}</strong><small>${escapeHtml(m.uniqueId)} · ${escapeHtml(m.phone||'')}</small><small>${cs.length} Companion · ${done}/${cs.length} Complete</small></button>`;
+    const cs=cmForMain(m.uniqueId), expected=cmExpectedCount(m,cs), done=cs.filter(cmComplete).length;
+    return `<button class="cm-main-card ${cmSelectedMain&&cmSelectedMain.uniqueId===m.uniqueId?'active':''}" onclick="selectCompanionMain('${escapeJs(m.uniqueId)}')"><strong>${escapeHtml(m.name||'—')}</strong><small>${escapeHtml(m.uniqueId)} · ${escapeHtml(m.phone||'')}</small><small>Guest: ${Number(m.guestCount)||0} · Child: ${Number(m.childCount)||0} · Companion Rows: ${cs.length}/${expected}</small><small>${done}/${expected} Complete</small></button>`;
   }).join('');
 }
 function selectCompanionMain(id){
@@ -7121,7 +7143,8 @@ function renderSelectedCompanions(){
   if(!cmSelectedMain){area.style.display='none';return;}
   area.style.display='block';
   const cs=cmForMain(cmSelectedMain.uniqueId).sort((a,b)=>(a.companionSequence||0)-(b.companionSequence||0));
-  summary.innerHTML=`<div><strong>${escapeHtml(cmSelectedMain.name)}</strong><div style="font-size:.8rem;color:#53645a">${escapeHtml(cmSelectedMain.uniqueId)} · ${escapeHtml(cmSelectedMain.phone||'')}</div></div><div><strong>${cs.length} Companions</strong><div style="font-size:.78rem;color:#53645a">Main registrant payment status: ${escapeHtml(cmSelectedMain.paymentVerificationStatus||'—')}</div></div>`;
+  const expected=cmExpectedCount(cmSelectedMain,cs);
+  summary.innerHTML=`<div><strong>${escapeHtml(cmSelectedMain.name)}</strong><div style="font-size:.8rem;color:#53645a">${escapeHtml(cmSelectedMain.uniqueId)} · ${escapeHtml(cmSelectedMain.phone||'')}</div><div style="font-size:.78rem;color:#53645a">Guest: ${Number(cmSelectedMain.guestCount)||0} · Child: ${Number(cmSelectedMain.childCount)||0}</div></div><div><strong>${cs.length}/${expected} Companion Records</strong><div style="font-size:.78rem;color:#53645a">Main registrant payment status: ${escapeHtml(cmSelectedMain.paymentVerificationStatus||'—')}</div></div>`;
   if(!cs.length){body.innerHTML='<tr><td colspan="9" style="text-align:center;padding:22px;color:#718078">এই Main Registrant-এর কোনো Companion নেই। Add New Companion চাপুন।</td></tr>';return;}
   body.innerHTML=cs.map((c,i)=>{
     const complete=cmComplete(c), photo=c.photoUrl?`<img class="cm-avatar" src="${escapeHtml(c.photoUrl)}" alt="Photo">`:(c.photoOptOut?'<span>Opted out</span>':'<span style="color:#a66">Missing</span>');
