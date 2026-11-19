@@ -3023,6 +3023,11 @@
             <input type="number" min="0" max="20" step="1" class="form-control" id="reg-child-count" value="0" placeholder="শিশুর সংখ্যা">
           </div>
         </div>
+        <div id="companion-profiles" class="form-group" style="display:none;margin:14px 0;padding:16px;border:1px solid #dce8df;border-radius:16px;background:#f8fbf8">
+          <div style="font-weight:900;color:#0b3d2e;margin-bottom:6px">👥 Companion Details</div>
+          <div style="font-size:.78rem;color:#64756a;margin-bottom:12px">উপরের প্রাপ্তবয়স্ক ও শিশুর সংখ্যার ভিত্তিতে প্রত্যেকের আলাদা তথ্য দিন। প্রত্যেকের নিজস্ব Event ID ও Card তৈরি হবে।</div>
+          <div id="companion-profile-list"></div>
+        </div>
 
         <div class="form-group" id="batch-group">
           <label>ব্যাচ/পাসের সাল <span style="color:var(--red)">*</span></label>
@@ -4182,6 +4187,69 @@ function getCompanionCounts() {
   const children = Math.max(0, parseInt(document.getElementById('reg-child-count')?.value || '0', 10) || 0);
   return { guests, children };
 }
+function companionPhotoToDataUrl(input) {
+  return new Promise((resolve,reject) => {
+    const file = input && input.files && input.files[0];
+    if (!file) return resolve('');
+    if (!file.type.startsWith('image/')) return reject(new Error('ছবি ফাইল নির্বাচন করুন।'));
+    if (file.size > 4 * 1024 * 1024) return reject(new Error('প্রতিটি companion-এর ছবি ৪ MB-এর মধ্যে হতে হবে।'));
+    const reader = new FileReader();
+    reader.onload = e => resolve(String(e.target.result || ''));
+    reader.onerror = () => reject(new Error('ছবি পড়া যায়নি।'));
+    reader.readAsDataURL(file);
+  });
+}
+function renderCompanionProfiles() {
+  const host = document.getElementById('companion-profile-list');
+  const wrap = document.getElementById('companion-profiles');
+  if (!host || !wrap) return;
+  const {guests,children} = getCompanionCounts();
+  const total = guests + children;
+  wrap.style.display = total ? '' : 'none';
+  if (!total) { host.innerHTML=''; return; }
+  const old = Array.from(host.querySelectorAll('.companion-profile')).map(el => ({
+    name:el.querySelector('[data-c-name]')?.value || '',
+    type:el.querySelector('[data-c-type]')?.value || '',
+    dob:el.querySelector('[data-c-dob]')?.value || '',
+    blood:el.querySelector('[data-c-blood]')?.value || '',
+    tshirt:el.querySelector('[data-c-shirt]')?.value || ''
+  }));
+  const bloodOpts=['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+  const shirtOpts=['S','M','L','XL','XXL','XXXL'];
+  let html='';
+  for(let i=0;i<total;i++){
+    const child=i>=guests;
+    const prev=old[i]||{};
+    html += `<div class="companion-profile" data-companion-index="${i}" style="padding:14px;margin:10px 0;border:1px solid #e1e9e2;border-radius:13px;background:#fff">
+      <div style="font-weight:850;color:#173f2c;margin-bottom:10px">${child?'শিশু':'প্রাপ্তবয়স্ক/অতিথি'} ${child?i-guests+1:i+1}</div>
+      <div class="form-row">
+        <div class="form-group"><label>পূর্ণ নাম *</label><input class="form-control" data-c-name value="${escapeHtmlSafe(prev.name||'')}" placeholder="Companion-এর নাম"></div>
+        <div class="form-group"><label>Registration Category *</label><select class="form-control" data-c-type>
+          <option value="">নির্বাচন করুন</option><option value="alumni" ${prev.type==='alumni'?'selected':''}>প্রাক্তন শিক্ষার্থী</option>
+          <option value="student" ${prev.type==='student'?'selected':''}>বর্তমান শিক্ষার্থী</option><option value="teacher" ${prev.type==='teacher'?'selected':''}>শিক্ষক/কর্মকর্তা</option><option value="guest" ${prev.type==='guest'?'selected':''}>অতিথি</option><option value="other" ${prev.type==='other'?'selected':''}>অন্যান্য</option>
+        </select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Date of Birth *</label><input type="date" class="form-control" data-c-dob value="${prev.dob||''}"></div>
+        <div class="form-group"><label>Blood Group *</label><select class="form-control" data-c-blood><option value="">Select</option>${bloodOpts.map(v=>`<option ${prev.blood===v?'selected':''}>${v}</option>`).join('')}</select></div>
+        <div class="form-group"><label>T-Shirt Size *</label><select class="form-control" data-c-shirt><option value="">Select</option>${shirtOpts.map(v=>`<option ${prev.tshirt===v?'selected':''}>${v}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-group"><label>Photograph *</label><input type="file" accept="image/*" class="form-control" data-c-photo><small style="color:#718076">সর্বোচ্চ ৪ MB; পরিষ্কার মুখের ছবি দিন।</small></div>
+    </div>`;
+  }
+  host.innerHTML=html;
+}
+function collectCompanionProfiles() {
+  return Array.from(document.querySelectorAll('#companion-profile-list .companion-profile')).map((el,i)=>({
+    sequence:i+1,
+    name:el.querySelector('[data-c-name]').value.trim(),
+    type:el.querySelector('[data-c-type]').value,
+    dob:el.querySelector('[data-c-dob]').value,
+    bloodGroup:el.querySelector('[data-c-blood]').value,
+    tshirtSize:el.querySelector('[data-c-shirt]').value,
+    photoInput:el.querySelector('[data-c-photo]')
+  }));
+}
 function updateRegistrationFee() {
   const type = document.getElementById('reg-type').value;
   const batchGroup = document.getElementById('batch-group');
@@ -4216,7 +4284,8 @@ function updateRegistrationFee() {
 document.addEventListener('DOMContentLoaded', () => {
   const typeEl = document.getElementById('reg-type');
   if (typeEl) { typeEl.addEventListener('change', updateRegistrationFee); updateRegistrationFee(); }
-  ['reg-guest-count','reg-child-count'].forEach(id => { const el=document.getElementById(id); if(el) el.addEventListener('input', updateRegistrationFee); });
+  ['reg-guest-count','reg-child-count'].forEach(id => { const el=document.getElementById(id); if(el) el.addEventListener('input', () => { updateRegistrationFee(); renderCompanionProfiles(); }); });
+  renderCompanionProfiles();
   ['reg-current-village','reg-current-post','reg-current-upazila','reg-current-district'].forEach(id => {
     const el=document.getElementById(id); if(el) el.addEventListener('input', syncPermanentAddress);
   });
@@ -4358,7 +4427,17 @@ async function submitRegistration() {
   if (type !== 'alumni' && batch) { showToast('ব্যাচ শুধু প্রাক্তন শিক্ষার্থীদের জন্য প্রযোজ্য।', 'error'); return; }
   if (type === 'student' && !cls) { showToast('বর্তমান শিক্ষার্থীর ক্লাস নির্বাচন করুন।', 'error'); return; }
   const { guests, children } = getCompanionCounts();
-  if (!Number.isInteger(guests) || guests < 0 || !Number.isInteger(children) || children < 0) { showToast('অতিথি ও শিশুর সংখ্যা সঠিকভাবে দিন।', 'error'); return; }
+  if (!Number.isInteger(guests) || guests < 0 || !Number.isInteger(children) || children < 0 || guests+children>40) { showToast('অতিথি ও শিশুর সংখ্যা সঠিকভাবে দিন (সর্বোচ্চ ৪০ জন)।', 'error'); return; }
+  const companionProfiles = collectCompanionProfiles();
+  if (companionProfiles.length !== guests+children) { showToast('Companion details তৈরি করা যায়নি। সংখ্যা আবার দিন।', 'error'); return; }
+  for (let i=0;i<companionProfiles.length;i++) {
+    const c=companionProfiles[i];
+    if (!c.name || !c.type || !c.dob || !c.bloodGroup || !c.tshirtSize || !c.photoInput.files.length) {
+      showToast(`Companion ${i+1}: সব তথ্য ও ছবি পূরণ করুন।`, 'error');
+      c.photoInput.closest('.companion-profile').scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
+  }
   const paymentMethodEl = document.querySelector('input[name="payment-method"]:checked');
   if (!paymentMethodEl) { showToast('পেমেন্ট মাধ্যম নির্বাচন করুন।', 'error'); return; }
 
@@ -4403,6 +4482,7 @@ async function submitRegistration() {
     permanentAddress: getAddress('permanent'),
     guestCount: guests,
     childCount: children,
+    companions: companionProfiles.map(c=>({sequence:c.sequence,name:c.name,type:c.type,dob:c.dob,bloodGroup:c.bloodGroup,tshirtSize:c.tshirtSize})),
     totalFee: (registrationFees[type] || 0) + (guests * guestFee),
     paymentMethod: paymentMethodMap[paymentMethodEl.value] || paymentMethodEl.value,
     txnId: txnIdValue,
@@ -4555,6 +4635,24 @@ async function submitRegistration() {
       pdfBytes:pdfDataUrl ? Math.round(pdfDataUrl.length*0.75) : 0,
       photo:uploadResults.photo,pdf:uploadResults.pdf
     });
+
+    // Companion profile photos are uploaded independently to avoid oversized registration requests.
+    if (Array.isArray(reg.companions) && reg.companions.length) {
+      const profiles = collectCompanionProfiles();
+      for (let i=0;i<reg.companions.length;i++) {
+        try {
+          const imageData = await companionPhotoToDataUrl(profiles[i].photoInput);
+          const companionUpload = await retryUpload('Companion photo',{
+            action:'uploadCompanionPhoto', groupId:reg.uniqueId, sequence:i+1, imageData
+          });
+          reg.companions[i].photoUrl = companionUpload.url || '';
+          reg.companions[i].uniqueId = companionUpload.uniqueId || '';
+        } catch (err) {
+          console.error('Companion photo upload failed',i+1,err);
+          showToast(`⚠️ Companion ${i+1}-এর ছবি Drive-এ সংরক্ষণ হয়নি। Admin-এর সঙ্গে যোগাযোগ করুন।`,'error');
+        }
+      }
+    }
 
     // Payment screenshot remains a separate, smaller request.
     if (reg.paymentScreenshot) {
@@ -4843,6 +4941,19 @@ async function lookupRegistrationForDownload(retryAttempt = 0) {
     }
 
     window._lookupCardParticipant = cardReg;
+    const companions = Array.isArray(p.companions) ? p.companions : [];
+    window._lookupGroupCompanions = companions.map(c => ({
+      ...c,
+      type:String(c.type || 'other').toLowerCase(),
+      phone:String(p.phone || ''),
+      batch:'',
+      studentClass:'',
+      branch:'',
+      bloodGroup:String(c.bloodGroup || ''),
+      tshirtSize:String(c.tshirtSize || ''),
+      photoUrl:String(c.photoUrl || ''),
+      paymentVerificationStatus:String(c.paymentVerificationStatus || p.paymentVerificationStatus || '')
+    }));
 
     resultEl.innerHTML = `
       <div class="lookup-result-card verified">
@@ -4857,6 +4968,11 @@ async function lookupRegistrationForDownload(retryAttempt = 0) {
           <button type="button" class="lookup-download-btn" onclick="downloadLookupEventIdCard()">🪪 Download Event ID Card</button>
           <button type="button" class="lookup-download-btn secondary" onclick="downloadLookupPhotoCard()">📸 Download Photo Card</button>
         </div>
+        ${companions.length ? `<div style="margin-top:18px;font-weight:900;color:#173f2c">👥 Companion Cards (${companions.length})</div>
+          ${companions.map((c,i)=>`<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px;margin-top:9px;border:1px solid #e0e8e1;border-radius:12px;background:#fff">
+            <div><strong>${escapeHtmlSafe(c.name||'Companion')}</strong><div style="font-size:.72rem;color:#718076">Event ID: ${escapeHtmlSafe(c.uniqueId||'')} · ${escapeHtmlSafe(({alumni:'প্রাক্তন শিক্ষার্থী',student:'বর্তমান শিক্ষার্থী',teacher:'শিক্ষক/কর্মকর্তা',guest:'অতিথি',other:'অন্যান্য'})[String(c.type||'').toLowerCase()]||c.type||'')}</div></div>
+            <div style="display:flex;gap:7px"><button type="button" class="lookup-download-btn" style="width:auto;margin:0;padding:9px 11px" onclick="downloadLookupCompanionCard(${i},'id')">🪪 ID Card</button><button type="button" class="lookup-download-btn secondary" style="width:auto;margin:0;padding:9px 11px" onclick="downloadLookupCompanionCard(${i},'photo')">📸 Photo Card</button></div>
+          </div>`).join('')}` : ''}
       </div>`;
 
     // Pre-fetch the registered photo into browser memory. This makes the actual
@@ -4886,6 +5002,21 @@ function downloadLookupPhotoCard(){
   const reg = window._lookupCardParticipant;
   if (!reg) { showToast('আগে Event ID দিয়ে যাচাই করুন।','error'); return; }
   downloadPhotoCard(reg, true);
+}
+async function downloadLookupCompanionCard(index, kind) {
+  const list=window._lookupGroupCompanions||[];
+  const reg=list[index];
+  if(!reg) { showToast('Companion তথ্য পাওয়া যায়নি।','error'); return; }
+  if(String(reg.paymentVerificationStatus||'')!=='Verified') { showToast('Group payment এখনও verified নয়।','error'); return; }
+  try {
+    const photo=await resolveCardPhotoSource(reg);
+    if(photo) reg.photo=photo;
+    if(kind==='id') downloadIdCard(reg,true);
+    else downloadPhotoCard(reg,true);
+  } catch(err) {
+    console.error('Companion card generation failed',err);
+    showToast('Companion card তৈরি করা যায়নি। ছবি সংরক্ষণ যাচাই করুন।','error');
+  }
 }
 
 // ─── SAVE TO GOOGLE SHEETS ───
