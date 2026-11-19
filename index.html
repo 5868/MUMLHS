@@ -2598,6 +2598,37 @@
     color:#a40000 !important;
   }
 
+
+/* Companion Management */
+.cm-wrap{padding:18px;background:#f8faf8;border:1px solid #e0e8e1;border-radius:16px;margin-top:12px}
+.cm-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 230px auto;gap:10px;margin-bottom:14px}
+.cm-toolbar input,.cm-toolbar select,.cm-field input,.cm-field select{width:100%;padding:11px 12px;border:1px solid #d7e0d9;border-radius:9px;background:#fff;color:#24342a}
+.cm-main-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin:12px 0}
+.cm-main-card{border:1px solid #dce5de;background:#fff;border-radius:12px;padding:13px;text-align:left;cursor:pointer}
+.cm-main-card.active{border:2px solid #173f76;background:#f2f6fb}
+.cm-main-card strong{display:block;color:#173f76;font-size:.95rem}
+.cm-main-card small{display:block;color:#68766d;margin-top:4px}
+.cm-selected{padding:14px;border-radius:12px;background:#eef4f0;margin:12px 0;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cm-table-wrap{overflow:auto;background:#fff;border:1px solid #e1e7e2;border-radius:12px}
+.cm-table{width:100%;border-collapse:collapse;min-width:760px}
+.cm-table th,.cm-table td{padding:10px;border-bottom:1px solid #edf0ed;text-align:left;font-size:.82rem}
+.cm-table th{background:#173f76;color:#fff}
+.cm-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#edf0ed}
+.cm-status{font-size:.74rem;font-weight:800;padding:4px 8px;border-radius:20px;background:#edf4ee;color:#24633d;white-space:nowrap}
+.cm-status.warn{background:#fff3dc;color:#8a5b00}
+.cm-action{border:1px solid #d4ded6;background:#fff;border-radius:8px;padding:7px 11px;cursor:pointer;font-weight:700}
+.cm-primary{background:#173f76;color:#fff;border-color:#173f76}
+.cm-modal{position:fixed;inset:0;background:rgba(10,25,18,.58);z-index:99999;display:none;align-items:center;justify-content:center;padding:16px}
+.cm-modal.open{display:flex}
+.cm-dialog{width:min(620px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 20px 70px #0003}
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cm-field label{display:block;font-size:.8rem;font-weight:800;color:#35463a;margin-bottom:5px}
+.cm-field input[type=file]{padding:8px}
+.cm-photo-row{display:flex;align-items:center;gap:12px;margin:10px 0}
+.cm-photo-row img{width:64px;height:64px;object-fit:cover;border-radius:12px;background:#eef1ee}
+.cm-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
+@media(max-width:650px){.cm-toolbar,.cm-grid{grid-template-columns:1fr}.cm-wrap{padding:12px}.cm-dialog{padding:15px}}
+
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -3605,6 +3636,7 @@
         <button class="mgmt-tab" onclick="switchTab('teacher', this)">শিক্ষক</button>
         <button class="mgmt-tab" onclick="switchTab('guest', this)">অতিথি</button>
         <button class="mgmt-tab" onclick="switchTab('volunteers', this)">🛡️ ভলান্টিয়ার</button>
+        <button class="mgmt-tab" onclick="switchTab('companions', this)">👥 Companion Management</button>
       </div>
 
       <!-- Panel -->
@@ -3659,6 +3691,54 @@
         </div><!-- /table-view -->
       </div>
     
+
+      <div class="mgmt-panel" id="panel-companions">
+        <div class="cm-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <div><h3 style="margin:0;color:var(--deep-green)">👥 Companion Management</h3><p style="margin:4px 0 0;color:#68736c;font-size:.82rem">একই Registrations Sheet-এ Companion-এর তথ্য পরিচালনা করুন।</p></div>
+            <button class="btn-export" onclick="loadCompanionAdmin()">🔄 Refresh</button>
+          </div>
+          <div class="cm-toolbar" style="margin-top:16px">
+            <input id="cm-search" type="search" placeholder="Main Event ID / Name / Mobile" oninput="renderCompanionMainList()">
+            <select id="cm-filter" onchange="renderCompanionMainList()">
+              <option value="all">All Registrations</option>
+              <option value="with">With Companions</option>
+              <option value="without">Without Companions</option>
+              <option value="complete">Complete Companion Information</option>
+              <option value="incomplete">Incomplete Companion Information</option>
+            </select>
+            <button class="cm-action cm-primary" onclick="loadCompanionAdmin()">Search / Refresh</button>
+          </div>
+          <div id="cm-main-results" class="cm-main-results"><div style="color:#718078">Admin tab খুললে তালিকা লোড হবে।</div></div>
+          <div id="cm-companion-area" style="display:none">
+            <div id="cm-selected-main" class="cm-selected"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0">
+              <strong style="color:#173f76">Companion List</strong>
+              <button class="cm-action cm-primary" onclick="openCompanionEditor(null)">＋ Add New Companion</button>
+            </div>
+            <div class="cm-table-wrap"><table class="cm-table">
+              <thead><tr><th>#</th><th>Companion Event ID</th><th>Name</th><th>Photo</th><th>Date of Birth</th><th>Blood</th><th>T-Shirt</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="cm-companion-body"><tr><td colspan="9">একজন Main Registrant নির্বাচন করুন।</td></tr></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+      <div class="cm-modal" id="cm-editor-modal" role="dialog" aria-modal="true">
+        <div class="cm-dialog">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h3 id="cm-editor-title" style="margin:0;color:#173f76">Edit Companion</h3><button class="cm-action" onclick="closeCompanionEditor()">✕</button></div>
+          <p id="cm-editor-subtitle" style="font-size:.8rem;color:#68736c;margin:5px 0 14px"></p>
+          <div class="cm-grid">
+            <div class="cm-field"><label>Full Name *</label><input id="cm-name" required></div>
+            <div class="cm-field"><label>T-Shirt Size *</label><select id="cm-tshirt"><option value="">Select size</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>XXXL</option></select></div>
+            <div class="cm-field"><label>Date of Birth</label><input id="cm-dob" type="date"></div>
+            <div class="cm-field"><label>Blood Group *</label><select id="cm-blood"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
+          </div>
+          <div class="cm-photo-row"><img id="cm-photo-preview" alt="Companion photo preview"><div class="cm-field" style="flex:1"><label>Photograph (optional if opted out)</label><input id="cm-photo" type="file" accept="image/*"><small id="cm-photo-note" style="color:#68736c">No new photo selected — existing photo will be preserved.</small></div></div>
+          <label style="display:flex;align-items:center;gap:9px;font-size:.85rem;font-weight:700;margin-top:8px"><input id="cm-optout" type="checkbox" onchange="toggleCmPhotoPreference()"> ফটো দিতে চাইনা</label>
+          <div class="cm-modal-actions"><button class="cm-action" onclick="closeCompanionEditor()">Cancel</button><button class="cm-action cm-primary" id="cm-save-btn" onclick="saveCompanionEditor()">Save Companion</button></div>
+        </div>
+      </div>
+
       <div class="mgmt-panel" id="panel-volunteers">
         <div class="vol-admin-wrap">
           <div class="vol-admin-toolbar">
@@ -5995,17 +6075,17 @@ function switchTab(type, btn) {
   currentFilter = type;
   document.querySelectorAll('.mgmt-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  if (type === 'volunteers') {
-    document.getElementById('panel-content').classList.remove('active');
-    document.getElementById('panel-volunteers').classList.add('active');
-    updateFilterControls();
-    loadVolunteerAdminList();
-    return;
+  const content=document.getElementById('panel-content'), volunteers=document.getElementById('panel-volunteers'), companions=document.getElementById('panel-companions');
+  if(type==='volunteers'){
+    content.classList.remove('active'); companions.classList.remove('active'); volunteers.classList.add('active');
+    updateFilterControls(); loadVolunteerAdminList(); return;
   }
-  document.getElementById('panel-volunteers').classList.remove('active');
-  document.getElementById('panel-content').classList.add('active');
-  updateFilterControls();
-  renderTable();
+  if(type==='companions'){
+    content.classList.remove('active'); volunteers.classList.remove('active'); companions.classList.add('active');
+    loadCompanionAdmin(); return;
+  }
+  volunteers.classList.remove('active'); companions.classList.remove('active'); content.classList.add('active');
+  updateFilterControls(); renderTable();
 }
 
 function deleteReg(id) {
@@ -6993,6 +7073,125 @@ if (isAdminUnlocked) {
     attributeFilter: ['style', 'class']
   });
 })();
+
+// ═══════════ COMPANION MANAGEMENT CLIENT ═══════════
+let cmMains=[], cmCompanions=[], cmSelectedMain=null, cmEditingCompanion=null;
+async function companionAdminPost(payload){
+  const key=sessionStorage.getItem('muhs_admin_key')||'';
+  if(!key) throw new Error('Admin login required');
+  const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,adminKey:key})});
+  return await res.json();
+}
+async function loadCompanionAdmin(){
+  if(!isAdminUnlocked){showToast('Admin login required','error');return;}
+  const host=document.getElementById('cm-main-results'); if(host)host.innerHTML='<div style="padding:12px">⏳ Loading registrations...</div>';
+  try{
+    const d=await companionAdminPost({action:'adminCompanionList'});
+    if(!d.success)throw new Error(d.message||d.error||'Load failed');
+    cmMains=Array.isArray(d.mains)?d.mains:[];
+    cmCompanions=Array.isArray(d.companions)?d.companions:[];
+    renderCompanionMainList();
+    if(cmSelectedMain){const fresh=cmMains.find(x=>x.uniqueId===cmSelectedMain.uniqueId);if(fresh){cmSelectedMain=fresh;renderSelectedCompanions();}else{cmSelectedMain=null;document.getElementById('cm-companion-area').style.display='none';}}
+  }catch(e){if(host)host.innerHTML='<div style="padding:12px;color:#a33">লোড ব্যর্থ: '+escapeHtml(e.message)+'</div>';showToast('Companion list load failed: '+e.message,'error');}
+}
+function cmForMain(id){return cmCompanions.filter(c=>String(c.groupEventId||'')===String(id||''));}
+function cmComplete(c){return !!(String(c.name||'').trim()&&String(c.tshirtSize||'').trim()&&String(c.bloodGroup||'').trim()&&(String(c.photoUrl||'').trim()||c.photoOptOut));}
+function renderCompanionMainList(){
+  const host=document.getElementById('cm-main-results');if(!host)return;
+  const q=String(document.getElementById('cm-search')?.value||'').trim().toLowerCase();
+  const f=document.getElementById('cm-filter')?.value||'all';
+  const rows=cmMains.filter(m=>{
+    const cs=cmForMain(m.uniqueId), complete=cs.filter(cmComplete).length;
+    const match=!q||[m.uniqueId,m.name,m.phone].some(v=>String(v||'').toLowerCase().includes(q));
+    const filter=f==='with'?cs.length>0:f==='without'?cs.length===0:f==='complete'?cs.length>0&&complete===cs.length:f==='incomplete'?cs.length>complete:true;
+    return match&&filter;
+  });
+  if(!rows.length){host.innerHTML='<div style="padding:12px;color:#718078">কোনো Main Registrant পাওয়া যায়নি।</div>';return;}
+  host.innerHTML=rows.map(m=>{
+    const cs=cmForMain(m.uniqueId), done=cs.filter(cmComplete).length;
+    return `<button class="cm-main-card ${cmSelectedMain&&cmSelectedMain.uniqueId===m.uniqueId?'active':''}" onclick="selectCompanionMain('${escapeJs(m.uniqueId)}')"><strong>${escapeHtml(m.name||'—')}</strong><small>${escapeHtml(m.uniqueId)} · ${escapeHtml(m.phone||'')}</small><small>${cs.length} Companion · ${done}/${cs.length} Complete</small></button>`;
+  }).join('');
+}
+function selectCompanionMain(id){
+  cmSelectedMain=cmMains.find(m=>m.uniqueId===id)||null;
+  renderCompanionMainList();renderSelectedCompanions();
+}
+function renderSelectedCompanions(){
+  const area=document.getElementById('cm-companion-area'),summary=document.getElementById('cm-selected-main'),body=document.getElementById('cm-companion-body');
+  if(!cmSelectedMain){area.style.display='none';return;}
+  area.style.display='block';
+  const cs=cmForMain(cmSelectedMain.uniqueId).sort((a,b)=>(a.companionSequence||0)-(b.companionSequence||0));
+  summary.innerHTML=`<div><strong>${escapeHtml(cmSelectedMain.name)}</strong><div style="font-size:.8rem;color:#53645a">${escapeHtml(cmSelectedMain.uniqueId)} · ${escapeHtml(cmSelectedMain.phone||'')}</div></div><div><strong>${cs.length} Companions</strong><div style="font-size:.78rem;color:#53645a">Main registrant payment status: ${escapeHtml(cmSelectedMain.paymentVerificationStatus||'—')}</div></div>`;
+  if(!cs.length){body.innerHTML='<tr><td colspan="9" style="text-align:center;padding:22px;color:#718078">এই Main Registrant-এর কোনো Companion নেই। Add New Companion চাপুন।</td></tr>';return;}
+  body.innerHTML=cs.map((c,i)=>{
+    const complete=cmComplete(c), photo=c.photoUrl?`<img class="cm-avatar" src="${escapeHtml(c.photoUrl)}" alt="Photo">`:(c.photoOptOut?'<span>Opted out</span>':'<span style="color:#a66">Missing</span>');
+    return `<tr><td>${i+1}</td><td><strong>${escapeHtml(c.uniqueId)}</strong></td><td>${escapeHtml(c.name||'—')}</td><td>${photo}</td><td>${escapeHtml(cmDateDisplay(c.dateOfBirth||c.dob))}</td><td>${escapeHtml(c.bloodGroup||'—')}</td><td>${escapeHtml(c.tshirtSize||'—')}</td><td><span class="cm-status ${complete?'':'warn'}">${complete?'Complete':'Incomplete'}</span></td><td><button class="cm-action" onclick="openCompanionEditor('${escapeJs(c.uniqueId)}')">✏️ Edit</button></td></tr>`;
+  }).join('');
+}
+function cmDateDisplay(v){if(!v)return '—';const d=new Date(v);return isNaN(d.getTime())?String(v).slice(0,10):d.toLocaleDateString('en-CA');}
+function openCompanionEditor(uid){
+  cmEditingCompanion=uid?cmCompanions.find(c=>c.uniqueId===uid):null;
+  if(!cmSelectedMain){showToast('প্রথমে Main Registrant নির্বাচন করুন।','error');return;}
+  const c=cmEditingCompanion||{};
+  document.getElementById('cm-editor-title').textContent=uid?'Edit Companion':'Add New Companion';
+  document.getElementById('cm-editor-subtitle').textContent=uid?('Event ID: '+uid):('Main Registrant: '+cmSelectedMain.uniqueId+' · Category automatically Guest');
+  document.getElementById('cm-name').value=c.name||'';
+  document.getElementById('cm-tshirt').value=c.tshirtSize||'';
+  document.getElementById('cm-dob').value=cmDateDisplay(c.dateOfBirth||c.dob)==='—'?'':cmDateDisplay(c.dateOfBirth||c.dob);
+  document.getElementById('cm-blood').value=c.bloodGroup||'';
+  document.getElementById('cm-photo').value='';
+  document.getElementById('cm-optout').checked=!!c.photoOptOut;
+  document.getElementById('cm-optout').disabled=false;
+  const preview=document.getElementById('cm-photo-preview');preview.src=c.photoUrl||'';
+  document.getElementById('cm-photo-note').textContent=c.photoUrl?'Existing photograph will be preserved unless a new photo is selected.':(c.photoOptOut?'Photo opt-out selected.':'A photograph is required unless opted out.');
+  toggleCmPhotoPreference();
+  document.getElementById('cm-editor-modal').classList.add('open');
+}
+function closeCompanionEditor(){document.getElementById('cm-editor-modal').classList.remove('open');cmEditingCompanion=null;}
+function toggleCmPhotoPreference(){
+  const opt=document.getElementById('cm-optout'),file=document.getElementById('cm-photo');
+  if(opt.checked){file.disabled=true;file.value='';document.getElementById('cm-photo-preview').src='';document.getElementById('cm-photo-note').textContent='Photo opt-out selected; existing photo will be cleared.';}
+  else {file.disabled=false;const chosen=file.files&&file.files[0];if(!chosen){const c=cmEditingCompanion;document.getElementById('cm-photo-preview').src=c&&c.photoUrl?c.photoUrl:'';document.getElementById('cm-photo-note').textContent=c&&c.photoUrl?'Existing photograph will be preserved.':'A photograph is required unless opted out.';}}
+}
+document.addEventListener('change',function(e){
+  if(e.target&&e.target.id==='cm-photo'){
+    const f=e.target.files&&e.target.files[0];if(!f)return;
+    if(f.size>4*1024*1024){e.target.value='';showToast('ছবি ৪ MB-এর মধ্যে হতে হবে।','error');return;}
+    document.getElementById('cm-optout').checked=false;document.getElementById('cm-optout').disabled=true;
+    const reader=new FileReader();reader.onload=()=>{document.getElementById('cm-photo-preview').src=reader.result;document.getElementById('cm-photo-note').textContent=f.name;};reader.readAsDataURL(f);
+  }
+});
+function cmReadFile(file){return new Promise((resolve,reject)=>{if(!file)return resolve('');const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=reject;r.readAsDataURL(file);});}
+async function cmBuildCardData(reg){
+  const idCard=await new Promise((resolve,reject)=>{let done=false;const t=setTimeout(()=>{if(!done){done=true;reject(new Error('ID Card render timeout'));}},30000);downloadIdCard(reg,false,{noArchive:true,onData:d=>{if(!done){done=true;clearTimeout(t);resolve(d);}}});});
+  const photoCard=await new Promise((resolve,reject)=>{let done=false;const t=setTimeout(()=>{if(!done){done=true;reject(new Error('Photo Card render timeout'));}},30000);downloadPhotoCard(reg,false,{noArchive:true,onData:d=>{if(!done){done=true;clearTimeout(t);resolve(d);}}});});
+  return {idCard,photoCard};
+}
+async function saveCompanionEditor(){
+  if(!isAdminUnlocked||!cmSelectedMain){showToast('Admin login required','error');return;}
+  const btn=document.getElementById('cm-save-btn');btn.disabled=true;btn.textContent='Saving...';
+  try{
+    const name=document.getElementById('cm-name').value.trim(), tshirt=document.getElementById('cm-tshirt').value;
+    const dob=document.getElementById('cm-dob').value,blood=document.getElementById('cm-blood').value;
+    const optOut=document.getElementById('cm-optout').checked,file=document.getElementById('cm-photo').files[0];
+    if(!name||!tshirt||!blood)throw new Error('Full Name, Blood Group এবং T-Shirt Size আবশ্যক।');
+    if(file&&optOut)throw new Error('Photo upload এবং opt-out একসাথে হতে পারে না।');
+    const imageData=await cmReadFile(file);
+    const result=await companionAdminPost({action:'adminCompanionSave',isNew:!cmEditingCompanion,uniqueId:cmEditingCompanion?cmEditingCompanion.uniqueId:'',mainRegistrantEventId:cmSelectedMain.uniqueId,name:name,tshirtSize:tshirt,dob:dob,bloodGroup:blood,photoOptOut:optOut,imageData:imageData});
+    if(!result.success)throw new Error(result.detail||result.message||result.error||'Save failed');
+    const reg={uniqueId:result.uniqueId,name:name,phone:cmSelectedMain.phone||'',type:'guest',bloodGroup:blood,tshirtSize:tshirt,dob:dob,dateOfBirth:dob,photoUrl:result.photoUrl||'',photoOptOut:optOut,paymentVerificationStatus:cmSelectedMain.paymentVerificationStatus||'Pending',batch:'',studentClass:'',gender:''};
+    // Regenerate only this companion's two cards and commit their URLs through the authenticated admin endpoint.
+    const cards=await cmBuildCardData(reg);
+    const cardResult=await companionAdminPost({action:'adminCompanionSaveCards',uniqueId:result.uniqueId,idCardData:cards.idCard,photoCardData:cards.photoCard});
+    if(!cardResult.success)throw new Error('Profile saved, but card regeneration failed: '+(cardResult.detail||cardResult.error||'unknown'));
+    showToast('✅ Companion saved; ID Card and Photo Card regenerated.','success');
+    closeCompanionEditor();
+    await loadCompanionAdmin();
+    if(isAdminUnlocked) await loadFromCloud(true);
+  }catch(e){console.error('Companion save failed',e);showToast('❌ '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='Save Companion';document.getElementById('cm-optout').disabled=false;}
+}
+
 </script>
 
 </body>
