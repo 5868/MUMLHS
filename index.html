@@ -7076,29 +7076,33 @@ let cmMains=[], cmCompanions=[], cmSelectedMain=null, cmEditingCompanion=null;
 async function companionAdminPost(payload){
   const key=sessionStorage.getItem('muhs_admin_key')||'';
   if(!key) throw new Error('Admin login required');
-  // Apps Script POST redirects can fail CORS in some browsers. Submit through a
-  // hidden same-origin form target and receive the authenticated result by postMessage.
   const requestId='cm_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-  let frame=document.getElementById('cm-api-frame');
-  if(!frame){frame=document.createElement('iframe');frame.id='cm-api-frame';frame.name='cm-api-frame';frame.style.display='none';document.body.appendChild(frame);}
+  const frame=document.createElement('iframe');
+  frame.name='cm-api-'+requestId; frame.id='cm-api-'+requestId;
+  frame.style.cssText='display:none;width:0;height:0;border:0';
+  document.body.appendChild(frame);
   return await new Promise((resolve,reject)=>{
     let settled=false;
-    const cleanup=()=>{window.removeEventListener('message',onMessage);form.remove();clearTimeout(timer);};
+    const form=document.createElement('form');
+    const cleanup=()=>{window.removeEventListener('message',onMessage);form.remove();frame.remove();clearTimeout(timer);};
     const finish=(fn,value)=>{if(settled)return;settled=true;cleanup();fn(value);};
     const onMessage=e=>{
-      const d=e.data||{};
-      if(d.__muhsAdminResponse===true&&d.requestId===requestId){
-        let result=d.payload;
-        if(typeof result==='string'){try{result=JSON.parse(result);}catch(_){return finish(reject,new Error('Invalid Apps Script response'));}}
-        finish(resolve,result||{success:false,error:'empty_response'});
-      }
+      if(e.source!==frame.contentWindow)return;
+      const d=e.data;
+      if(!d||d.__muhsAdminResponse!==true||d.requestId!==requestId)return;
+      let result=d.payload;
+      if(typeof result==='string'){try{result=JSON.parse(result);}catch(_){return finish(reject,new Error('Malformed Apps Script response'));}}
+      if(!result||typeof result!=='object')return finish(reject,new Error('Empty or malformed Apps Script response'));
+      if(result.error==='invalid_admin_key')return finish(reject,new Error('Authentication failed: admin key rejected'));
+      finish(resolve,result);
     };
     window.addEventListener('message',onMessage);
-    const timer=setTimeout(()=>finish(reject,new Error('Apps Script response timeout. Deployment ও access check করুন।')),120000);
-    const form=document.createElement('form');form.method='POST';form.action=GAS_URL;form.target='cm-api-frame';form.style.display='none';
+    const timer=setTimeout(()=>finish(reject,new Error('Apps Script response timeout. Check deployment access and script execution.')),45000);
+    form.method='POST';form.action=GAS_URL;form.target=frame.name;form.style.display='none';
     const fields={action:payload.action,responseMode:'postMessage',requestId,adminKey:key,payload:JSON.stringify(payload)};
     Object.keys(fields).forEach(k=>{const input=document.createElement('input');input.type='hidden';input.name=k;input.value=String(fields[k]);form.appendChild(input);});
-    document.body.appendChild(form);form.submit();
+    document.body.appendChild(form);
+    try{form.submit();}catch(err){finish(reject,new Error('Could not submit request: '+err.message));}
   });
 }
 async function loadCompanionAdmin(){
