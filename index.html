@@ -2631,11 +2631,13 @@
 
 
 .asset-upload-status{min-height:20px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-weight:600}
+.companion-preupload-row{display:flex;align-items:center;gap:10px}.companion-preupload-row [data-c-preview]{width:58px;height:58px;object-fit:cover;border-radius:9px;background:#f1f3f1;display:none}.companion-preupload-controls{flex:1;min-width:0}.companion-preupload-controls .asset-upload-status{font-size:.76rem;margin-top:4px}
 .asset-upload-status.is-uploading{color:#9a6b12!important}
 .asset-upload-status.is-success{color:#168044!important}
 .asset-upload-status.is-error{color:#b42318!important}
 .asset-upload-status .asset-spinner{width:13px;height:13px;border:2px solid rgba(154,107,18,.22);border-top-color:#9a6b12;border-radius:50%;display:inline-block;animation:mumAssetSpin .75s linear infinite}
 @keyframes mumAssetSpin{to{transform:rotate(360deg)}}
+.form-submit.is-processing{opacity:.88;cursor:wait;pointer-events:none}.form-submit .submit-spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:8px;animation:mumAssetSpin .75s linear infinite}
 .asset-retry{border:0;background:transparent;color:#b42318;text-decoration:underline;font:inherit;font-weight:700;cursor:pointer;padding:0 3px}
 </style>
 
@@ -3010,7 +3012,7 @@
           <div class="photo-upload-label">প্রোফাইল ছবি <span style="color:#c0392b">*</span> বাধ্যতামূলক<br>ক্লিক করে ছবি বেছে নিন</div>
           <button type="button" class="upload-btn" id="mainPhotoChooseBtn" onclick="document.getElementById('photoFileInput').click()">📁 ছবি নির্বাচন করুন</button><label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="reg-no-photo" onchange="toggleMainPhoto(this)"> ফটো দিতে চাইনা</label>
           <input type="file" id="photoFileInput" accept="image/*" style="display:none" onchange="openCropModal(event)">
-          <div id="photoUploadStatus" class="asset-upload-status" aria-live="polite" style="margin-top:8px;font-size:.78rem;color:#68736c">ছবি crop করার পর স্বয়ংক্রিয়ভাবে Drive-এ upload হবে।</div>
+          <div id="photoUploadStatus" class="asset-upload-status" aria-live="polite" style="margin-top:8px;font-size:.78rem;color:#68736c"></div>
         </div>
         <input type="hidden" id="reg-photo">
 
@@ -3243,7 +3245,7 @@
           <label>বার্তা (ঐচ্ছিক)</label>
           <textarea class="form-control" id="reg-message" rows="3" placeholder="আপনার স্মৃতি বা বার্তা লিখুন..."></textarea>
         </div>
-        <button class="form-submit" onclick="submitRegistration()">
+        <button class="form-submit" id="registrationSubmitBtn" onclick="submitRegistration()">
           🎓 নিবন্ধন সম্পন্ন করুন
         </button>
       </div>
@@ -4021,7 +4023,7 @@ setInterval(updateCountdown, 1000);
 //  নিচের URL টা আপনার নিজের Script URL দিয়ে replace করুন
 // ═══════════════════════════════════════════════════
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbx2IKfYnYR5iTr5AxUdMPu0lG0ZhoSSRo6ymFnEqwm7wwmb_kmP4OOJMpIujAKA9Qst/exec';
-const MUMLHS_BUILD_ID = '2026-11-27-v1-temp-preupload';
+const MUMLHS_BUILD_ID = '2026-11-27-v2-companion-preupload';
 console.info('[MUMLHS] build=' + MUMLHS_BUILD_ID + ' GAS=' + GAS_URL);
 fetch(GAS_URL + '?action=buildInfo&t=' + Date.now(), {cache:'no-store'}).then(r=>r.json()).then(x=>console.info('[MUMLHS] backend=',x)).catch(e=>console.warn('[MUMLHS] backend version check failed',e));
 // Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
@@ -4052,7 +4054,7 @@ async function uploadRegistrationTempAssetClient_(kind,dataUrl,requestId){
   const state=kind==='photo'?registrationPhotoTemp:registrationPaymentTemp;
   const statusId=kind==='photo'?'photoUploadStatus':'paymentUploadStatus';
   state.dataUrl=dataUrl;state.requestId=requestId||makeUploadToken_();state.status='uploading';state.fileId='';state.url='';
-  setAssetUploadStatus_(statusId,'uploading',kind==='photo'?'Profile photo Drive-এ upload হচ্ছে…':'Payment screenshot Drive-এ upload হচ্ছে…');
+  setAssetUploadStatus_(statusId,'uploading','Uploading');
   const payload={action:'uploadRegistrationTempAsset',submissionToken:token,kind:kind,imageData:dataUrl,uploadRequestId:state.requestId};
   let lastError=null;
   for(let attempt=1;attempt<=3;attempt++){
@@ -4077,6 +4079,28 @@ async function retryRegistrationTempAssetClient_(kind){
   try{await uploadRegistrationTempAssetClient_(kind,state.dataUrl,state.requestId);}
   catch(err){console.warn('Temp asset retry failed',kind,err);}
 }
+async function onCompanionPhotoSelected(input){
+  const card=input&&input.closest('.companion-profile');if(!card)return;
+  const seq=Number(card.dataset.companionIndex||0)+1,status=card.querySelector('[data-c-upload-status]'),preview=card.querySelector('[data-c-preview]');
+  const file=input.files&&input.files[0];card._companionTemp={fileId:'',url:'',dataUrl:'',requestId:makeUploadToken_(),status:'pending'};
+  if(!file){if(status)status.textContent='';if(preview){preview.removeAttribute('src');preview.style.display='none';}return;}
+  if(!file.type.startsWith('image/')||file.size>4*1024*1024){input.value='';if(status){status.className='asset-upload-status is-error';status.textContent='✕ Invalid image / Max 4 MB';}return;}
+  try{
+    const dataUrl=await companionPhotoToDataUrl(input),state=card._companionTemp;state.dataUrl=dataUrl;
+    if(preview){preview.src=dataUrl;preview.style.display='block';}
+    const kind='companion_'+seq;state.status='uploading';
+    const setStatus=(st,msg)=>{if(!status)return;status.className='asset-upload-status'+(st?' is-'+st:'');if(st==='uploading')status.innerHTML='<span class="asset-spinner" aria-hidden="true"></span>Uploading';else status.textContent=st==='success'?'✓ Uploaded':(st==='error'?'✕ '+msg:msg||'');};
+    const doUpload=async()=>{
+      state.status='uploading';setStatus('uploading','');
+      const payload={action:'uploadRegistrationTempAsset',submissionToken:ensureRegistrationSubmissionToken_(),kind:kind,imageData:state.dataUrl,uploadRequestId:state.requestId};
+      let last;
+      for(let n=1;n<=3;n++){try{const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),cache:'no-store'});const raw=await r.text(),out=JSON.parse(raw);if(out.success&&out.fileId){state.fileId=out.fileId;state.url=out.url||'';state.status='success';setStatus('success','');return;}throw new Error(out.detail||out.error||'Upload failed');}catch(e){last=e;if(n<3)await new Promise(res=>setTimeout(res,700*n));}}
+      state.status='error';setStatus('error','Upload failed');const retry=document.createElement('button');retry.type='button';retry.className='asset-retry';retry.textContent='Retry';retry.onclick=()=>doUpload().catch(console.warn);if(status)status.appendChild(retry);throw last;
+    };
+    await doUpload();
+  }catch(err){console.warn('Companion photo pre-upload failed:',seq,err);}
+}
+
 let cloudSummary = null; // { total, alumni, student, teacher, guest, other } — public-safe counts
 let isAdminUnlocked = sessionStorage.getItem('muhs_admin_key') ? true : false;
 
@@ -4319,7 +4343,7 @@ function getCompanionCounts() {
   const children = Math.max(0, parseInt(document.getElementById('reg-child-count')?.value || '0', 10) || 0);
   return { guests, children };
 }
-function toggleCompanionPhoto(cb){ const card=cb.closest('.companion-profile'); const input=card&&card.querySelector('[data-c-photo]'); if(input){input.disabled=!!cb.checked;if(cb.checked)input.value='';} }
+function toggleCompanionPhoto(cb){ const card=cb.closest('.companion-profile'); const input=card&&card.querySelector('[data-c-photo]'); if(input){input.disabled=!!cb.checked;if(cb.checked){input.value='';if(card){card._companionTemp=null;const st=card.querySelector('[data-c-upload-status]');if(st){st.className='asset-upload-status';st.textContent='';}const im=card.querySelector('[data-c-preview]');if(im){im.removeAttribute('src');im.style.display='none';}}}} }
 function companionPhotoToDataUrl(input) {
   return new Promise((resolve,reject) => {
     const file = input && input.files && input.files[0];
@@ -4364,7 +4388,7 @@ function renderCompanionProfiles() {
         <div class="form-group"><label>Blood Group *</label><select class="form-control" data-c-blood><option value="">Select</option>${bloodOpts.map(v=>`<option ${prev.blood===v?'selected':''}>${v}</option>`).join('')}</select></div>
         <div class="form-group"><label>T-Shirt Size *</label><select class="form-control" data-c-shirt><option value="">Select</option>${shirtOpts.map(v=>`<option ${prev.tshirt===v?'selected':''}>${v}</option>`).join('')}</select></div>
       </div>
-      <div class="form-group"><label>Photograph</label><input type="file" accept="image/*" class="form-control" data-c-photo><label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" data-c-no-photo onchange="toggleCompanionPhoto(this)"> ফটো দিতে চাইনা</label><small style="color:#718076">সর্বোচ্চ ৪ MB। ছবি না দিতে চাইলে checkbox নির্বাচন করুন।</small></div>
+      <div class="form-group"><label>Photograph</label><div class="companion-preupload-row"><img data-c-preview alt="Companion photo preview"><div class="companion-preupload-controls"><input type="file" accept="image/*" class="form-control" data-c-photo onchange="onCompanionPhotoSelected(this)"><div class="asset-upload-status" data-c-upload-status aria-live="polite"></div></div></div><label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" data-c-no-photo onchange="toggleCompanionPhoto(this)"> ফটো দিতে চাইনা</label><small style="color:#718076">সর্বোচ্চ ৪ MB। ছবি না দিতে চাইলে checkbox নির্বাচন করুন।</small></div>
     </div>`;
   }
   host.innerHTML=html;
@@ -4378,6 +4402,7 @@ function collectCompanionProfiles() {
     bloodGroup:el.querySelector('[data-c-blood]').value,
     tshirtSize:el.querySelector('[data-c-shirt]').value,
     photoInput:el.querySelector('[data-c-photo]'),
+    photoTemp:(el._companionTemp||null),
     photoOptOut:el.querySelector('[data-c-no-photo]')?.checked || false
   }));
 }
@@ -4569,7 +4594,7 @@ async function submitRegistration() {
   if (!Number.isInteger(guests) || guests < 0 || !Number.isInteger(children) || children < 0 || guests+children>40) { showToast('অতিথি ও শিশুর সংখ্যা সঠিকভাবে দিন।', 'error'); return; }
   const companionProfiles = collectCompanionProfiles();
   if (companionProfiles.length !== guests+children) { showToast('Companion details তৈরি করা যায়নি। সংখ্যা আবার দিন।', 'error'); return; }
-  for(let i=0;i<companionProfiles.length;i++){const c=companionProfiles[i];if(!c.name||!c.dob||!c.bloodGroup||!c.tshirtSize||(!c.photoOptOut&&!c.photoInput.files.length)){showToast(`Companion ${i+1}: নাম, জন্মতারিখ, Blood Group ও T-Shirt Size পূরণ করুন; ছবি না দিলে checkbox নির্বাচন করুন।`,'error');c.photoInput.closest('.companion-profile').scrollIntoView({behavior:'smooth',block:'center'});return;}}
+  for(let i=0;i<companionProfiles.length;i++){const c=companionProfiles[i];if(!c.name||!c.dob||!c.bloodGroup||!c.tshirtSize||(!c.photoOptOut&&!c.photoInput.files.length)){showToast(`Companion ${i+1}: নাম, জন্মতারিখ, Blood Group ও T-Shirt Size পূরণ করুন; ছবি না দিলে checkbox নির্বাচন করুন।`,'error');c.photoInput.closest('.companion-profile').scrollIntoView({behavior:'smooth',block:'center'});return;}if(!c.photoOptOut&&(!c.photoTemp||c.photoTemp.status!=='success'||!c.photoTemp.fileId)){showToast(`Companion ${i+1}: photo upload complete হওয়া পর্যন্ত অপেক্ষা করুন।`,'error');c.photoInput.closest('.companion-profile').scrollIntoView({behavior:'smooth',block:'center'});return;}}
   const paymentMethodEl = document.querySelector('input[name="payment-method"]:checked');
   if (!paymentMethodEl) { showToast('পেমেন্ট মাধ্যম নির্বাচন করুন।', 'error'); return; }
 
@@ -4618,7 +4643,7 @@ async function submitRegistration() {
     permanentAddress: getAddress('permanent'),
     guestCount: guests,
     childCount: children,
-    companions: companionProfiles.map(c=>({sequence:c.sequence,name:c.name,type:'guest',dob:c.dob,bloodGroup:c.bloodGroup,tshirtSize:c.tshirtSize,photoOptOut:c.photoOptOut})),
+    companions: companionProfiles.map(c=>({sequence:c.sequence,name:c.name,type:'guest',dob:c.dob,bloodGroup:c.bloodGroup,tshirtSize:c.tshirtSize,photoOptOut:c.photoOptOut,photoTempFileId:c.photoTemp&&c.photoTemp.fileId||''})),
     totalFee: (registrationFees[type] || 0) + (guests * guestFee),
     paymentMethod: paymentMethodMap[paymentMethodEl.value] || paymentMethodEl.value,
     txnId: txnIdValue,
@@ -4636,6 +4661,10 @@ async function submitRegistration() {
     date: new Date().toLocaleDateString('bn-BD')
   };
 
+  const submitBtn=document.getElementById('registrationSubmitBtn');
+  const submitBtnOriginal=submitBtn?submitBtn.innerHTML:'';
+  if(submitBtn){submitBtn.disabled=true;submitBtn.classList.add('is-processing');submitBtn.innerHTML='<span class="submit-spinner" aria-hidden="true"></span>প্রক্রিয়াকরণ চলছে…';}
+  const restoreSubmitButton=()=>{if(submitBtn){submitBtn.disabled=false;submitBtn.classList.remove('is-processing');submitBtn.innerHTML=submitBtnOriginal;}};
   registrations.push(reg);
   localStorage.setItem('muhs_registrations', JSON.stringify(registrations));
 
@@ -4649,6 +4678,7 @@ async function submitRegistration() {
       updateBatchFilter();
       renderTable();
       renderManagementStats();
+      restoreSubmitButton();
       if (cloudResult && cloudResult.error === 'duplicate_phone') {
         showToast('এই মোবাইল নম্বরে ইতিমধ্যে নিবন্ধন হয়েছে!', 'error');
       } else if (cloudResult && cloudResult.error === 'duplicate_txnid') {
@@ -4771,16 +4801,17 @@ async function submitRegistration() {
       photo:uploadResults.photo,pdf:uploadResults.pdf
     });
 
-    if(Array.isArray(reg.companions)&&reg.companions.length){const profiles=collectCompanionProfiles();for(let i=0;i<reg.companions.length;i++){if(reg.companions[i].photoOptOut||!profiles[i].photoInput.files.length)continue;try{const imageData=await companionPhotoToDataUrl(profiles[i].photoInput);const up=await retryUpload('Companion photo',{action:'uploadCompanionPhoto',groupId:reg.uniqueId,sequence:i+1,imageData});reg.companions[i].photoUrl=up.url||'';reg.companions[i].uniqueId=up.uniqueId||'';}catch(err){console.error('Companion photo upload failed',i+1,err);showToast(`⚠️ Companion ${i+1}-এর ছবি Drive-এ সংরক্ষণ হয়নি।`,'error');}}}
+    if(Array.isArray(cloudResult&&cloudResult.companions)&&cloudResult.companions.length){reg.companions=cloudResult.companions;reg.companionAssetFinalization=cloudResult.companionAssetFinalization||[];}
 
     // Payment screenshot remains a separate, smaller request.
     const initialFinal=(cloudResult&&cloudResult.assetFinalization)||{};
+    const companionFinalizeInitial=Array.isArray(cloudResult&&cloudResult.companionAssetFinalization)?cloudResult.companionAssetFinalization:[];
     const needsFinalizeRetry=(!reg.photoOptOut && reg.photoTempFileId && !(initialFinal.photo&&initialFinal.photo.success)) ||
-      (reg.paymentTempFileId && !(initialFinal.payment&&initialFinal.payment.success));
+      (reg.paymentTempFileId && !(initialFinal.payment&&initialFinal.payment.success)) || companionFinalizeInitial.some(x=>!x.success);
     if(needsFinalizeRetry){
       try{
         const retryRes=await postJson({action:'retryRegistrationAssetFinalization',uniqueId:reg.uniqueId,submissionToken:reg.submissionToken});
-        if(!retryRes.success || (!reg.photoOptOut && reg.photoTempFileId && !retryRes.photo?.success) || (reg.paymentTempFileId && !retryRes.payment?.success))
+        if(!retryRes.success || (!reg.photoOptOut && reg.photoTempFileId && !retryRes.photo?.success) || (reg.paymentTempFileId && !retryRes.payment?.success) || (Array.isArray(retryRes.companions)&&retryRes.companions.some(x=>!x.success)))
           console.warn('Asset finalization remains pending:',retryRes);
         else {
           if(retryRes.photo&&retryRes.photo.url)reg.photoUrl=retryRes.photo.url;
@@ -4828,15 +4859,17 @@ async function submitRegistration() {
   registrationPhotoTemp={fileId:'',url:'',dataUrl:'',requestId:'',status:'empty'};
   registrationPaymentTemp={fileId:'',url:'',dataUrl:'',requestId:'',status:'empty'};
   registrationSubmissionToken='';
-  setAssetUploadStatus_('photoUploadStatus','','ছবি crop করার পর স্বয়ংক্রিয়ভাবে Drive-এ upload হবে।');
+  setAssetUploadStatus_('photoUploadStatus','','');
   const noPhotoToggle=document.getElementById('reg-no-photo');if(noPhotoToggle){noPhotoToggle.checked=false;toggleMainPhoto(noPhotoToggle);}
   document.getElementById('photoPreviewImg').style.display = 'none';
   document.getElementById('photoPreviewImg').src = '';
   document.querySelector('#photoRing .ph-icon').style.display = 'block';
   resetPaymentFields();
+  const companionHost=document.getElementById('companion-profile-list');if(companionHost)companionHost.innerHTML='';
 
   hideRegistrationProgress();
 
+  restoreSubmitButton();
   showToast(`✅ নিবন্ধন সফল! আপনার আইডি: ${uniqueId}`);
   // Show ID in a visible box too
   window._lastReg = reg;
