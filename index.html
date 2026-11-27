@@ -5147,7 +5147,9 @@ async function lookupRegistrationForDownload(retryAttempt = 0) {
   }
 }
 
-function lookupHasPhoto(reg){return !!(reg&&(reg.photoOptOut===true||extractDriveFileIdFromValue(reg.photoUrl)));}
+// A card is downloadable only when the Sheet's AG / PhotoURL contains a valid Drive file URL.
+// Photo exemption does not substitute for a missing PhotoURL in this download flow.
+function lookupHasPhoto(reg){return !!(reg&&extractDriveFileIdFromValue(reg.photoUrl));}
 function renderLookupVerifiedResult(resultEl,main,companions,name,eventId,type){
   const mainReady=lookupHasPhoto(main), companionsHtml=companions.map((c,i)=>{
     const ready=lookupHasPhoto(c), optedOut=c.photoOptOut===true;
@@ -5176,16 +5178,18 @@ async function uploadLookupPhotoFromCrop(dataUrl,ctx){
   }catch(err){console.error('Card photo upload failed:',err);if(status)status.innerHTML=`<span class="lookup-upload-error">Upload failed</span> <button type="button" class="lookup-retry" onclick="document.getElementById('${ctx.kind==='main'?'lookup-main-photo-file':'lookup-companion-file-'+ctx.index}').click()">Retry</button>`;}
 }
 
-async function downloadLookupCompanionCard(index,kind){const list=window._lookupGroupCompanions||[];const reg=list[index];if(!reg){showToast('Companion তথ্য পাওয়া যায়নি।','error');return;}if(String(reg.paymentVerificationStatus||'')!=='Verified'){showToast('Group payment এখনও verified নয়।','error');return;}try{const photo=await resolveCardPhotoSource(reg);if(photo)reg.photo=photo;if(kind==='id')downloadIdCard(reg,true);else downloadPhotoCard(reg,true);}catch(e){console.error(e);showToast('Companion card তৈরি করা যায়নি।','error');}}
+async function downloadLookupCompanionCard(index,kind){const list=window._lookupGroupCompanions||[];const reg=list[index];if(!reg){showToast('Companion তথ্য পাওয়া যায়নি।','error');return;}if(String(reg.paymentVerificationStatus||'')!=='Verified'){showToast('Group payment এখনও verified নয়।','error');return;}if(!extractDriveFileIdFromValue(reg.photoUrl)){showToast('Companion-এর PhotoURL (AG) খালি। আগে ছবি upload করুন।','error');return;}try{const photo=await resolveCardPhotoSource(reg);if(photo)reg.photo=photo;if(kind==='id')downloadIdCard(reg,true);else downloadPhotoCard(reg,true);}catch(e){console.error(e);showToast('Companion card তৈরি করা যায়নি।','error');}}
 function downloadLookupEventIdCard(){
   const reg = window._lookupCardParticipant;
   if (!reg) { showToast('আগে Event ID দিয়ে যাচাই করুন।','error'); return; }
+  if (!extractDriveFileIdFromValue(reg.photoUrl)) { showToast('Google Sheet-এর AG / PhotoURL-এ ছবি নেই। আগে ছবি upload করুন।','error'); return; }
   downloadIdCard(reg, true);
 }
 
 function downloadLookupPhotoCard(){
   const reg = window._lookupCardParticipant;
   if (!reg) { showToast('আগে Event ID দিয়ে যাচাই করুন।','error'); return; }
+  if (!extractDriveFileIdFromValue(reg.photoUrl)) { showToast('Google Sheet-এর AG / PhotoURL-এ ছবি নেই। আগে ছবি upload করুন।','error'); return; }
   downloadPhotoCard(reg, true);
 }
 
