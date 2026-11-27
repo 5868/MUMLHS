@@ -4027,7 +4027,7 @@ setInterval(updateCountdown, 1000);
 //  নিচের URL টা আপনার নিজের Script URL দিয়ে replace করুন
 // ═══════════════════════════════════════════════════
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbx2IKfYnYR5iTr5AxUdMPu0lG0ZhoSSRo6ymFnEqwm7wwmb_kmP4OOJMpIujAKA9Qst/exec';
-const MUMLHS_BUILD_ID = '2026-11-27-v2-companion-preupload';
+const MUMLHS_BUILD_ID = '2026-11-27-v7-member-photo-direct-upload';
 console.info('[MUMLHS] build=' + MUMLHS_BUILD_ID + ' GAS=' + GAS_URL);
 fetch(GAS_URL + '?action=buildInfo&t=' + Date.now(), {cache:'no-store'}).then(r=>r.json()).then(x=>console.info('[MUMLHS] backend=',x)).catch(e=>console.warn('[MUMLHS] backend version check failed',e));
 // Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
@@ -5160,15 +5160,45 @@ function lookupIsCompanion(reg){const gid=String(reg&&reg.groupEventId||'').trim
 function renderLookupVerifiedResult(resultEl,main,companions,name,eventId,type){
   const mainReady=lookupHasPhoto(main), paymentReady=lookupHasPaymentEvidence(main), mainCompanion=lookupIsCompanion(main), companionsHtml=companions.map((c,i)=>{
     const ready=lookupHasPhoto(c), optedOut=c.photoOptOut===true;
-    const actions=ready?`<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center"><button type="button" class="lookup-download-btn" style="width:auto;margin:0;padding:9px 11px" onclick="downloadLookupCompanionCard(${i},'id')">🪪 ID Card</button><button type="button" class="lookup-download-btn secondary" style="width:auto;margin:0;padding:9px 11px" onclick="downloadLookupCompanionCard(${i},'photo')">📸 Photo Card</button>${optedOut?'<span class="lookup-photo-muted">Photo exemption</span>':(c._photoJustUploaded?'<span class="lookup-uploaded">✓ Uploaded</span>':'')}</div>`:`<div class="lookup-photo-missing"><strong>Photo missing — please upload photo</strong><input id="lookup-companion-file-${i}" type="file" accept="image/*" hidden onchange="startLookupPhotoCrop(event,'companion',${i})"><button type="button" class="lookup-upload-btn" onclick="document.getElementById('lookup-companion-file-${i}').click()">Upload photo</button><span id="lookup-companion-status-${i}" class="lookup-upload-status"></span></div>`;
+    const actions=ready?`<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center"><button type="button" class="lookup-download-btn" style="width:auto;margin:0;padding:9px 11px" onclick="downloadLookupCompanionCard(${i},'id')">🪪 ID Card</button><button type="button" class="lookup-download-btn secondary" style="width:auto;margin:0;padding:9px 11px" onclick="downloadLookupCompanionCard(${i},'photo')">📸 Photo Card</button>${optedOut?'<span class="lookup-photo-muted">Photo exemption</span>':(c._photoJustUploaded?'<span class="lookup-uploaded">✓ Uploaded</span>':'')}</div>`:`<div class="lookup-photo-missing"><strong>Photo missing — please upload photo</strong><div style="font-size:11px;color:#68776d;margin:4px 0 9px">Original image সরাসরি upload হবে — Crop প্রয়োজন নেই · সর্বোচ্চ 5 MB</div><input id="lookup-companion-file-${i}" type="file" accept="image/*" hidden onchange="startLookupPhotoDirect(event,'companion',${i})"><button type="button" class="lookup-upload-btn" onclick="document.getElementById('lookup-companion-file-${i}').click()">Upload photo</button><span id="lookup-companion-status-${i}" class="lookup-upload-status"></span></div>`;
     return `<div class="lookup-companion-row"><div><strong>${escapeHtmlSafe(c.name||'Companion')}</strong><div class="lookup-companion-id">Event ID: ${escapeHtmlSafe(c.uniqueId||'')} · অতিথি</div></div>${actions}</div>`;
   }).join('');
-  const paymentUploadBlock=(!paymentReady&&!mainCompanion)?`<div class="lookup-photo-missing"><strong>Payment Screenshot / Receipt missing — please upload</strong><input id="lookup-main-payment-file" type="file" accept="image/*" hidden onchange="uploadLookupPaymentProofSelected(event)"><button type="button" class="lookup-upload-btn" onclick="document.getElementById('lookup-main-payment-file').click()">💳 Upload Payment Screenshot / Receipt</button><span id="lookup-main-payment-status" class="lookup-upload-status"></span></div>`:'';
-  const cardBlock=(!paymentReady&&!mainCompanion)?`<div class="lookup-message" style="border:1px solid #f0d58b;background:#fff9e8;color:#805b08">কার্ড ডাউনলোডের আগে TxnID অথবা Payment Screenshot / Receipt—যেকোনো একটি জমা থাকতে হবে।</div>`:(!mainReady?`<div class="lookup-photo-missing"><strong>Photo missing — please upload your photo</strong><input id="lookup-main-photo-file" type="file" accept="image/*" hidden onchange="startLookupPhotoCrop(event,'main',-1)"><button type="button" class="lookup-upload-btn" onclick="document.getElementById('lookup-main-photo-file').click()">Upload your photo</button><span id="lookup-main-photo-status" class="lookup-upload-status"></span></div>`:`<div class="lookup-downloads"><button type="button" class="lookup-download-btn" onclick="downloadLookupEventIdCard()">🪪 Download Event ID Card</button><button type="button" class="lookup-download-btn secondary" onclick="downloadLookupPhotoCard()">📸 Download Photo Card</button>${main.photoOptOut?'<span class="lookup-photo-muted">Photo exemption</span>':(main._photoJustUploaded?'<span class="lookup-uploaded">✓ Uploaded</span>':'')}</div>`);
-  resultEl.innerHTML=`<div class="lookup-result-card verified"><div class="lookup-status">✅ Payment Verified</div><div class="lookup-info-grid"><div class="lookup-info-item"><span>নাম</span><strong>${name}</strong></div><div class="lookup-info-item"><span>Event ID</span><strong>${eventId}</strong></div><div class="lookup-info-item"><span>Registration Type</span><strong>${type}</strong></div></div>${paymentUploadBlock}<div id="lookup-main-card-area">${cardBlock}</div>${companions.length?`<div style="margin-top:18px;font-weight:900;color:#173f2c">👥 Companion Cards (${companions.length})</div>${companionsHtml}`:''}</div>`;
+  const txnValue=String(main.txnId||'').trim(), proofValue=String(main.paymentProofUrl||'').trim();
+  const paymentFieldsIncomplete=!txnValue||!proofValue;
+  const proofLink=proofValue?`<a href="${escapeHtmlSafe(proofValue)}" target="_blank" rel="noopener noreferrer" style="color:#145a3e;text-decoration:underline;font-weight:800">View Payment Proof / Receipt ↗</a>`:'<span style="color:#9a6b08">Not uploaded</span>';
+  const paymentUploadBlock=(paymentFieldsIncomplete&&!mainCompanion)?`<div class="lookup-photo-missing"><strong>পেমেন্ট স্ক্রিনশট / অফলাইন রিসিপ্ট</strong><div style="font-size:11px;color:#68776d;margin:4px 0 9px">সরাসরি আপলোড হবে — Crop প্রয়োজন নেই · সর্বোচ্চ 5 MB</div><input id="lookup-main-payment-file" type="file" accept="image/*" hidden onchange="uploadLookupPaymentProofSelected(event)"><button type="button" class="lookup-upload-btn" onclick="document.getElementById('lookup-main-payment-file').click()">💳 Upload Payment Screenshot / Receipt</button><span id="lookup-main-payment-status" class="lookup-upload-status"></span></div>`:'';
+  const cardBlock=(!paymentReady&&!mainCompanion)?`<div class="lookup-message" style="border:1px solid #f0d58b;background:#fff9e8;color:#805b08">কার্ড ডাউনলোডের আগে TxnID অথবা Payment Screenshot / Receipt—যেকোনো একটি জমা থাকতে হবে।</div>`:(!mainReady?`<div class="lookup-photo-missing"><strong>Photo missing — please upload your photo</strong><div style="font-size:11px;color:#68776d;margin:4px 0 9px">Original image সরাসরি upload হবে — Crop প্রয়োজন নেই · সর্বোচ্চ 5 MB</div><input id="lookup-main-photo-file" type="file" accept="image/*" hidden onchange="startLookupPhotoDirect(event,'main',-1)"><button type="button" class="lookup-upload-btn" onclick="document.getElementById('lookup-main-photo-file').click()">Upload your photo</button><span id="lookup-main-photo-status" class="lookup-upload-status"></span></div>`:`<div class="lookup-downloads"><button type="button" class="lookup-download-btn" onclick="downloadLookupEventIdCard()">🪪 Download Event ID Card</button><button type="button" class="lookup-download-btn secondary" onclick="downloadLookupPhotoCard()">📸 Download Photo Card</button>${main.photoOptOut?'<span class="lookup-photo-muted">Photo exemption</span>':(main._photoJustUploaded?'<span class="lookup-uploaded">✓ Uploaded</span>':'')}</div>`);
+  resultEl.innerHTML=`<div class="lookup-result-card verified"><div class="lookup-status">✅ Payment Verified</div><div class="lookup-info-grid"><div class="lookup-info-item"><span>নাম</span><strong>${name}</strong></div><div class="lookup-info-item"><span>Event ID</span><strong>${eventId}</strong></div><div class="lookup-info-item"><span>Registration Type</span><strong>${type}</strong></div><div class="lookup-info-item"><span>TxnID</span><strong>${txnValue?escapeHtmlSafe(txnValue):'<span style="color:#9a6b08">Not provided</span>'}</strong></div><div class="lookup-info-item"><span>Payment Proof URL</span><strong>${proofLink}</strong></div></div>${paymentUploadBlock}<div id="lookup-main-card-area">${cardBlock}</div>${companions.length?`<div style="margin-top:18px;font-weight:900;color:#173f2c">👥 Companion Cards (${companions.length})</div>${companionsHtml}`:''}</div>`;
 }
 let lookupPhotoUploadContext=null;
-function startLookupPhotoCrop(event,kind,index){const file=event&&event.target&&event.target.files&&event.target.files[0];if(!file)return;lookupPhotoUploadContext={kind:kind,index:index};openCropModal(event);}
+// Event ID + mobile-last4 lookup photo uploads use the original image directly (no crop).
+async function startLookupPhotoDirect(event,kind,index){
+  const input=event&&event.target, file=input&&input.files&&input.files[0];
+  if(!file)return;
+  const statusId=kind==='main'?'lookup-main-photo-status':'lookup-companion-status-'+index;
+  const status=document.getElementById(statusId);
+  if(!file.type||!file.type.startsWith('image/')){
+    if(status)status.innerHTML='<span class="lookup-upload-error">Please select an image file.</span>';
+    input.value='';return;
+  }
+  if(file.size>5*1024*1024){
+    if(status)status.innerHTML='<span class="lookup-upload-error">Maximum file size 5 MB. Please choose a smaller image.</span>';
+    input.value='';return;
+  }
+  if(status)status.innerHTML='<span class="lookup-spin"></span> Reading original image';
+  try{
+    const dataUrl=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=e=>resolve(String(e.target.result||''));
+      reader.onerror=()=>reject(new Error('Photo file could not be read'));
+      reader.readAsDataURL(file);
+    });
+    await uploadLookupPhotoFromCrop(dataUrl,{kind,index});
+  }catch(err){
+    console.error('Lookup photo read failed:',err);
+    if(status)status.innerHTML=`<span class="lookup-upload-error">${escapeHtmlSafe(err.message||'Photo could not be read')}</span>`;
+  }finally{if(input)input.value='';}
+}
 async function uploadLookupPhotoFromCrop(dataUrl,ctx){
   const statusId=ctx.kind==='main'?'lookup-main-photo-status':'lookup-companion-status-'+ctx.index;
   const status=document.getElementById(statusId);if(status)status.innerHTML='<span class="lookup-spin"></span> Uploading';
@@ -5192,7 +5222,7 @@ async function uploadLookupPaymentProofSelected(event){
   const status=document.getElementById('lookup-main-payment-status');
   if(!file.type.startsWith('image/')){if(status)status.innerHTML='<span class="lookup-upload-error">Please select an image file.</span>';event.target.value='';return;}
   if(file.size>5*1024*1024){if(status)status.innerHTML='<span class="lookup-upload-error">Maximum file size 5 MB.</span>';event.target.value='';return;}
-  if(status)status.innerHTML='<span class="lookup-spin"></span> Uploading';
+  if(status)status.innerHTML='<span class="lookup-spin"></span> Uploading original image (no crop)';
   try{
     const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>resolve(String(e.target.result||''));reader.onerror=()=>reject(new Error('Receipt file could not be read'));reader.readAsDataURL(file);});
     const identity=window._lookupIdentity||{};
@@ -5203,7 +5233,7 @@ async function uploadLookupPaymentProofSelected(event){
     const host=document.getElementById('registration-lookup-result');
     renderLookupVerifiedResult(host,main,window._lookupGroupCompanions||[],escapeHtmlSafe(main.name||''),escapeHtmlSafe(main.uniqueId||''),escapeHtmlSafe(main._displayType||main.type||''));
     const fresh=document.getElementById('lookup-main-payment-status');if(fresh)fresh.innerHTML='<span class="lookup-uploaded">✓ Receipt Uploaded</span>';
-  }catch(err){console.error('Payment receipt upload failed:',err);if(status)status.innerHTML=`<span class="lookup-upload-error">Upload failed: ${escapeHtmlSafe(err.message||'')}</span> <button type="button" class="lookup-retry" onclick="document.getElementById('lookup-main-payment-file').click()">Retry</button>`;}
+  }catch(err){console.error('Payment receipt upload failed:',err);if(status)status.innerHTML=`<span class="lookup-upload-error">Upload failed: ${escapeHtmlSafe(err.message||'')}</span> <button type="button" class="lookup-retry" onclick="document.getElementById('lookup-main-payment-file').click()">Retry</button>`;}finally{if(event&&event.target)event.target.value='';}
 }
 
 async function downloadLookupCompanionCard(index,kind){const list=window._lookupGroupCompanions||[];const reg=list[index];if(!reg){showToast('Companion তথ্য পাওয়া যায়নি।','error');return;}if(String(reg.paymentVerificationStatus||'')!=='Verified'){showToast('Group payment এখনও verified নয়।','error');return;}if(!extractDriveFileIdFromValue(reg.photoUrl)){showToast('Companion-এর PhotoURL (AG) খালি। আগে ছবি upload করুন।','error');return;}try{const photo=await resolveCardPhotoSource(reg);if(photo)reg.photo=photo;if(kind==='id')downloadIdCard(reg,true);else downloadPhotoCard(reg,true);}catch(e){console.error(e);showToast('Companion card তৈরি করা যায়নি।','error');}}
