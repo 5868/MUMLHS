@@ -2687,7 +2687,7 @@
     <li><a href="#web-team">ওয়েব টিম</a></li>
     <li><a href="#management">তথ্য ব্যবস্থাপনা</a></li>
     <li><a href="#volunteer" class="volunteer-nav-link">🛡️ ভলান্টিয়ার</a></li>
-    <li><a href="member-portal.html" class="member-portal-nav">🔐 Member Portal</a></li>
+    <li><a href="/members/" class="member-portal-nav">🔐 Member Portal</a></li>
     <li><a href="#contact">যোগাযোগ</a></li>
   </ul>
 </nav>
@@ -4245,6 +4245,8 @@ async function adminUnlock() {
           txnId: String(r.txnId || ''),
           bloodGroup: String(r.bloodGroup || ''),
           tshirtSize: String(r.tshirtSize || ''),
+          groupEventId: String(r.groupEventId || ''),
+          isCompanion: r.isCompanion === true || String(r.isCompanion || '').toLowerCase() === 'true',
           photo: localMap[r.uniqueId] || r.photo || ''
         }))
       : [];
@@ -4881,8 +4883,18 @@ async function submitRegistration() {
 }
 
 // ─── SUMMARY ───
+
+function isCompanionRegistrationRecord(r){
+  if(!r) return false;
+  const flag = r.isCompanion === true || String(r.isCompanion || '').trim().toLowerCase() === 'true';
+  const groupId = String(r.groupEventId || '').trim();
+  const uid = String(r.uniqueId || '').trim();
+  return flag || (!!groupId && !['false','0','no'].includes(groupId.toLowerCase())) || /-C\d+$/i.test(uid);
+}
+
 function updateSummary() {
-  const rows = Array.isArray(registrations) ? registrations : [];
+  const allRows = Array.isArray(registrations) ? registrations : [];
+  const rows = allRows.filter(r => !isCompanionRegistrationRecord(r));
   const isVerified = r => String(r.paymentVerificationStatus || '') === 'Verified';
   const verified = rows.filter(isVerified);
   const pending = rows.filter(r => !isVerified(r));
@@ -5895,7 +5907,7 @@ function switchManagementStatsTab(tab, btn) {
 
 function renderManagementStats() {
   loadPaymentVerifierSummary();
-  const regs = Array.isArray(registrations) ? registrations : [];
+  const regs = (Array.isArray(registrations) ? registrations : []).filter(r => !isCompanionRegistrationRecord(r));
   const summary = (cloudSummary && typeof cloudSummary === 'object') ? cloudSummary : {};
   const money = v => {
     if (typeof v === 'number') return isFinite(v) ? v : 0;
